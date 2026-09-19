@@ -30,6 +30,22 @@ Every inquiry on the site reaches a human without any of these set. See `server/
 - `RENT_API_URL`: override rent API base URL for sync script.
 - `VITE_MAPBOX_TOKEN`: map token for frontend map component.
 
+## Meetup.com network feed (all optional)
+`GET /api/meetups/network` and `GET /api/meetups/next` (`server/meetupNetwork.ts`) list every upcoming meetup across the "The Canadian Real Estate Investor" Meetup Pro network. With nothing set, the public iCal feeds of the groups registered in `shared/meetupNetwork.ts` are served (no auth). Credentials unlock the GraphQL branch: automatic discovery of every group in the network, RSVP counts, and event photos. Any GraphQL failure falls back to iCal.
+
+| Variable | Default | Used for |
+| --- | --- | --- |
+| `MEETUP_PRO_URLNAME` | `the-canadian-real-estate-investor` | Pro network urlname (`https://www.meetup.com/pro/<urlname>/`). |
+| `MEETUP_GROUP_URLNAMES` | unset | Comma-separated extra group urlnames merged with the registry — for groups not yet listed in `shared/meetupNetwork.ts`. |
+| `MEETUP_ACCESS_TOKEN` | unset | Static OAuth bearer token for `https://api.meetup.com/gql-ext`. When set, the JWT flow is skipped. |
+| `MEETUP_CLIENT_ID` | unset | OAuth consumer key; the JWT `iss`. |
+| `MEETUP_CLIENT_SECRET` | unset | OAuth consumer secret. Not used by the JWT grant itself; accepted so the consumer's settings can be pasted together. |
+| `MEETUP_JWT_PRIVATE_KEY` | unset | PEM RSA private key whose public half is registered on the OAuth consumer. Literal `\n` escapes are accepted (single-line env var). |
+| `MEETUP_JWT_KEY_ID` | unset | Signing key id listed beside the key on the consumer's settings page. Sent as the JWT `kid` header so Meetup knows which of the consumer's (up to two) public keys verifies the assertion. |
+| `MEETUP_AUTHORIZED_MEMBER_ID` | unset | Meetup member id the consumer acts as (the JWT `sub`); must be an admin of the network. |
+
+The JWT flow needs `MEETUP_CLIENT_ID`, `MEETUP_JWT_PRIVATE_KEY`, and `MEETUP_AUTHORIZED_MEMBER_ID` together; set `MEETUP_JWT_KEY_ID` alongside them. A signing key's private half is shown once, when the key is created on the consumer page — if it was not saved, create a second key rather than hunting for the first. Tokens are minted at `https://secure.meetup.com/oauth2/access` (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`) and cached until 60s before expiry. Responses are cached in memory for 20 minutes; a failed refresh serves the previous snapshot with `stale: true`.
+
 ## Example
 ```env
 DATABASE_URL=postgres://user:password@localhost:5432/realist_idx
@@ -42,3 +58,12 @@ LOG_LEVEL=info
 RENT_API_URL=https://realist.ca/api/rents
 VITE_MAPBOX_TOKEN=pk.your_mapbox_key
 ```
+
+## Meetup.com member OAuth (server/meetupOAuth.ts, server/meetupRsvp.ts)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `MEETUP_CLIENT_ID` / `MEETUP_CLIENT_SECRET` | No | Enables "Continue with Meetup" (OAuth2 server flow). Shared with the network feed's JWT flow. |
+| `MEETUP_OAUTH_REDIRECT_URI` | No | Overrides the callback URL; default is `<site>/api/meetup/oauth/callback`, which must match the consumer's registered URI exactly. |
+| `MEETUP_OAUTH_SCOPE` | No | Scope string appended to the authorize URL when Meetup requires one. |
+| `MEETUP_RSVP_MUTATION_DOCUMENT` | No | Full GraphQL mutation (one `$eventId: ID!` variable). Until set, RSVP captures the lead and deep-links to the event page instead of placing the RSVP via API. |

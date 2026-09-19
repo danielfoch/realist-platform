@@ -23,6 +23,7 @@ import { SHARED_ROUTE_META } from "@shared/routeMeta";
 import { PODCAST_NAME, PODCAST_APPLE_URL, PODCAST_SPOTIFY_URL, PODCAST_YOUTUBE_URL } from "@shared/brand";
 import { Navigation } from "@/components/Navigation";
 import { EventPromoFrame } from "@/components/home/EventPromoFrame";
+import { NextMeetupStrip } from "@/components/home/NextMeetupStrip";
 import { AnalysesCounter } from "@/components/AnalysesCounter";
 import { Skyline } from "@/components/landing/Skyline";
 import { ProductFrame } from "@/components/landing/ProductFrame";
@@ -453,6 +454,9 @@ export default function Landing() {
             </Reveal>
           </div>
         </section>
+
+        {/* Next meetups across the network; renders nothing until dates are posted. */}
+        <NextMeetupStrip />
 
         {/* ============================ FEATURES ============================ */}
         <section className="relative py-20 md:py-28" data-testid="section-landing-features">
