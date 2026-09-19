@@ -3,8 +3,9 @@
  *
  * Two strategies, tried in order:
  *
- * 1. OAUTH (optional upgrade): when MEETUP_ACCESS_TOKEN is set, query the
- *    Meetup GraphQL API for richer data (RSVP counts, event images). Any
+ * 1. OAUTH (optional upgrade): when lib/community/meetupAuth.ts can produce a
+ *    bearer token (JWT server flow, or a static MEETUP_ACCESS_TOKEN), query
+ *    the Meetup GraphQL API for richer data (RSVP counts, event images). Any
  *    failure — network, auth, schema drift — falls through to the iCal feed.
  * 2. PUBLIC (primary, zero auth): fetch + parse the group's public iCal feed
  *    at https://www.meetup.com/<urlname>/events/ical/. The small RFC 5545
@@ -15,6 +16,8 @@
  * 30-minute TTL, deduped in-flight fetch, stale-beats-broken on refresh
  * failure.
  */
+
+import { getMeetupAccessToken } from "./meetupAuth";
 
 export interface MeetupEvent {
   uid: string;
@@ -376,7 +379,7 @@ async function fetchEventsFromGraphql(
   urlname: string,
   accessToken: string,
 ): Promise<MeetupEvent[]> {
-  const response = await fetch("https://api.meetup.com/gql", {
+  const response = await fetch("https://api.meetup.com/gql-ext", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -431,13 +434,12 @@ async function fetchEventsFromGraphql(
 }
 
 async function fetchMeetupEvents(urlname: string): Promise<MeetupEvent[]> {
-  const accessToken = process.env.MEETUP_ACCESS_TOKEN?.trim();
-  if (accessToken) {
-    try {
-      return await fetchEventsFromGraphql(urlname, accessToken);
-    } catch {
-      // Fall through: the public feed needs no auth and always exists.
-    }
+  try {
+    const accessToken = await getMeetupAccessToken();
+    if (accessToken) return await fetchEventsFromGraphql(urlname, accessToken);
+  } catch (error) {
+    // Fall through: the public feed needs no auth and always exists.
+    console.warn(`[meetup] GraphQL path failed for ${urlname}, using iCal:`, (error as Error).message);
   }
   return fetchEventsFromIcal(urlname);
 }
