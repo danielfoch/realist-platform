@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useViewer } from "@/components/auth/useViewer";
 import { checkboxClass, inputClass, labelClass, primaryButtonClass } from "@/components/auth/shared";
@@ -241,6 +242,10 @@ export function LeadForm({
           <input type="checkbox" name="consentMarketing" className={checkboxClass} />
           {marketingLabel}
         </label>
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
+          We use what you send only to answer this request. <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy</Link> ·{" "}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-ink">Terms</Link>
+        </p>
         {error && (
           <p role="alert" className="mt-2 text-xs font-medium text-bad">
             {error}
@@ -393,6 +398,10 @@ export function LeadForm({
         <button type="submit" disabled={status === "submitting"} className={`${primaryButtonClass} w-full sm:w-auto`}>
           {status === "submitting" ? "Sending…" : submitLabel}
         </button>
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-faint">
+          We use what you send only to answer this request. <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">Privacy</Link> ·{" "}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-ink">Terms</Link>
+        </p>
         {error && (
           <p role="alert" className="mt-2 text-xs font-medium text-bad">
             {error}

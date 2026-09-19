@@ -121,11 +121,17 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Keypr, our cash-back brokerage partner</strong> — only if you tick the box that says so on an
-            Ontario request, and then only your name, email and phone number.
+            Ontario request, and then only your name, email and phone number. Referral fees on introductions
+            are received by Valery Real Estate Inc.
           </li>
           <li>
             <strong>Anthropic</strong>, when you ask for an AI-written deal memo or run the multiplex underwriter: the
             property and the numbers are sent to be written up. Your name, email and phone number are not.
+          </li>
+          <li>
+            <strong>Maps and photos.</strong> When you open the listings map or a listing, your browser loads
+            map tiles from OpenFreeMap and listing photos from REALTOR.ca&rsquo;s servers. As with any website,
+            they see your IP address; we send them nothing else about you.
           </li>
           <li>When the law requires it.</li>
         </ul>

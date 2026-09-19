@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isMultiUnit, isSameCity, learnFromDdfError, plausibleUnitCount, searchDdfListings, unitsFromBuildingType } from "./client";
+import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, ddfProvinceName, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isMultiUnit, isSameCity, learnFromDdfError, plausibleUnitCount, searchDdfListings, unitsFromBuildingType } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -398,5 +398,15 @@ describe("units, where a board leaves the count empty", () => {
     expect(isMultiUnit({ NumberOfUnitsTotal: 3 })).toBe(true);
     expect(isMultiUnit({ PropertySubType: "Multi-family" })).toBe(true);
     expect(isMultiUnit({ PropertySubType: "Single Family", StructureType: "House" })).toBe(false);
+  });
+});
+
+describe("provinces, as CREA spells them", () => {
+  it("lands every code and common spelling on CREA's name — an unknown one is a 400, not an empty page", () => {
+    expect(ddfProvinceName("Newfoundland and Labrador")).toBe("Newfoundland & Labrador");
+    expect(ddfProvinceName("NL")).toBe("Newfoundland & Labrador");
+    expect(ddfProvinceName("on")).toBe("Ontario");
+    expect(ddfProvinceName("Québec")).toBe("Quebec");
+    expect(ddfProvinceName("Somewhere Else")).toBe("Somewhere Else");
   });
 });

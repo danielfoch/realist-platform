@@ -138,6 +138,8 @@ export const crawlState = pgTable("crawl_state", {
   rentsSeen: integer("rents_seen").notNull().default(0),
   listingsStored: integer("listings_stored").notNull().default(0),
   skippedPages: integer("skipped_pages").notNull().default(0),
+  /** The most recent failure, in words — the first thing to read when the numbers look wrong. Never a secret. */
+  lastError: text("last_error"),
   /** Held while a run is working, so two invocations never advance the same cursor. */
   leaseUntil: timestamp("lease_until"),
   startedAt: timestamp("started_at"),

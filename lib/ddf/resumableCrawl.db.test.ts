@@ -72,6 +72,34 @@ describe("the data sync, in slices", () => {
     expect((await runCrawlSlice({ budgetMs: 0, now: tomorrow })).stage).toBe("rents");
   }, 120_000);
 
+  it("leaves a province whose every page fails after three tries, and says why", async () => {
+    forgetDdfSchemaRejections();
+    vi.stubEnv("CREA_DDF_USERNAME", "u");
+    vi.stubEnv("CREA_DDF_PASSWORD", "p");
+    let leaseCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const target = String(input);
+        if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+        if ((new URL(target).searchParams.get("$filter") ?? "").includes("LeaseAmount")) leaseCalls += 1;
+        return new Response(JSON.stringify({ error: { details: "The string is not a valid enumeration type constant.", message: "invalid query" } }), { status: 400 });
+      }),
+    );
+    await ctx.db.update(crawlState).set({ stage: "rents", provinceIndex: 0, page: 0, skippedPages: 0, lastError: null, finishedAt: null, leaseUntil: null });
+    await runCrawlSlice({ budgetMs: 6_000 });
+    const [state] = await ctx.db.select().from(crawlState);
+    // Ten provinces, three pages each (a rejected page is retried once without $select) — not the
+    // thousands of requests a query that can never work used to cost.
+    expect(leaseCalls).toBeLessThanOrEqual(10 * 3 * 2);
+    // It moved on from the first province instead of grinding through thousands of its pages…
+    expect(state.stage === "listings" || state.provinceIndex > 0).toBe(true);
+    expect(state.page).toBeLessThan(3);
+    // …and left the reason where it can be read.
+    expect(state.lastError).toContain("rents");
+    await ctx.db.update(crawlState).set({ stage: "done", finishedAt: new Date(), leaseUntil: null });
+  }, 60_000);
+
   it("never lets two runs advance the same cursor", async () => {
     fakeCrea();
     await ctx.db.update(crawlState).set({ leaseUntil: new Date(Date.now() + 60_000) });

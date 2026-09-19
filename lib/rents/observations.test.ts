@@ -93,3 +93,16 @@ describe("ddfLeaseExternalId", () => {
     expect(ddfLeaseExternalId("ABC")).toBe("ddf-lease:ABC");
   });
 });
+
+describe("what a lease listing rents for", () => {
+  it("reads LeaseAmount — a lease has no ListPrice — and brings other frequencies to a month", async () => {
+    const { monthlyLeaseAmount, ddfLeaseToRentObservation } = await import("./observations");
+    expect(monthlyLeaseAmount({ LeaseAmount: 2600, LeaseAmountFrequency: "Monthly" })).toBe(2600);
+    expect(monthlyLeaseAmount({ LeaseAmount: 2600 })).toBe(2600);
+    expect(monthlyLeaseAmount({ LeaseAmount: 31200, LeaseAmountFrequency: "Annually" })).toBe(2600);
+    expect(monthlyLeaseAmount({ LeaseAmount: 45, LeaseAmountFrequency: "Per Square Foot" })).toBeNull();
+    expect(monthlyLeaseAmount({})).toBeNull();
+    const row = ddfLeaseToRentObservation({ ListingKey: "K1", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 2, LeaseAmount: 2850, LeaseAmountFrequency: "Monthly" });
+    expect(row).toMatchObject({ city: "Toronto", rent: 2850, bedrooms: "2" });
+  });
+});

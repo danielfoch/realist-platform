@@ -44,6 +44,12 @@ const PAGE_DELAY_MS = 300;
 const MIN_LISTINGS_FOR_YIELD = 5;
 /** A safety stop per province, far above any real one (Ontario ≈ 900 pages). */
 const MAX_PAGES_PER_PROVINCE = 3000;
+/**
+ * A page that fails is skipped — but a province where page after page fails is not a run of bad
+ * pages, it's a broken query (the first production run burned 1,198 requests on a province whose
+ * name CREA spells differently). After this many in a row, leave the province and say why.
+ */
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 export interface CrawlRunSummary {
   outcome: "not_configured" | "busy" | "resting" | "worked" | "finished";
@@ -168,7 +174,7 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
   try {
     if (state.stage === "done") {
       if (state.finishedAt && now.getTime() - state.finishedAt.getTime() < REST_MS) return idle("resting", state);
-      const fresh = { stage: "rents", month: monthOf(now), provinceIndex: 0, page: 0, nextLink: null, rentsSeen: 0, listingsStored: 0, skippedPages: 0, startedAt: now, finishedAt: null };
+      const fresh = { stage: "rents", month: monthOf(now), provinceIndex: 0, page: 0, nextLink: null, rentsSeen: 0, listingsStored: 0, skippedPages: 0, lastError: null, startedAt: now, finishedAt: null };
       await save(fresh);
       state = { ...state, ...fresh };
     }
@@ -176,6 +182,7 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
     const month = state.month ?? monthOf(now);
     const rentMemo: RentMemo = new Map();
     let pages = 0;
+    let failuresInARow = 0;
     let { stage, provinceIndex, page, nextLink, rentsSeen, listingsStored, skippedPages } = state;
     const timeLeft = () => Date.now() - started < budget;
 
@@ -191,21 +198,26 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
         break;
       }
       let fetched = 0;
+      let lastError: string | null = null;
       try {
         const result = await rentPage(province, page);
         fetched = result.fetched;
         rentsSeen += result.mapped;
+        failuresInARow = 0;
       } catch (error) {
-        console.error(`[crawl] rents ${province} page ${page + 1}:`, (error as Error).message);
+        lastError = `rents · ${province} · page ${page + 1}: ${(error as Error).message}`.slice(0, 500);
+        console.error(`[crawl] ${lastError}`);
         skippedPages += 1;
+        failuresInARow += 1;
         fetched = PAGE_SIZE; // a failed page is skipped, not mistaken for the end of the province
       }
       pages += 1;
-      if (fetched < PAGE_SIZE || page + 1 >= MAX_PAGES_PER_PROVINCE) {
+      if (fetched < PAGE_SIZE || page + 1 >= MAX_PAGES_PER_PROVINCE || failuresInARow >= MAX_CONSECUTIVE_FAILURES) {
         provinceIndex += 1;
         page = 0;
+        failuresInARow = 0;
       } else page += 1;
-      await save({ provinceIndex, page, rentsSeen, skippedPages });
+      await save({ provinceIndex, page, rentsSeen, skippedPages, ...(lastError ? { lastError } : {}) });
       await new Promise((resolve) => setTimeout(resolve, PAGE_DELAY_MS));
     }
 
@@ -231,11 +243,16 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
       );
       pages += 1;
       let provinceDone = false;
+      let lastError: string | null = null;
       if (!result) {
         skippedPages += 1;
+        failuresInARow += 1;
+        lastError = `listings · ${province} · page ${page + 1}: every attempt failed`;
         nextLink = null;
         page += 1;
+        provinceDone = failuresInARow >= MAX_CONSECUTIVE_FAILURES;
       } else {
+        failuresInARow = 0;
         const snapshots = [];
         for (const listing of result.listings) {
           if (!listing.ListPrice || listing.ListPrice <= 0 || isVacantLandLikeProperty(listing)) continue;
@@ -251,8 +268,9 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
         provinceIndex += 1;
         page = 0;
         nextLink = null;
+        failuresInARow = 0;
       }
-      await save({ provinceIndex, page, nextLink, listingsStored, skippedPages });
+      await save({ provinceIndex, page, nextLink, listingsStored, skippedPages, ...(lastError ? { lastError } : {}) });
       await new Promise((resolve) => setTimeout(resolve, PAGE_DELAY_MS));
     }
 
@@ -270,7 +288,7 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
 }
 
 /** Where the crawl stands — for the people running the site. */
-export async function getCrawlProgress(): Promise<Pick<CrawlState, "stage" | "month" | "provinceIndex" | "page" | "rentsSeen" | "listingsStored" | "skippedPages" | "startedAt" | "finishedAt" | "updatedAt"> | null> {
+export async function getCrawlProgress(): Promise<Pick<CrawlState, "stage" | "month" | "provinceIndex" | "page" | "rentsSeen" | "listingsStored" | "skippedPages" | "lastError" | "startedAt" | "finishedAt" | "updatedAt"> | null> {
   const [row] = await getDb().select().from(crawlState).where(eq(crawlState.job, JOB)).limit(1);
   return row ?? null;
 }

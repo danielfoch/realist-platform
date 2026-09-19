@@ -31,6 +31,8 @@ const NON_RESIDENTIAL_SUBTYPES = [
 export interface DdfLeaseListing {
   ListingKey: string;
   ListPrice?: number;
+  LeaseAmount?: number;
+  LeaseAmountFrequency?: string;
   TransactionType?: string;
   PropertySubType?: string;
   BedroomsTotal?: number;
@@ -72,8 +74,23 @@ export function ddfLeaseExternalId(listingKey: string): string {
  * sanity band (which also drops per-sqft commercial leases and most
  * daily-rate vacation listings).
  */
+/**
+ * What a lease listing rents for, per month. CREA puts it in LeaseAmount (with a frequency);
+ * ListPrice is empty on a lease. (The first version read ListPrice and never stored one rent.)
+ */
+export function monthlyLeaseAmount(listing: { LeaseAmount?: number | null; LeaseAmountFrequency?: string | null; ListPrice?: number | null }): number | null {
+  const amount = listing.LeaseAmount ?? listing.ListPrice;
+  if (amount == null || !(amount > 0)) return null;
+  const frequency = (listing.LeaseAmountFrequency ?? "").toLowerCase();
+  if (!frequency || frequency.includes("month")) return amount;
+  if (frequency.includes("year") || frequency.includes("annual")) return amount / 12;
+  if (frequency.includes("week")) return (amount * 52) / 12;
+  // Daily, per-square-foot and anything else isn't a residential rent comp.
+  return null;
+}
+
 export function ddfLeaseToRentObservation(listing: DdfLeaseListing): RentObservationRow | null {
-  const rent = listing.ListPrice;
+  const rent = monthlyLeaseAmount(listing);
   if (!listing.ListingKey || !listing.City || !listing.StateOrProvince) return null;
   if (rent == null || rent < MIN_SANE_RENT || rent > MAX_SANE_RENT) return null;
   if (listing.BedroomsTotal == null || listing.BedroomsTotal < 0) return null;

@@ -467,6 +467,32 @@ export async function getDdfToken(): Promise<string> {
 }
 
 /**
+ * CREA's spelling of a province. An unknown value isn't an empty result, it's a 400 for the whole
+ * search — and CREA writes "Newfoundland & Labrador", so the usual "and" spelling broke search,
+ * the crawl and the rent sync for that province. Codes and common spellings all land on CREA's name.
+ */
+const DDF_PROVINCES: Record<string, string> = {
+  ab: "Alberta", alberta: "Alberta",
+  bc: "British Columbia", "british columbia": "British Columbia",
+  mb: "Manitoba", manitoba: "Manitoba",
+  nb: "New Brunswick", "new brunswick": "New Brunswick",
+  nl: "Newfoundland & Labrador", nf: "Newfoundland & Labrador", newfoundland: "Newfoundland & Labrador",
+  "newfoundland and labrador": "Newfoundland & Labrador", "newfoundland & labrador": "Newfoundland & Labrador",
+  ns: "Nova Scotia", "nova scotia": "Nova Scotia",
+  nt: "Northwest Territories", "northwest territories": "Northwest Territories",
+  nu: "Nunavut", nunavut: "Nunavut",
+  on: "Ontario", ontario: "Ontario",
+  pe: "Prince Edward Island", pei: "Prince Edward Island", "prince edward island": "Prince Edward Island",
+  qc: "Quebec", quebec: "Quebec", "québec": "Quebec",
+  sk: "Saskatchewan", saskatchewan: "Saskatchewan",
+  yt: "Yukon", yukon: "Yukon",
+};
+
+export function ddfProvinceName(value: string): string {
+  return DDF_PROVINCES[value.trim().toLowerCase()] ?? value.trim();
+}
+
+/**
  * "Toronto" has to find "Toronto (Regent Park)" too — that is how the Toronto-area board
  * publishes nearly all of its listings; an exact match alone finds a few dozen.
  */
@@ -523,7 +549,7 @@ export async function searchDdfListings(params: {
     filters.push(cityFilter(params.city));
   }
   if (params.stateOrProvince) {
-    filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);
+    filters.push(`StateOrProvince eq '${ddfProvinceName(params.stateOrProvince).replace(/'/g, "''")}'`);
   }
   if (params.minPrice) {
     filters.push(`ListPrice ge ${params.minPrice}`);
@@ -674,7 +700,7 @@ export async function searchDdfByRemarks(params: {
   filters.push("ListPrice gt 0");
 
   if (params.stateOrProvince) {
-    filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);
+    filters.push(`StateOrProvince eq '${ddfProvinceName(params.stateOrProvince).replace(/'/g, "''")}'`);
   }
   if (params.city) {
     filters.push(cityFilter(params.city));

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CASHBACK_LABEL, CASHBACK_PARTNER, CASHBACK_PROVINCE, REFERRAL_BROKERAGE } from "@/lib/offer";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -65,8 +66,29 @@ export default function TermsPage() {
         <p>
           Realtors and mortgage brokers in our network pay Realist a referral fee when a deal closes
           or funds. It costs you nothing extra, and it is disclosed to you in writing before you
-          sign anything with them. Any commission rebate is paid by the brokerage handling your
-          transaction, where provincial rules permit it, on the terms they confirm in writing.
+          sign anything with them. Referral fees on introductions made through Realist are received
+          by {REFERRAL_BROKERAGE}.
+        </p>
+
+        <h2>Cash back</h2>
+        <p>
+          The cash-back offer is available on {CASHBACK_PROVINCE.name} purchases and is provided by{" "}
+          {CASHBACK_PARTNER.name}, a brokerage, not by Realist: {CASHBACK_LABEL} of the buyer&rsquo;s agent
+          commission, paid at closing, under the written agreement you sign with them. The amount
+          depends on the commission the listing offers; figures shown on the site are estimates at a
+          2.5% commission. We pass your details to {CASHBACK_PARTNER.name} only if you tick the box that
+          says so. Elsewhere in Canada we can introduce you to an agent, and promise no cash-back figure.
+        </p>
+
+        <h2>Listing data, estimates and AI</h2>
+        <p>
+          MLS&reg; listing content is supplied through the REALTOR.ca Data Distribution Facility
+          (DDF&reg;) and is credited to the listing brokerage wherever it appears. Rent estimates,
+          yields, cash flow, deal memos, offer prices and any AI-written text are <strong>our
+          estimates for comparing deals</strong> — computed from the listing, public rent data and the
+          numbers you enter. They are not an appraisal, a valuation, or advice, and a listing&rsquo;s own
+          data can be incomplete or wrong. Verify the rents, taxes, condition and legal status of any
+          property before you rely on them.
         </p>
 
         <h2>Intellectual Property</h2>
