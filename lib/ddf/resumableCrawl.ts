@@ -1,7 +1,7 @@
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { crawlState, ddfListingSnapshots, type CrawlState } from "@/lib/db/schema";
-import { isDdfConfigured, searchDdfListings } from "@/lib/ddf/client";
+import { ddfRawGet, isDdfConfigured, searchDdfListings } from "@/lib/ddf/client";
 import {
   CRAWL_PROVINCES,
   PROVINCE_TO_ABBREV,
@@ -151,6 +151,27 @@ async function rentPage(province: string, page: number): Promise<{ fetched: numb
 }
 
 /**
+ * When the rent sync finds no lease listings at all, the filter is wrong, not the market. Look at
+ * one listing that has no sale price and report which price-like fields it DOES carry (names and
+ * values — a rent is not a secret). One request; the answer lands in `last_error`.
+ */
+export async function probeRentalShape(): Promise<string> {
+  const query = new URLSearchParams({ $filter: "StateOrProvince eq 'Ontario' and ListPrice eq null", $top: "3" });
+  let result = await ddfRawGet(`/Property?${query.toString()}`);
+  let rows = ((result.body as { value?: Array<Record<string, unknown>> })?.value ?? []) as Array<Record<string, unknown>>;
+  if (!result.ok || rows.length === 0) {
+    const fallback = new URLSearchParams({ $filter: "StateOrProvince eq 'Ontario'", $top: "100", $orderby: "ModificationTimestamp desc" });
+    const first = result;
+    result = await ddfRawGet(`/Property?${fallback.toString()}`);
+    rows = (((result.body as { value?: Array<Record<string, unknown>> })?.value ?? []) as Array<Record<string, unknown>>).filter((row) => row.ListPrice == null);
+    if (rows.length === 0) return `probe: no priceless listing found (ListPrice eq null → HTTP ${first.status}; newest-100 → HTTP ${result.status})`;
+  }
+  const interesting = /lease|rent|price|amount|frequency|transaction|status|existing|commoninterest|propertysubtype/i;
+  const shapes = rows.slice(0, 2).map((row) => Object.fromEntries(Object.entries(row).filter(([key, value]) => interesting.test(key) && value != null && value !== "" && !(Array.isArray(value) && value.length === 0))));
+  return `probe: ${JSON.stringify(shapes)}`.slice(0, 900);
+}
+
+/**
  * Work the crawl forward for one time budget. Safe to call as often as you like:
  * a second caller finds the cursor held and leaves; a finished crawl rests a day.
  */
@@ -177,6 +198,13 @@ export async function runCrawlSlice(options: { budgetMs?: number; now?: Date } =
       const fresh = { stage: "rents", month: monthOf(now), provinceIndex: 0, page: 0, nextLink: null, rentsSeen: 0, listingsStored: 0, skippedPages: 0, lastError: null, startedAt: now, finishedAt: null };
       await save(fresh);
       state = { ...state, ...fresh };
+    }
+
+    // The rent sync came back empty: find out where a rental's rent actually lives, once.
+    if (state.stage !== "rents" && state.rentsSeen === 0 && !state.lastError?.startsWith("probe:")) {
+      const probe = await probeRentalShape().catch((error) => `probe: failed — ${(error as Error).message}`);
+      await save({ lastError: probe });
+      state = { ...state, lastError: probe };
     }
 
     const month = state.month ?? monthOf(now);

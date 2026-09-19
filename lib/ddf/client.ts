@@ -903,3 +903,21 @@ export async function searchDdfByMlsNumber(mlsNumber: string): Promise<DdfListin
 export function isDdfConfigured(): boolean {
   return !!(process.env.CREA_DDF_USERNAME && process.env.CREA_DDF_PASSWORD);
 }
+
+/**
+ * A raw GET against the feed, for diagnostics: returns the parsed body or the error text. Used by the
+ * crawl to look at the SHAPE of a record when a query that should match comes back empty — the feed's
+ * schema is the one thing we can't see from outside production.
+ */
+export async function ddfRawGet(pathAndQuery: string): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const token = await getDdfToken();
+  const response = await ddfRateLimitedFetch(`${DDF_API_BASE}${pathAndQuery}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+  const text = await response.text().catch(() => "");
+  let body: unknown = text.slice(0, 400);
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // keep the text
+  }
+  return { ok: response.ok, status: response.status, body };
+}
