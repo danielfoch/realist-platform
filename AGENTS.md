@@ -30,7 +30,7 @@ history. Port selectively — never wholesale.
 
 | Route | Purpose |
 |---|---|
-| `/` | The ten-stage multiplex journey (components/scrollcraft, ported from PR #191): Learn → Own. Carries its own header/footer; the shared nav and footer hide on this route |
+| `/` | The eleven-stage multiplex journey (components/scrollcraft, ported from PR #191): Learn → Operate. Carries its own header/footer; the shared nav and footer hide on this route |
 | `/listings` (+`/listings/[key]`) | The ONE map/search: DDF listings across Canada, pre-underwritten (cap rate, cash flow) |
 | `/multiplex` (+`/multiplex/r/[token]`) | Toronto multiplex underwriter — crown jewel. Lot → feasibility + concepts + CMHC proforma |
 | `/deals` (+`/deals/map`, `/deals/report/[month]`) | Distressed: power-of-sale / VTB search, deal feed, the map terminal (rents + deal pins + inline underwrite), monthly report |
