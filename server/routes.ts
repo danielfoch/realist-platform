@@ -1,3 +1,5 @@
+import { isKeyprCashbackRequest, keyprContactSchema } from "../shared/keypr";
+import { saveKeyprLead, kickKeyprOutbox } from "./keyprStore";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import crypto from "crypto";
@@ -858,6 +860,13 @@ export async function registerRoutes(
   registerPropertyQuestionRoutes(app);
   registerSocialStatsRoutes(app);
   registerTrafficAnalyticsRoutes(app, isAdmin);
+  app.get("/api/admin/multiplex-applications", isAdmin, async (_req, res) => {
+    try {
+      const { pool } = await import("./db");
+      const result = await pool.query("SELECT id, name, email, payload, status, created_at FROM multiplex_applications ORDER BY created_at DESC LIMIT 1000");
+      res.set("Cache-Control", "no-store").json({ applications: result.rows });
+    } catch { res.status(503).json({ error: "Applications are temporarily unavailable" }); }
+  });
   registerDdfCrawlRoutes(app);
   registerEventsGrowthRoutes(app);
   registerEventsCommunityRoutes(app);
@@ -2814,7 +2823,18 @@ export async function registerRoutes(
   // Lead engagement endpoint with tagging for cashback, mortgage consultation, and local expert
   app.post("/api/leads/engage", async (req, res) => {
     try {
-      const { name, email, phone, consent, formType, formTag, tags, dealInfo, province, city } = req.body;
+      let { name, email, phone, consent, formType, formTag, tags, dealInfo, province, city } = req.body;
+      const keyprRequest = isKeyprCashbackRequest(req.body);
+      const keyprContact = keyprRequest ? keyprContactSchema.safeParse(req.body) : null;
+      if (keyprContact && !keyprContact.success) {
+        return res.status(400).json({ error: "Please provide your first name, last name, valid email and phone, and agree to the cashback partner handoff." });
+      }
+      if (keyprContact?.success) {
+        name = `${keyprContact.data.firstName} ${keyprContact.data.lastName}`;
+        email = keyprContact.data.email.toLowerCase();
+        phone = keyprContact.data.phone;
+        consent = true;
+      }
 
       // Phone is optional: low-friction entry points (e.g. event QR landing
       // pages) capture email-only leads through this same path.
@@ -2828,7 +2848,7 @@ export async function registerRoutes(
         typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : undefined;
 
       // Create the lead
-      const lead = await storage.createLead({
+      const leadInput = {
         name,
         email,
         phone: phone || null,
@@ -2839,7 +2859,11 @@ export async function registerRoutes(
         utmCampaign: utmField(req.body.utmCampaign),
         utmContent: utmField(req.body.utmContent),
         utmTerm: utmField(req.body.utmTerm),
-      });
+      };
+      const lead = keyprContact?.success
+        ? await saveKeyprLead(leadInput, keyprContact.data)
+        : await storage.createLead(leadInput);
+      if (keyprContact?.success) kickKeyprOutbox();
 
       // Format phone to E.164 format for GHL
       const formatPhoneE164 = (phoneNumber: string): string => {

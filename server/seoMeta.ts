@@ -1106,6 +1106,10 @@ export function injectMetaIntoHtml(html: string, meta: PageMeta, canonicalUrlRaw
 // ---------------------------------------------------------------------------
 
 const KNOWN_APP_ROUTES = new Set<string>([
+  "/build-with-us",
+  "/ask",
+  "/ask/screen",
+  "/ask/moderate",
   "/",
   "/discover",
   "/deal-analyzer",

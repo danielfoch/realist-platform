@@ -348,6 +348,48 @@ export async function syncDiscoverySignalsWithAccount(): Promise<DiscoverySignal
 
 // ─── Core Track Function ──────────────────────────────────────────────────────
 
+type ReplitAnalyticsData = Record<string, string | number | boolean>;
+
+declare global {
+  interface Window {
+    umami?: {
+      track(name: string, data?: ReplitAnalyticsData): void;
+    };
+  }
+}
+
+const REPLIT_ANALYTICS_FIELDS = new Set([
+  "source", "city", "province", "geography", "asset_type", "property_type",
+  "strategy", "strategy_type", "format", "method", "type", "context",
+  "cta", "location", "content_type", "platform", "period", "feature",
+  "inspection_type", "sentiment", "price", "budget_max", "gross_yield",
+  "cash_on_cash", "irr", "cap_rate", "monthly_cash_flow", "amount_cents",
+  "confidenceScore",
+]);
+
+function trackWithReplitAnalytics(payload: RealistEvent): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    const data: ReplitAnalyticsData = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (
+        REPLIT_ANALYTICS_FIELDS.has(key) &&
+        (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+      ) {
+        data[key] = value;
+      }
+    }
+
+    // Replit injects Umami into published apps. Keep names consistent with its
+    // snake_case convention while preserving the app's existing taxonomy.
+    const eventName = payload.event.replaceAll(".", "_").slice(0, 49);
+    window.umami?.track(eventName, Object.keys(data).length ? data : undefined);
+  } catch {
+    // Analytics must never interrupt the user journey.
+  }
+}
+
 export function track(payload: RealistEvent): void {
   try {
     const body = {
@@ -365,6 +407,7 @@ export function track(payload: RealistEvent): void {
       credentials: "include",
       keepalive: true,
     }).catch(() => {});
+    trackWithReplitAnalytics(payload);
   } catch {}
 }
 

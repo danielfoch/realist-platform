@@ -17,6 +17,9 @@ export interface SharedRouteMeta {
 }
 
 export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
+  "/ask": { title: "Live panel Q&A | Unpacking Multiplexes", description: "Ask the panelists a question and vote on what you want to hear at Unpacking Multiplexes Toronto." },
+  "/ask/screen": { title: "Panel Q&A screen | Realist", description: "Live approved audience questions from Unpacking Multiplexes Toronto." },
+  "/ask/moderate": { title: "Host moderation | Realist", description: "Review questions for Unpacking Multiplexes Toronto." },
   "/": {
     title: "Realist - Canadian Real Estate Investing Platform | Deal Analyzer & Cap Rate Map",
     description: "Find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, cap rate map, and market reports. Built by investor-focused broker Daniel Foch and mortgage broker Nick Hill — work with the team when you're ready.",
@@ -56,6 +59,10 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   // ─── Conversion pages ──────────────────────────────────────────────────────
   // These were serving the generic fallback title (or a hard 404) despite being
   // the destinations of the nav's primary CTAs.
+  "/build-with-us": {
+    title: "Build with us — Multiplex investment applications | Realist",
+    description: "Bring us your multiplex project. Our mandate is to invest in six deals over 365 days with attendees of Unpacking Multiplexes Toronto 2026.",
+  },
   "/book-a-call": {
     title: "Book a Call with Daniel Foch & Nick Hill | Realist.ca",
     description: "Talk through a live deal, a financing structure, or a multiplex site with an investor-focused broker and a mortgage broker. No cost, no pitch — bring the numbers you already have.",
