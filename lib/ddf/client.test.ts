@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { adaptDdfUrl, forgetDdfSchemaRejections, learnFromDdfError, searchDdfListings } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -211,5 +212,60 @@ describe("getDdfToken", () => {
     expect(a).toBe("token");
     expect(b).toBe("token");
     expect(c).toBe("token");
+  });
+});
+
+describe("adapting to CREA's schema", () => {
+  const SELECT_GONE = JSON.stringify({ error: { details: "Could not find a property named 'LotFrontage' on type 'DDF.Core.Entities.Property'.", message: "You have entered an invalid $select parameter value.", code: "400" } });
+  const FILTER_GONE = JSON.stringify({ error: { details: "The property 'StandardStatus' cannot be used in the $filter query option.", message: "You have entered an invalid query.", code: "400" } });
+  const url = (filter: string, select = "ListingKey,LotFrontage,ListPrice") =>
+    `https://ddfapi.realtor.ca/odata/v1/Property?${new URLSearchParams({ $filter: filter, $select: select, $orderby: "ModificationTimestamp desc,ListingKey" })}`;
+
+  beforeEach(() => forgetDdfSchemaRejections());
+
+  it("leaves a query alone until CREA objects to something", () => {
+    const original = url("StandardStatus eq 'Active' and City eq 'Toronto'");
+    expect(adaptDdfUrl(original)).toBe(original);
+  });
+
+  it("drops exactly the field CREA says no longer exists", () => {
+    expect(learnFromDdfError(SELECT_GONE)).toBe(true);
+    expect(learnFromDdfError(SELECT_GONE)).toBe(false); // nothing new the second time: stop retrying
+    const adapted = new URL(adaptDdfUrl(url("City eq 'Toronto'")));
+    expect(adapted.searchParams.get("$select")).toBe("ListingKey,ListPrice");
+    expect(adapted.searchParams.get("$filter")).toBe("City eq 'Toronto'");
+  });
+
+  it("drops exactly the filter clause CREA refuses — not the rest, and not a value that happens to contain the name", () => {
+    learnFromDdfError(FILTER_GONE);
+    const adapted = new URL(adaptDdfUrl(url("StandardStatus eq 'Active' and City eq 'StandardStatus and Main' and (contains(PublicRemarks,'power of sale') or contains(PublicRemarks,'estate')) and ListPrice ge 500000")));
+    expect(adapted.searchParams.get("$filter")).toBe("City eq 'StandardStatus and Main' and (contains(PublicRemarks,'power of sale') or contains(PublicRemarks,'estate')) and ListPrice ge 500000");
+    expect(new URL(adaptDdfUrl(url("StandardStatus eq 'Active'"))).searchParams.has("$filter")).toBe(false);
+  });
+
+  it("keeps listing search alive through both rejections at once — what happened in Sept 2026", async () => {
+    const calls: string[] = [];
+    vi.stubEnv("CREA_DDF_USERNAME", "u");
+    vi.stubEnv("CREA_DDF_PASSWORD", "p");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const target = String(input);
+        if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+        calls.push(target);
+        const query = new URL(target).searchParams;
+        if (query.get("$select")?.includes("LotFrontage")) return new Response(SELECT_GONE, { status: 400 });
+        if (query.get("$filter")?.includes("StandardStatus")) return new Response(FILTER_GONE, { status: 400 });
+        return new Response(JSON.stringify({ "@odata.count": 2, value: [{ ListingKey: "1", StandardStatus: "Active", ListPrice: 1 }, { ListingKey: "2", StandardStatus: "Pending", ListPrice: 2 }] }), { status: 200 });
+      }),
+    );
+    const result = await searchDdfListings({ city: "Toronto", top: 2 });
+    expect(calls).toHaveLength(3); // rejected, rejected, accepted
+    expect(result.listings.map((listing) => listing.ListingKey)).toEqual(["1"]); // status filtered here, since CREA won't
+    calls.length = 0;
+    await searchDdfListings({ city: "Hamilton", top: 2 });
+    expect(calls).toHaveLength(1); // remembered: the next search is right first time
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 });

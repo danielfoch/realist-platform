@@ -119,14 +119,119 @@ function retryAfterMs(header: string | null): number {
   return RATE_LIMIT_DEFAULT_WAIT_MS;
 }
 
-/** API fetch with explicit rate-limit handling: honor Retry-After, retry once. */
-async function ddfApiFetch(url: string, init: RequestInit): Promise<Response> {
+/** One request, with explicit rate-limit handling: honor Retry-After, retry once. */
+async function ddfRateLimitedFetch(url: string, init: RequestInit): Promise<Response> {
   const response = await fetch(url, init);
   if (response.status !== 429) return response;
   const waitMs = retryAfterMs(response.headers.get("Retry-After"));
   console.warn(`DDF rate limited (429); retrying once after ${waitMs}ms`);
   await new Promise((resolve) => setTimeout(resolve, waitMs));
   return fetch(url, init);
+}
+
+// ---------------------------------------------------------------------------
+// Adapting to CREA's schema. CREA changes which Property fields exist and which
+// may be filtered on, without notice, and answers a query that mentions a
+// retired one with a 400 for the WHOLE search (Sept 2026: `LotFrontage` left
+// $select and `StandardStatus` left $filter — listing search went dark on both
+// apps at once). Its error names the offending property, so we take it at its
+// word: drop that property from the query, retry, and remember for the life of
+// the instance. A search degrades by one field instead of failing outright.
+// ---------------------------------------------------------------------------
+
+const rejectedSelectFields = new Set<string>();
+const rejectedFilterProperties = new Set<string>();
+const MAX_SCHEMA_RETRIES = 8;
+
+/** For tests. */
+export function forgetDdfSchemaRejections(): void {
+  rejectedSelectFields.clear();
+  rejectedFilterProperties.clear();
+}
+
+/** Record what a 400 says CREA no longer accepts. True when it taught us something new. */
+export function learnFromDdfError(body: string): boolean {
+  let details = body;
+  try {
+    const parsed = JSON.parse(body) as { error?: { details?: string; message?: string } };
+    details = `${parsed.error?.details ?? ""} ${parsed.error?.message ?? ""}`;
+  } catch {
+    // Not JSON: match against the raw text.
+  }
+  const unknown = details.match(/Could not find a property named '([A-Za-z0-9_]+)'/);
+  if (unknown && !rejectedSelectFields.has(unknown[1])) {
+    rejectedSelectFields.add(unknown[1]);
+    // The same name can't be filtered or sorted on either.
+    rejectedFilterProperties.add(unknown[1]);
+    console.warn(`[ddf] CREA no longer has a Property field named ${unknown[1]}; dropped from queries`);
+    return true;
+  }
+  const unfilterable = details.match(/The property '([A-Za-z0-9_]+)' cannot be used in the \$filter/);
+  if (unfilterable && !rejectedFilterProperties.has(unfilterable[1])) {
+    rejectedFilterProperties.add(unfilterable[1]);
+    console.warn(`[ddf] CREA no longer filters on ${unfilterable[1]}; dropped from $filter`);
+    return true;
+  }
+  return false;
+}
+
+/** Split an OData $filter on its top-level " and "s — not the ones inside parentheses or quoted strings. */
+function topLevelClauses(filter: string): string[] {
+  const clauses: string[] = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < filter.length; i += 1) {
+    const ch = filter[i];
+    if (ch === "'") quoted = !quoted;
+    else if (!quoted && ch === "(") depth += 1;
+    else if (!quoted && ch === ")") depth -= 1;
+    else if (!quoted && depth === 0 && filter.startsWith(" and ", i)) {
+      clauses.push(filter.slice(start, i));
+      start = i + 5;
+      i += 4;
+    }
+  }
+  clauses.push(filter.slice(start));
+  return clauses.map((clause) => clause.trim()).filter(Boolean);
+}
+
+/** The same query, minus whatever CREA has told us it rejects. */
+export function adaptDdfUrl(url: string): string {
+  if (rejectedSelectFields.size === 0 && rejectedFilterProperties.size === 0) return url;
+  const parsed = new URL(url);
+  const select = parsed.searchParams.get("$select");
+  if (select) {
+    const kept = select.split(",").filter((field) => !rejectedSelectFields.has(field.trim()));
+    if (kept.length) parsed.searchParams.set("$select", kept.join(","));
+    else parsed.searchParams.delete("$select");
+  }
+  const filter = parsed.searchParams.get("$filter");
+  if (filter) {
+    // Property names outside quoted values only: a city called "StandardStatus" is not a reference.
+    const mentions = (clause: string, property: string) => new RegExp(`\\b${property}\\b`).test(clause.replace(/'(?:[^']|'')*'/g, "''"));
+    const kept = topLevelClauses(filter).filter((clause) => ![...rejectedFilterProperties].some((property) => mentions(clause, property)));
+    if (kept.length) parsed.searchParams.set("$filter", kept.join(" and "));
+    else parsed.searchParams.delete("$filter");
+  }
+  const orderby = parsed.searchParams.get("$orderby");
+  if (orderby) {
+    const kept = orderby.split(",").filter((term) => !rejectedFilterProperties.has(term.trim().split(/\s+/)[0]));
+    if (kept.length) parsed.searchParams.set("$orderby", kept.join(","));
+    else parsed.searchParams.delete("$orderby");
+  }
+  return parsed.toString();
+}
+
+/** Every Property request goes through here: rate limits honoured, schema changes absorbed. */
+async function ddfApiFetch(url: string, init: RequestInit): Promise<Response> {
+  let response = await ddfRateLimitedFetch(adaptDdfUrl(url), init);
+  for (let attempt = 0; attempt < MAX_SCHEMA_RETRIES && response.status === 400; attempt += 1) {
+    const body = await response.clone().text().catch(() => "");
+    if (!learnFromDdfError(body)) break;
+    response = await ddfRateLimitedFetch(adaptDdfUrl(url), init);
+  }
+  return response;
 }
 
 async function mintDdfToken(): Promise<string> {
@@ -297,6 +402,9 @@ export async function searchDdfListings(params: {
 
   const data: DdfSearchResponse = await response.json();
   let listings = data.value || [];
+  // When CREA won't filter on status for us, do it here: a listing that states a different status is dropped.
+  const wantedStatus = (params.standardStatus || "Active").toLowerCase();
+  listings = listings.filter((listing) => !listing.StandardStatus || listing.StandardStatus.toLowerCase() === wantedStatus);
 
   const EXCLUDED_SUBTYPES = new Set<string>();
   if (params.excludeParking) {
