@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { resolveActor } from "@/lib/analyses/actor";
-import { getActorStats } from "@/lib/analyses/community";
+import { BADGES, getActorStats } from "@/lib/analyses/community";
 import { dealKeyFor } from "@/lib/analyses/dealKey";
 import { AnalysisCapError, getAnalysis, listAnalyses, saveAnalysis } from "@/lib/analyses/store";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
@@ -51,13 +51,10 @@ export async function GET(request: Request) {
   try {
     const actor = await resolveActor({ create: false });
     if (!actor) return none;
-    const analysis = await getAnalysis(actor.key, dealKey);
-    if (!analysis) return none;
-    const inputs = clampInputs(analysis.inputs);
-    if (!inputs) return none;
-    const stats = await getActorStats(actor.key);
+    const [analysis, stats] = await Promise.all([getAnalysis(actor.key, dealKey), getActorStats(actor.key)]);
+    const inputs = analysis ? clampInputs(analysis.inputs) : null;
     return Response.json(
-      { analysis: { inputs, verdict: analysis.verdict }, signedIn: Boolean(actor.user), stats },
+      { analysis: analysis && inputs ? { inputs, verdict: analysis.verdict } : null, signedIn: Boolean(actor.user), stats },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
@@ -147,6 +144,8 @@ export async function POST(request: Request) {
       eligible: analysis.eligible,
       signedIn: Boolean(actor.user),
       stats,
+      // Set only on the analysis that crosses a rung of the ladder.
+      badgeEarned: created && analysis.eligible ? (BADGES.find((badge) => badge.at === stats.deals)?.name ?? null) : null,
     });
   } catch (error) {
     if (error instanceof AnalysisCapError) {

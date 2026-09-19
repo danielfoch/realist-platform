@@ -114,6 +114,9 @@ export function UnderwriteAnything({ learned, aiAvailable = false }: { learned: 
   }
 
   const fullAddress = [basics.address, basics.city, basics.province].filter(Boolean).join(", ");
+  const back = new URLSearchParams({ address: basics.address, price: String(basics.price), rent: String(basics.rent), units: String(basics.units) });
+  if (basics.city) back.set("city", basics.city);
+  if (basics.province) back.set("province", basics.province);
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
@@ -131,6 +134,7 @@ export function UnderwriteAnything({ learned, aiAvailable = false }: { learned: 
         learned={learned}
         taxFromListing={false}
         aiAvailable={aiAvailable}
+        returnPath={`/underwrite?${back.toString()}`}
       />
     </div>
   );

@@ -404,6 +404,7 @@ export default async function ListingDetailPage({
                 yearBuilt={listing.yearBuilt ? Number(listing.yearBuilt) || null : null}
                 taxFromListing={listing.taxAnnual != null && listing.taxAnnual > 0}
                 aiAvailable={memoWriterConfigured()}
+                returnPath={`/listings/${encodeURIComponent(listing.mlsNumber)}#underwrite`}
               />
             ) : (
               <p className="rounded-lg border border-dashed border-hairline-strong bg-surface p-5 text-sm text-ink-soft">

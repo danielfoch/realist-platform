@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/components/multiplex/format";
 import { LeadForm } from "@/components/leads/LeadForm";
@@ -16,11 +17,16 @@ export function DealMemoPanel({
   mlsNumber,
   inputs,
   aiAvailable,
+  locked = false,
+  loginHref = "/login",
 }: {
   deal: MemoDeal;
   mlsNumber?: string | null;
   inputs: UnderwriterInputs;
   aiAvailable: boolean;
+  /** A guest past their free memos: the verdict stays, the detail asks for an account. */
+  locked?: boolean;
+  loginHref?: string;
 }) {
   const rules = useMemo(() => templateMemo(deal, inputs), [deal, inputs]);
   const [narrated, setNarrated] = useState<{ memo: DealMemo; forInputs: string } | null>(null);
@@ -74,7 +80,7 @@ export function DealMemoPanel({
             {memo.headline}
           </h3>
         </div>
-        {aiAvailable && !isNarrated && (
+        {aiAvailable && !isNarrated && !locked && (
           <button
             type="button"
             onClick={narrate}
@@ -95,17 +101,34 @@ export function DealMemoPanel({
             </p>
           )}
           <MemoList title="What's working" items={memo.working} />
-          <MemoList title="What to watch" items={memo.watch} marked />
-          <MemoList title="Before you offer" items={memo.beforeYouOffer} ordered />
-          <div>
-            <h4 className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">The offer</h4>
-            <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{memo.offer.line}</p>
-          </div>
+          {locked ? (
+            <div className="rounded-[3px] border border-hairline-strong bg-paper p-5">
+              <p className="text-sm font-semibold text-ink">
+                {memo.watch.length} things to watch, {memo.beforeYouOffer.length} steps before you offer, and the stress test.
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                You&rsquo;ve underwritten a couple of deals as a guest. A free account unlocks the full memo on every
+                deal, keeps your analyses, and puts you on the leaderboard. It takes ten seconds.
+              </p>
+              <Link href={loginHref} className="mt-4 inline-block rounded-[3px] bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-deep">
+                Create a free account
+              </Link>
+            </div>
+          ) : (
+            <>
+              <MemoList title="What to watch" items={memo.watch} marked />
+              <MemoList title="Before you offer" items={memo.beforeYouOffer} ordered />
+              <div>
+                <h4 className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">The offer</h4>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{memo.offer.line}</p>
+              </div>
+            </>
+          )}
         </div>
 
         <div>
           <h4 className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">Stress test</h4>
-          <table className="mt-2 w-full text-sm">
+          <table className={`mt-2 w-full text-sm ${locked ? "pointer-events-none select-none blur-[5px]" : ""}`} aria-hidden={locked || undefined}>
             <tbody>
               {rows.map(([label, value]) => (
                 <tr key={label} className="border-b border-hairline last:border-0">

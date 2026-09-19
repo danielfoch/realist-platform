@@ -47,7 +47,12 @@ interface LogState {
   deals?: number;
   streakWeeks?: number;
   message?: string;
+  /** Set on the analysis that crosses a rung of the badge ladder. */
+  badgeEarned?: string | null;
 }
+
+/** Guests read the full memo on this many deals; after that it asks for a free account. */
+const GUEST_FULL_MEMOS = 2;
 
 type FieldSpec = {
   field: UnderwriterField;
@@ -356,6 +361,7 @@ export function Underwriter({
   yearBuilt = null,
   taxFromListing,
   aiAvailable = false,
+  returnPath,
 }: {
   deal: UnderwriterDeal;
   defaults: UnderwriterInputs;
@@ -368,6 +374,8 @@ export function Underwriter({
   taxFromListing?: boolean;
   /** Whether the AI-narrated memo can be requested on this deployment. */
   aiAvailable?: boolean;
+  /** Where signing in should bring the person back to: this deal, as they left it. */
+  returnPath?: string;
 }) {
   const [inputs, setInputs] = useState<UnderwriterInputs>(
     saved?.inputs ?? defaults,
@@ -379,6 +387,8 @@ export function Underwriter({
   const [log, setLog] = useState<LogState>({
     status: saved ? "saved" : "idle",
   });
+  // Who is looking, learned after load (pages are cached for everyone).
+  const [visitor, setVisitor] = useState<{ signedIn: boolean | null; otherDeals: number }>({ signedIn: null, otherDeals: 0 });
   // Nothing is logged until the person does something — a page view is not an analysis.
   const touched = useRef(false);
 
@@ -415,7 +425,12 @@ export function Underwriter({
             stats?: { deals: number; streakWeeks: number };
           } | null,
         ) => {
-          if (!alive || !body?.analysis || touched.current) return;
+          if (!alive || !body) return;
+          setVisitor({
+            signedIn: body.signedIn ?? null,
+            otherDeals: Math.max(0, (body.stats?.deals ?? 0) - (body.analysis ? 1 : 0)),
+          });
+          if (!body.analysis || touched.current) return;
           setInputs(body.analysis.inputs);
           setVerdict(body.analysis.verdict);
           setLog({
@@ -454,6 +469,7 @@ export function Underwriter({
           error?: string;
           signedIn?: boolean;
           stats?: { deals: number; streakWeeks: number };
+          badgeEarned?: string | null;
         } | null;
         if (!response.ok || !body?.ok) {
           setLog({
@@ -469,7 +485,9 @@ export function Underwriter({
           signedIn: body.signedIn,
           deals: body.stats?.deals,
           streakWeeks: body.stats?.streakWeeks,
+          badgeEarned: body.badgeEarned ?? null,
         });
+        setVisitor((current) => ({ ...current, signedIn: body.signedIn ?? current.signedIn }));
       } catch {
         setLog({
           status: "error",
@@ -536,8 +554,7 @@ export function Underwriter({
       ),
     ),
   );
-  const loginNext =
-    typeof window === "undefined" ? "/account" : window.location.pathname;
+  const loginNext = returnPath ?? "/account";
 
   return (
     <>
@@ -735,6 +752,15 @@ export function Underwriter({
                 ))}
               </div>
             </div>
+            {log.badgeEarned && (
+              <p role="status" className="mt-3 flex items-center gap-2.5 rounded-[3px] bg-ink px-3 py-2.5 text-sm font-semibold text-white">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                Badge earned: {log.badgeEarned}.
+                <Link href="/community/leaderboard" className="ml-auto text-xs font-medium text-white/80 underline-offset-2 hover:text-white hover:underline">
+                  See the board →
+                </Link>
+              </p>
+            )}
             <p
               role="status"
               className="mt-3 min-h-[1.25rem] text-xs leading-relaxed text-ink-faint"
@@ -805,6 +831,8 @@ export function Underwriter({
           mlsNumber={deal.mlsNumber}
           inputs={inputs}
           aiAvailable={aiAvailable}
+          locked={visitor.signedIn === false && visitor.otherDeals >= GUEST_FULL_MEMOS}
+          loginHref={`/login?next=${encodeURIComponent(loginNext)}`}
         />
       )}
     </>
