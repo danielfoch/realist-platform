@@ -110,5 +110,8 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   `lib/migration/`). It is re-runnable until cutover and never overwrites what a member
   has changed here. Most legacy accounts have no password: the emailed link is their
   way in, so `RESEND_API_KEY` must be set before cutover.
+- **Schema changes on live tables**: add uniqueness with `uniqueIndex(...)` in the table config,
+  never `.unique()` on a column — `drizzle-kit push` answers a new column constraint on a table
+  with rows by offering to TRUNCATE it.
 - Pure logic lives in `lib/**` with tests; route handlers and pages stay thin.
 - Ported files keep their original comment voice; do not add porting commentary.

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { dealAnalyses, type DealAnalysis } from "@/lib/db/schema";
@@ -164,4 +165,23 @@ export async function logMultiplexAnalysis(
     .insert(dealAnalyses)
     .values({ actorKey: actor.key, dealKey, ...values })
     .onConflictDoUpdate({ target: [dealAnalyses.actorKey, dealAnalyses.dealKey], set: { ...values, updatedAt: new Date() } });
+}
+
+/** The owner's share link for one of their analyses — minted on first ask, stable after. */
+export async function sharePathFor(actorKey: string, dealKey: string): Promise<string | null> {
+  const db = getDb();
+  const existing = await getAnalysis(actorKey, dealKey);
+  if (!existing) return null;
+  // A multiplex underwrite already has a full, shareable report.
+  if (existing.source === "multiplex") return existing.reportToken ? `/multiplex/r/${existing.reportToken}` : null;
+  if (existing.shareToken) return `/a/${existing.shareToken}`;
+  const token = crypto.randomBytes(12).toString("base64url");
+  await db.update(dealAnalyses).set({ shareToken: token }).where(eq(dealAnalyses.id, existing.id));
+  return `/a/${token}`;
+}
+
+export async function getSharedAnalysis(token: string): Promise<DealAnalysis | null> {
+  if (!/^[A-Za-z0-9_-]{10,40}$/.test(token)) return null;
+  const rows = await getDb().select().from(dealAnalyses).where(eq(dealAnalyses.shareToken, token)).limit(1);
+  return rows[0] ?? null;
 }

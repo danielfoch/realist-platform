@@ -25,6 +25,8 @@ export const dealAnalyses = pgTable(
     source: text("source").$type<"listing" | "manual" | "multiplex">().notNull(),
     /** For source 'multiplex': the share token of the full report (/multiplex/r/<token>). */
     reportToken: varchar("report_token"),
+    /** Set when the owner chooses to share this analysis: the public, read-only page at /a/<token>. */
+    shareToken: varchar("share_token"),
     mlsNumber: varchar("mls_number"),
     address: text("address"),
     city: text("city"),
@@ -68,6 +70,9 @@ export const dealAnalyses = pgTable(
     index("deal_analyses_user_idx").on(table.userId, table.updatedAt),
     index("deal_analyses_board_idx").on(table.eligible, table.createdAt),
     index("deal_analyses_market_idx").on(table.province, table.city),
+    // A unique INDEX, not a column constraint: adding a constraint to a table with rows makes
+    // drizzle-kit push ask whether to truncate it, which is no question for a live database.
+    uniqueIndex("deal_analyses_share_token_idx").on(table.shareToken),
   ],
 );
 

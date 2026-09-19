@@ -391,6 +391,7 @@ export function Underwriter({
   const [log, setLog] = useState<LogState>({
     status: saved ? "saved" : "idle",
   });
+  const [shareNote, setShareNote] = useState<string | null>(null);
   // Who is looking, learned after load (pages are cached for everyone).
   const [visitor, setVisitor] = useState<{ signedIn: boolean | null; otherDeals: number }>({ signedIn: null, otherDeals: 0 });
   // Nothing is logged until the person does something — a page view is not an analysis.
@@ -506,6 +507,26 @@ export function Underwriter({
     // `deal` and `defaults` are stable for the life of the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputs, verdict, offerPrice, hasDeal]);
+
+  async function share() {
+    setShareNote("Making a link…");
+    try {
+      const response = await fetch("/api/analyses/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mlsNumber: deal.mlsNumber ?? null, address: deal.address ?? null }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; path?: string; error?: string } | null;
+      if (!response.ok || !body?.ok || !body.path) return setShareNote(body?.error ?? "Couldn't make a link just now.");
+      const url = `${window.location.origin}${body.path}`;
+      await navigator.clipboard.writeText(url).then(
+        () => setShareNote("Link copied — anyone with it can see these numbers."),
+        () => setShareNote(url),
+      );
+    } catch {
+      setShareNote("Couldn't make a link just now.");
+    }
+  }
 
   function change(field: UnderwriterField, value: number) {
     touched.current = true;
@@ -769,6 +790,18 @@ export function Underwriter({
                 ))}
               </div>
             </div>
+            {log.status === "saved" && (
+              <p className="mt-3 text-xs text-ink-faint">
+                <button type="button" onClick={share} className="font-medium text-brand underline-offset-2 hover:text-brand-deep hover:underline">
+                  Share this analysis
+                </button>
+                {shareNote && (
+                  <span role="status" className="ml-2 break-all text-ink-soft">
+                    {shareNote}
+                  </span>
+                )}
+              </p>
+            )}
             {log.badgeEarned && (
               <p role="status" className="mt-3 flex items-center gap-2.5 rounded-[3px] bg-ink px-3 py-2.5 text-sm font-semibold text-white">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
