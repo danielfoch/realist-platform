@@ -1,0 +1,4 @@
+-- Additive documentation only. agent_jobs.type is unconstrained text;
+-- browser.act is a new job type. api_keys.scopes is jsonb; browser:write
+-- is an opt-in scope. Default minted scopes are unchanged.
+-- No table rewrite required.

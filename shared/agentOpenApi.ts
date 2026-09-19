@@ -64,12 +64,12 @@ export const AGENT_API_OPENAPI = {
   openapi: "3.0.3",
   info: {
     title: "Realist Agent API",
-    version: "1.4.0",
+    version: "1.5.0",
     description:
       "Bearer-authenticated API used by @realist/mcp and specialist tools. " +
       "Keys are `realist_live_*`, SHA-256 hashed in `api_keys`. " +
       "P0 spine + P1 Ontario forms + P2 worldwide listing extract " +
-      "+ P3 Realist CRM writes. Realist-only.",
+      "+ P3 Realist CRM writes + P4 listing-portal browser playbooks. Realist-only.",
   },
   servers: [{ url: "https://realist.ca", description: "Production" }],
   tags: [
@@ -78,6 +78,7 @@ export const AGENT_API_OPENAPI = {
     { name: "Forms", description: "Ontario / OREA field maps + fill (maps only, no PDF bodies)" },
     { name: "Listings", description: "Worldwide URL extract + underwrite (Zillow for Earth for AI agents)" },
     { name: "CRM", description: "Realist-owned contacts only. No external CRM." },
+    { name: "Browser", description: "Public listing-portal playbooks (cookie banner, expand, gallery, scroll, extract). No login." },
     { name: "Schemas", description: "Canonical Realist domain objects" },
   ],
   paths: {
@@ -323,6 +324,33 @@ export const AGENT_API_OPENAPI = {
         responses: { "201": { description: "Extract + underwrite jobs" } },
       },
     },
+    "/api/agent/browser/playbooks": {
+      get: {
+        tags: ["Browser"],
+        summary: "List host → allowed public listing-portal actions",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "Playbook registry" } },
+      },
+    },
+    "/api/agent/browser/act": {
+      post: {
+        tags: ["Browser"],
+        summary: "Create a browser.act job. Clicks need_approval; extract_after_render may run immediately.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/BrowserActInput" },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "browser.act job" },
+          "403": { description: "browser:write or jobs:write required" },
+        },
+      },
+    },
     "/api/agent/openapi.json": {
       get: {
         tags: ["Agent"],
@@ -551,6 +579,30 @@ export const AGENT_API_OPENAPI = {
           interestRate: { type: "number" },
           vacancyRate: { type: "number" },
           expenseRatio: { type: "number" },
+        },
+      },
+      BrowserActInput: {
+        type: "object",
+        required: ["url"],
+        properties: {
+          url: { type: "string", format: "uri", description: "Public listing URL. Login/checkout/WEBForms URLs are rejected." },
+          actions: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: [
+                "dismiss_cookie_banner",
+                "expand_description",
+                "open_listing_gallery",
+                "scroll_to_load",
+                "extract_after_render",
+              ],
+            },
+            description: "Playbook actions. Defaults to extract_after_render.",
+          },
+          maxSteps: { type: "integer", minimum: 1, maximum: 20 },
+          timeoutMs: { type: "integer", minimum: 1000, maximum: 60000 },
+          idempotencyKey: { type: "string" },
         },
       },
       ListingExtractInput: {

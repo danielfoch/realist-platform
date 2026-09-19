@@ -185,6 +185,13 @@ describe("job scope + approval policy", () => {
     expect(scopesForJobType("crm.update")).toEqual(["crm:write", "jobs:write"]);
     expect(jobRequiresApproval("underwrite.custom")).toBe(false);
     expect(jobRequiresApproval("underwrite.custom", true)).toBe(true);
+    expect(SPECIALIST_REGISTRY["browser.act"].implemented).toBe(true);
+    expect(SPECIALIST_REGISTRY["browser.act"].previewOnCreate).toBe(true);
+    expect(SPECIALIST_REGISTRY["browser.act"].applyOnApprove).toBe(true);
+    expect(jobRequiresApproval("browser.act")).toBe(true);
+    expect(scopesForJobType("browser.act")).toEqual(["browser:write", "jobs:write"]);
+    expect(parseJobInput("browser.act", { url: "https://www.zillow.com/homedetails/1" }).success).toBe(true);
+    expect(parseJobInput("browser.act", { url: "https://www.zillow.com/homedetails/1", actions: ["login"] }).success).toBe(false);
   });
 });
 
@@ -246,7 +253,9 @@ describe("auth scope defaults", () => {
       "forms:write",
       "docs:write",
       "crm:write",
+      "browser:write",
     ]));
+    expect(DEFAULT_AGENT_API_SCOPES).not.toContain("browser:write");
   });
 });
 

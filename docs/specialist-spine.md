@@ -1,4 +1,4 @@
-# Realist specialist spine (P0 + P1 Forms + P2 Listing extract + P3 CRM)
+# Realist specialist spine (P0–P4)
 
 The Agent API is the contract layer every Realist specialist calls. One
 router agent will eventually dispatch tiny specialists (forms, listing
@@ -27,7 +27,8 @@ Existing bearer keys (`realist_live_*`) stay the only auth system.
   - `jobs:write` — create / approve / cancel any job type
   - `forms:write` — `forms.fill` jobs (P1 implemented)
   - `docs:write` — `docs.route` jobs (declared, unused)
-  - `crm:write` — `crm.update` jobs (declared, unused)
+  - `crm:write` — `crm.update` jobs (P3 implemented)
+  - `browser:write` — `browser.act` jobs (P4 implemented)
 
 Creating an `underwrite.*` job still works with the existing `underwrite`
 scope. Listing extract accepts `read` or `jobs:write`.
@@ -62,8 +63,8 @@ registerSpecialistExecutor("forms.fill", async (input) => fillForm(input));
 ```
 
 Unregistered types run the built-in stub (`{ stub: true, todo: "..." }`).
-`forms.fill` (P1), `listing.extract` (P2), and `crm.update` (P3) are
-implemented. Docs remain a stub.
+`forms.fill` (P1), `listing.extract` (P2), `crm.update` (P3), and
+`browser.act` (P4) are implemented. Docs remain a stub.
 
 ## Job lifecycle
 
@@ -149,8 +150,8 @@ number. We never invent prices, rents, taxes, or beds.
 
 - Public listing pages, official public APIs, or caller-supplied
   structured HTML/text only.
-- No login, no paywall bypass, no portal cookies, no browser automation
-  (that is P4).
+- No login, no paywall bypass, no portal cookies. Interaction that still
+  stays on a public page is P4 (`browser.act` playbooks).
 - Prefer JSON-LD / OpenGraph / public embed endpoints over brittle HTML.
 - Login walls, CAPTCHAs, and HTTP 401/403 return
   `blocked_or_login_wall`. Missing pages return `listing_not_found`.
@@ -246,6 +247,37 @@ is unchanged). Email identity still goes through person-spine
 
 Mutations stay on the job spine. `crm:write` remains opt-in.
 
+## Browser specialist (P4 — public playbooks only)
+
+`browser.act` is a **playbook registry**, not an open-ended computer-use
+agent. An agent calls it when static HTML extract fails or a public
+control must be clicked (cookie banner, “show more”, gallery, bounded
+scroll). Then `extract_after_render` runs the existing listing extract
+on the rendered DOM.
+
+**Hard denylist:** login / password fields, payment, captcha solve,
+file upload to boards, email send, WEBForms / MFA / board auth.
+Login, checkout, and `/webform` URLs return `blocked_or_login_wall`.
+
+**Approval:** any click action stays `needs_approval` (`previewOnCreate`
++ `applyOnApprove`). `extract_after_render` alone may run immediately
+(read-only rendered DOM). Default key scopes are unchanged; mint
+`browser:write` or `jobs:write`.
+
+**Sandbox:** Playwright Chromium, headless, timeout-bounded, no
+persistent user profile. Screenshots land in `os.tmpdir()` job
+artifacts only — never committed. Unit tests inject a mock driver.
+The optional e2e file is skipped in CI unless `BROWSER_ACT_E2E=1`.
+
+Allowed v1 actions: `dismiss_cookie_banner`, `expand_description`,
+`open_listing_gallery`, `scroll_to_load`, `extract_after_render`.
+Unknown hosts may only extract.
+
+### Routes
+
+- `GET /api/agent/browser/playbooks` (`read`)
+- `POST /api/agent/browser/act` (`browser:write` or `jobs:write`)
+
 ## OpenAPI
 
 - Served: `GET /api/agent/openapi.json` (`read` scope)
@@ -258,5 +290,7 @@ Mutations stay on the job spine. `crm:write` remains opt-in.
 - Forms fill + eval: `shared/forms/fill.test.ts`
 - Listing extract (fixture HTML/JSON-LD, offline): `shared/listingExtract/extract.test.ts`
 - CRM diffs + apply: `shared/crmJob.test.ts`, `server/agentCrm.test.ts`
+- Browser playbooks + denylist: `shared/browserAct.test.ts`
+- Browser worker (mocked driver): `server/browserAct.test.ts`
 - Routes: `server/agentApi.test.ts` (same bearer-mock style as the
   existing estimate-rent / find-deals cases)

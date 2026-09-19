@@ -9,6 +9,9 @@
  * Realist-only: no external CRM and no partner-platform integrations here.
  */
 import { z } from "zod";
+import { browserActInputSchema } from "./browserAct";
+
+export { browserActInputSchema } from "./browserAct";
 
 // ---------------------------------------------------------------------------
 // Auth scopes (single source of truth for minting + route checks)
@@ -26,6 +29,7 @@ export const AGENT_API_SCOPES = [
   "forms:write",
   "docs:write",
   "crm:write",
+  "browser:write",
 ] as const;
 
 export type AgentApiScope = (typeof AGENT_API_SCOPES)[number];
@@ -263,6 +267,7 @@ export const AGENT_JOB_TYPES = [
   "listing.extract",
   "docs.route",
   "crm.update",
+  "browser.act",
 ] as const;
 export type AgentJobType = (typeof AGENT_JOB_TYPES)[number];
 
@@ -432,6 +437,7 @@ export const JOB_INPUT_SCHEMAS = {
   "forms.fill": formsFillInputSchema,
   "docs.route": docsRouteInputSchema,
   "crm.update": crmUpdateInputSchema,
+  "browser.act": browserActInputSchema,
 } as const;
 
 export const createAgentJobRequestSchema = z.object({
@@ -501,6 +507,14 @@ export const SPECIALIST_REGISTRY: Record<AgentJobType, SpecialistHandlerMeta> = 
     previewOnCreate: true,
     applyOnApprove: true,
     scopes: ["crm:write", "jobs:write"],
+  },
+  "browser.act": {
+    specialistId: "realist.browser",
+    requiresApproval: true,
+    implemented: true,
+    previewOnCreate: true,
+    applyOnApprove: true,
+    scopes: ["browser:write", "jobs:write"],
   },
 };
 
