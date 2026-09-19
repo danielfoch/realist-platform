@@ -64,12 +64,12 @@ export const AGENT_API_OPENAPI = {
   openapi: "3.0.3",
   info: {
     title: "Realist Agent API",
-    version: "1.3.0",
+    version: "1.4.0",
     description:
       "Bearer-authenticated API used by @realist/mcp and specialist tools. " +
       "Keys are `realist_live_*`, SHA-256 hashed in `api_keys`. " +
       "P0 spine + P1 Ontario forms + P2 worldwide listing extract " +
-      "(Zillow for Earth for AI agents). Realist-only.",
+      "+ P3 Realist CRM writes. Realist-only.",
   },
   servers: [{ url: "https://realist.ca", description: "Production" }],
   tags: [
@@ -77,6 +77,7 @@ export const AGENT_API_OPENAPI = {
     { name: "Jobs", description: "Specialist job spine" },
     { name: "Forms", description: "Ontario / OREA field maps + fill (maps only, no PDF bodies)" },
     { name: "Listings", description: "Worldwide URL extract + underwrite (Zillow for Earth for AI agents)" },
+    { name: "CRM", description: "Realist-owned contacts only. No external CRM." },
     { name: "Schemas", description: "Canonical Realist domain objects" },
   ],
   paths: {
@@ -286,6 +287,32 @@ export const AGENT_API_OPENAPI = {
         summary: "Extract Property + Listing from a public URL, HTML, or MLS number",
         security: [{ bearerAuth: [] }],
         responses: { "201": { description: "listing.extract job + extract payload" } },
+      },
+    },
+    "/api/agent/crm/contacts": {
+      get: {
+        tags: ["CRM"],
+        summary: "Search the calling user's Realist CRM contacts",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "query", in: "query", schema: { type: "string" } }],
+        responses: { "200": { description: "Owned contacts" } },
+      },
+    },
+    "/api/agent/crm/contacts/upsert": {
+      post: {
+        tags: ["CRM"],
+        summary: "Create a crm.update upsert job (needs_approval + proposed diff)",
+        security: [{ bearerAuth: [] }],
+        responses: { "201": { description: "Draft CRM write job" }, "403": { description: "crm:write or jobs:write required" } },
+      },
+    },
+    "/api/agent/crm/contacts/{id}": {
+      get: {
+        tags: ["CRM"],
+        summary: "Get one owned Realist CRM contact",
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+        responses: { "200": { description: "Contact" }, "404": { description: "Not found" } },
       },
     },
     "/api/agent/listings/underwrite-url": {

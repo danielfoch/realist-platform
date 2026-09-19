@@ -127,3 +127,12 @@ P2 Listing extract (Zillow for Earth for AI agents — any geography):
   `fxToCad`; FX is never invented. Login-walled pages return
   `blocked_or_login_wall`. Missing prices/beds stay null.
 
+P3 Realist CRM (no external CRM):
+
+- `GET /api/agent/crm/contacts?query=` — owned contacts (`read`)
+- `GET /api/agent/crm/contacts/:id` — one owned contact (`read`)
+- `POST /api/agent/crm/contacts/upsert` — `crm.update` job
+  (`crm:write` or `jobs:write`). Create stays `needs_approval` with a
+  proposed diff. Approve applies the write; cancel does not. Names /
+  emails / phones are never invented.
+

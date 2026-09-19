@@ -21,6 +21,7 @@ import {
   DEFAULT_AGENT_API_SCOPES,
   createAgentJobRequestSchema,
   scopesForJobType,
+  crmUpdateInputSchema,
   underwriteCustomInputSchema,
   underwriteListingInputSchema,
   type AgentApiScope,
@@ -39,6 +40,12 @@ import {
   listingExtractInputSchema,
 } from "@shared/listingExtract";
 import { extractListing } from "./listingExtract";
+import {
+  applyCrmUpdate,
+  getAgentCrmContact,
+  listAgentCrmContacts,
+  previewCrmUpdate,
+} from "./agentCrm";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import { getRentEstimate } from "./rentIntelligence";
@@ -459,6 +466,13 @@ registerSpecialistExecutor("listing.extract", async (input) => {
     }
     throw err;
   }
+});
+
+registerSpecialistExecutor("crm.update", async (input, ctx) => {
+  if (ctx.mode === "apply") {
+    return applyCrmUpdate(input, ctx.userId, ctx.previousResult);
+  }
+  return previewCrmUpdate(input, ctx.userId);
 });
 
 registerSpecialistExecutor("forms.fill", async (input) => {
@@ -1084,6 +1098,63 @@ export function registerAgentRoutes(app: Express) {
         extract,
         underwriting: underwritten.job.result,
       });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Search the calling user's Realist CRM contacts (no external CRM). */
+  app.get("/api/agent/crm/contacts", requireScope("read"), async (req, res) => {
+    try {
+      const query = typeof req.query.query === "string" ? req.query.query : undefined;
+      const contacts = await listAgentCrmContacts(req.agentUserId!, query);
+      res.json({ count: contacts.length, contacts });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Create a crm.update upsert job (needs_approval + proposed diff). */
+  app.post("/api/agent/crm/contacts/upsert", async (req, res) => {
+    try {
+      const needed = scopesForJobType("crm.update");
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const { idempotencyKey, ...rest } = body;
+      const parsed = crmUpdateInputSchema.safeParse({
+        ...rest,
+        action: "upsert_contact",
+        contact: rest.contact ?? rest,
+      });
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { job, replayed } = await createAgentJob({
+        request: {
+          type: "crm.update",
+          input: parsed.data,
+          idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({ job: serializeAgentJob(job), proposedDiff: job.result?.proposedDiff, replayed });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Read one owned Realist CRM contact. */
+  app.get("/api/agent/crm/contacts/:id", requireScope("read"), async (req, res) => {
+    try {
+      const contact = await getAgentCrmContact(req.agentUserId!, req.params.id);
+      if (!contact) return res.status(404).json({ error: "contact_not_found" });
+      res.json({ contact });
     } catch (err) {
       jobErrorResponse(res, err);
     }

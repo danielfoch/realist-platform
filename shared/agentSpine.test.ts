@@ -149,6 +149,16 @@ describe("job input validation", () => {
     }).success).toBe(true);
   });
 
+  it("requires identity on crm.update and rejects invented-empty creates", () => {
+    expect(parseJobInput("crm.update", {}).success).toBe(false);
+    expect(parseJobInput("crm.update", {
+      action: "upsert_contact",
+      contact: { email: "dana@example.com", name: "Dana" },
+    }).success).toBe(true);
+    expect(parseJobInput("crm.update", { action: "update_stage", contactId: "c1" }).success).toBe(false);
+    expect(parseJobInput("crm.update", { action: "update_stage", contactId: "c1", stage: "nurturing" }).success).toBe(true);
+  });
+
   it("requires a create payload with a known job type", () => {
     expect(createAgentJobRequestSchema.safeParse({ type: "nope", input: {} }).success).toBe(false);
     expect(createAgentJobRequestSchema.safeParse({ type: "underwrite.custom", input: {} }).success).toBe(true);
@@ -168,7 +178,11 @@ describe("job scope + approval policy", () => {
     expect(SPECIALIST_REGISTRY["listing.extract"].implemented).toBe(true);
     expect(jobRequiresApproval("listing.extract")).toBe(false);
     expect(jobRequiresApproval("docs.route")).toBe(true);
+    expect(SPECIALIST_REGISTRY["crm.update"].implemented).toBe(true);
+    expect(SPECIALIST_REGISTRY["crm.update"].previewOnCreate).toBe(true);
+    expect(SPECIALIST_REGISTRY["crm.update"].applyOnApprove).toBe(true);
     expect(jobRequiresApproval("crm.update")).toBe(true);
+    expect(scopesForJobType("crm.update")).toEqual(["crm:write", "jobs:write"]);
     expect(jobRequiresApproval("underwrite.custom")).toBe(false);
     expect(jobRequiresApproval("underwrite.custom", true)).toBe(true);
   });

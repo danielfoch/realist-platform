@@ -372,9 +372,57 @@ export const docsRouteInputSchema = z.object({
   docClass: transactionDocClassSchema.optional(),
 });
 
+export const crmContactWriteSchema = z.object({
+  email: z.string().email().optional(),
+  name: z.string().trim().min(1).max(200).optional(),
+  firstName: z.string().trim().min(1).max(80).optional(),
+  lastName: z.string().trim().min(1).max(80).optional(),
+  phone: z.string().trim().min(1).max(30).optional(),
+  source: z.string().trim().min(1).max(50).optional(),
+  contactType: z.enum(["investor", "buyer", "seller", "renter", "realtor", "sponsor", "other"]).optional(),
+  targetMarket: z.string().trim().min(1).max(200).optional(),
+});
+
+export const CRM_UPDATE_ACTIONS = [
+  "upsert_contact",
+  "update_stage",
+  "add_note",
+  "set_next_action",
+] as const;
+
+export const CRM_CONTACT_STAGE_VALUES = [
+  "new",
+  "contacted",
+  "nurturing",
+  "appointment",
+  "client",
+  "past_client",
+  "lost",
+] as const;
+
 export const crmUpdateInputSchema = z.object({
+  action: z.enum(CRM_UPDATE_ACTIONS).default("upsert_contact"),
   contactId: z.string().min(1).optional(),
-  patch: z.record(z.unknown()).optional(),
+  contact: crmContactWriteSchema.optional(),
+  stage: z.enum(CRM_CONTACT_STAGE_VALUES).optional(),
+  note: z.string().trim().min(1).max(5000).optional(),
+  nextAction: z.string().trim().min(1).max(500).optional(),
+  nextActionAt: z.string().trim().min(1).refine((value) => !Number.isNaN(Date.parse(value)), "ISO timestamp").optional(),
+  metadata: z.record(z.unknown()).optional(),
+}).superRefine((value, ctx) => {
+  const email = value.contact?.email;
+  if (!value.contactId && !email) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "contactId or contact.email is required" });
+  }
+  if (value.action === "update_stage" && !value.stage) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "stage is required for update_stage" });
+  }
+  if (value.action === "add_note" && !value.note) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "note is required for add_note" });
+  }
+  if (value.action === "set_next_action" && !value.nextAction) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "nextAction is required for set_next_action" });
+  }
 });
 
 export const JOB_INPUT_SCHEMAS = {
@@ -405,6 +453,8 @@ export interface SpecialistHandlerMeta {
    * so a human can review the draft before approve marks succeeded.
    */
   previewOnCreate?: boolean;
+  /** After approve, re-run the executor to apply a write (CRM). Forms keep the draft. */
+  applyOnApprove?: boolean;
   scopes: AgentApiScope[];
 }
 
@@ -447,7 +497,9 @@ export const SPECIALIST_REGISTRY: Record<AgentJobType, SpecialistHandlerMeta> = 
   "crm.update": {
     specialistId: "realist.crm",
     requiresApproval: true,
-    implemented: false,
+    implemented: true,
+    previewOnCreate: true,
+    applyOnApprove: true,
     scopes: ["crm:write", "jobs:write"],
   },
 };

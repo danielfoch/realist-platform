@@ -89,6 +89,7 @@ vi.mock("@shared/investmentMetrics", () => ({
 }));
 
 import { registerAgentRoutes } from "./agentApi";
+import { createMemoryCrmStore, resetAgentCrmStore, setAgentCrmStore } from "./agentCrm";
 
 function app() {
   const app = express();
@@ -543,6 +544,87 @@ describe("agent API jobs spine", () => {
     expect(mocks.createAgentJob).toHaveBeenCalledTimes(1);
   });
 
+  it("blocks crm.update without crm:write or jobs:write", async () => {
+    const response = await request(app())
+      .post("/api/agent/jobs")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ type: "crm.update", input: { action: "upsert_contact", contact: { email: "a@b.co", name: "A" } } });
+
+    expect(response.status).toBe(403);
+    expect(response.body.requiredScope).toBe("crm:write");
+    expect(mocks.createAgentJob).not.toHaveBeenCalled();
+  });
+
+  it("creates a crm.update job from the upsert convenience route", async () => {
+    mocks.createAgentJob.mockResolvedValue({
+      job: sampleJob({
+        type: "crm.update",
+        status: "needs_approval",
+        result: { dryRun: true, proposedDiff: { before: null, after: { email: "dana@example.com" }, changes: [] } },
+      }),
+      replayed: false,
+    });
+    mockDbAuth(["crm:write"]);
+
+    const response = await request(app())
+      .post("/api/agent/crm/contacts/upsert")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ email: "dana@example.com", name: "Dana Ng", idempotencyKey: "crm-1" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.job.status).toBe("needs_approval");
+    expect(response.body.proposedDiff.after.email).toBe("dana@example.com");
+    expect(mocks.createAgentJob).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({
+        type: "crm.update",
+        idempotencyKey: "crm-1",
+        input: expect.objectContaining({ action: "upsert_contact" }),
+      }),
+    }));
+  });
+
+  it("lists owned CRM contacts behind read and hides other books", async () => {
+    setAgentCrmStore(createMemoryCrmStore([
+      {
+        id: "mine",
+        ownerUserId: "user-1",
+        name: "Pat Lee",
+        email: "pat@example.com",
+        phone: null,
+        stage: "new",
+        contactType: "investor",
+        source: "web",
+        targetMarket: null,
+        lastTouchAt: null,
+        data: {},
+        archived: false,
+      },
+      {
+        id: "theirs",
+        ownerUserId: "user-9",
+        name: "Other",
+        email: "other@example.com",
+        phone: null,
+        stage: "new",
+        contactType: "investor",
+        source: "web",
+        targetMarket: null,
+        lastTouchAt: null,
+        data: {},
+        archived: false,
+      },
+    ]));
+
+    const response = await request(app())
+      .get("/api/agent/crm/contacts?query=pat")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.contacts).toHaveLength(1);
+    expect(response.body.contacts[0].id).toBe("mine");
+    resetAgentCrmStore();
+  });
+
   it("serves OpenAPI behind the read scope", async () => {
     const response = await request(app())
       .get("/api/agent/openapi.json")
@@ -554,6 +636,7 @@ describe("agent API jobs spine", () => {
     expect(response.body.paths["/api/agent/underwrite/listing"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/extract"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/underwrite-url"]).toBeTruthy();
-    expect(response.body.info.version).toBe("1.3.0");
+    expect(response.body.info.version).toBe("1.4.0");
+    expect(response.body.paths["/api/agent/crm/contacts/upsert"]).toBeTruthy();
   });
 });

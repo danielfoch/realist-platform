@@ -1,4 +1,4 @@
-# Realist specialist spine (P0 + P1 Forms + P2 Listing extract)
+# Realist specialist spine (P0 + P1 Forms + P2 Listing extract + P3 CRM)
 
 The Agent API is the contract layer every Realist specialist calls. One
 router agent will eventually dispatch tiny specialists (forms, listing
@@ -62,8 +62,8 @@ registerSpecialistExecutor("forms.fill", async (input) => fillForm(input));
 ```
 
 Unregistered types run the built-in stub (`{ stub: true, todo: "..." }`).
-`forms.fill` (P1) and `listing.extract` (P2) are implemented. Docs and
-CRM remain stubs.
+`forms.fill` (P1), `listing.extract` (P2), and `crm.update` (P3) are
+implemented. Docs remain a stub.
 
 ## Job lifecycle
 
@@ -210,6 +210,42 @@ prices pass through with explicit `currency` on inputs/results.
 `priceCad` is set only when currency is CAD or the caller supplied
 `fxToCad`.
 
+## CRM specialist (P3 — Realist contacts only)
+
+`crm.update` writes the native Realist CRM (`crm_contacts` /
+`crm_activities`) owned by the API key’s user. **Homies is out of
+scope.** No Follow Up Boss, GHL, or other external CRM writebacks.
+
+Never invent emails, phones, or names. If a create is missing a name
+or email, the job fails with `name_required` / `email_required`.
+
+### Job behaviour
+
+1. Create `crm.update` (or `POST /api/agent/crm/contacts/upsert`)
+   resolves the target **inside this user’s book**, builds
+   `proposedDiff: { before, after, changes[] }`, and stays
+   `needs_approval`. Nothing is written (`dryRun: true`).
+2. Update-only actions (`update_stage`, `add_note`, `set_next_action`)
+   fail if the contact is missing or owned by someone else.
+3. Approve re-loads the live row. If material fields drifted from
+   `proposedDiff.before`, the job fails with `conflict`. Otherwise the
+   write is applied and the result is `{ before, after, applied: true }`.
+4. Cancel leaves the database unchanged.
+
+Actions: `upsert_contact` | `update_stage` | `add_note` | `set_next_action`.
+Stages are the existing Realist set (`new` … `lost`). Next-action
+hints are stored on `crm_contacts.data` (the computed next-step engine
+is unchanged). Email identity still goes through person-spine
+`linkPersonByEmail`.
+
+### Routes
+
+- `GET /api/agent/crm/contacts?query=` (`read`)
+- `GET /api/agent/crm/contacts/:id` (`read`)
+- `POST /api/agent/crm/contacts/upsert` (`crm:write` or `jobs:write`)
+
+Mutations stay on the job spine. `crm:write` remains opt-in.
+
 ## OpenAPI
 
 - Served: `GET /api/agent/openapi.json` (`read` scope)
@@ -221,5 +257,6 @@ prices pass through with explicit `currency` on inputs/results.
 - Schema + transition rules: `shared/agentSpine.test.ts`
 - Forms fill + eval: `shared/forms/fill.test.ts`
 - Listing extract (fixture HTML/JSON-LD, offline): `shared/listingExtract/extract.test.ts`
+- CRM diffs + apply: `shared/crmJob.test.ts`, `server/agentCrm.test.ts`
 - Routes: `server/agentApi.test.ts` (same bearer-mock style as the
   existing estimate-rent / find-deals cases)

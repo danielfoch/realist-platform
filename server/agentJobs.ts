@@ -31,7 +31,13 @@ export class AgentJobError extends Error {
 
 export type SpecialistExecutor = (
   input: Record<string, unknown>,
-  ctx: { userId: string; apiKeyId: string | null; jobId: string },
+  ctx: {
+    userId: string;
+    apiKeyId: string | null;
+    jobId: string;
+    mode: "preview" | "apply";
+    previousResult: Record<string, unknown> | null;
+  },
 ) => Promise<Record<string, unknown>>;
 
 const executors = new Map<AgentJobType, SpecialistExecutor>();
@@ -179,12 +185,14 @@ async function findByIdempotency(userId: string, key: string): Promise<AgentJob 
   return row ? rowToAgentJob(row) : null;
 }
 
-async function executeSpecialist(job: AgentJob): Promise<Record<string, unknown>> {
+async function executeSpecialist(job: AgentJob, mode: "preview" | "apply"): Promise<Record<string, unknown>> {
   const execute = executors.get(job.type) ?? stubExecutor(job.type);
   return execute(job.input, {
     userId: job.createdByUserId,
     apiKeyId: job.createdByApiKeyId,
     jobId: job.id,
+    mode,
+    previousResult: job.result,
   });
 }
 
@@ -214,7 +222,7 @@ export async function previewAgentJob(jobId: string, userId: string): Promise<Ag
   const job = await loadOwnedJob(jobId, userId);
   if (job.status !== "needs_approval") return job;
   try {
-    const result = await executeSpecialist(job);
+    const result = await executeSpecialist(job, "preview");
     const note = "preview_for_human_approval";
     const entry = {
       at: new Date().toISOString(),
@@ -233,7 +241,7 @@ export async function previewAgentJob(jobId: string, userId: string): Promise<Ag
     });
   } catch (err: any) {
     if (err instanceof AgentJobError) throw err;
-    throw new AgentJobError(400, err?.code || "fill_failed", err?.message || "form fill failed");
+    throw new AgentJobError(400, err?.code || "preview_failed", err?.message || "preview failed");
   }
 }
 
@@ -247,7 +255,7 @@ export async function runAgentJob(jobId: string, userId: string): Promise<AgentJ
   }
   if (job.status !== "running") return job;
   try {
-    const result = await executeSpecialist(job);
+    const result = await executeSpecialist(job, "apply");
     const done = applyJobTransition(job, "succeed", userId, { result, note: "handler_succeeded" });
     if (!done.ok) throw new AgentJobError(409, done.error, done.message);
     return persistJob(done.job);
@@ -319,7 +327,18 @@ export async function createAgentJob(input: {
   if (!approvalRequired) {
     job = await runAgentJob(job.id, userId);
   } else if (SPECIALIST_REGISTRY[request.type].previewOnCreate) {
-    job = await previewAgentJob(job.id, userId);
+    try {
+      job = await previewAgentJob(job.id, userId);
+    } catch (err: any) {
+      await persistJob({
+        ...job,
+        status: "failed",
+        error: err?.code || err?.message || "preview_failed",
+        result: { error: err?.message || "preview_failed", dryRun: true },
+        updatedAt: new Date(),
+      });
+      throw err instanceof AgentJobError ? err : new AgentJobError(400, "preview_failed", err?.message);
+    }
   }
   return { job, replayed: false };
 }
@@ -346,7 +365,12 @@ export async function approveAgentJob(id: string, userId: string): Promise<Agent
   if (!approved.ok) throw new AgentJobError(409, approved.error, approved.message);
   const running = await persistJob(approved.job);
   // Previewed forms: succeed the stored draft. Do not e-sign, email, or submit.
-  if (SPECIALIST_REGISTRY[running.type].previewOnCreate && running.result) {
+  // CRM applyOnApprove re-runs the executor so the write happens only after approve.
+  if (
+    SPECIALIST_REGISTRY[running.type].previewOnCreate
+    && running.result
+    && !SPECIALIST_REGISTRY[running.type].applyOnApprove
+  ) {
     const done = applyJobTransition(running, "succeed", userId, {
       result: running.result,
       note: "approved_without_submit",
