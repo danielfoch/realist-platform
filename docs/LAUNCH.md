@@ -13,6 +13,21 @@ Everything below is configuration — the code is done and verified against a re
 Do the steps in order; each one unlocks the next. Nothing is lost if a step is late: leads
 captured before the CRM is connected wait in the outbox and are delivered when it is.
 
+## The short way: one command for every key
+
+```bash
+npm run setup:keys
+```
+
+It walks you through what's still missing, in order of impact. You paste each key in your own
+terminal (input is hidden); it is **tested against the real service before it's saved** — a GHL
+contact lookup, Resend's verified-domain list, a CREA token, Anthropic's model list — then handed
+to Vercel (Production) over stdin: never a command-line argument, never a file, never printed.
+After GHL connects it lists your pipelines and stages so you pick by name instead of hunting for
+ids. Enter skips anything; it ends by offering to deploy. `-- --dry-run` tests without saving;
+`-- --redo` asks again for keys already set. Steps 2, 3 and 5 below are the long way of doing
+the same thing in the Vercel dashboard.
+
 ## 1. A database (nothing persists without it)
 
 **Done** — resource `realist-lean-db`, connected to Production and Preview. For the record, it

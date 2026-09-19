@@ -48,6 +48,9 @@ describe("go-live preflight", () => {
     expect(verified.status).toBe("ok");
     const sendOnly = await checkResend({ RESEND_API_KEY: "re_x" }, (async () => json(401, { name: "restricted_api_key" })) as unknown as typeof fetch);
     expect(sendOnly.status).toBe("warn");
+    // A key Resend has never heard of comes back 400, not 401 — still a rejection, never "domain not found".
+    const unknown = await checkResend({ RESEND_API_KEY: "re_fake" }, (async () => json(400, { name: "validation_error", message: "API key is invalid" })) as unknown as typeof fetch);
+    expect(unknown).toMatchObject({ status: "broken", detail: expect.stringContaining("rejected the key") });
   });
 
   it("never prints a secret", async () => {

@@ -143,6 +143,8 @@ export async function checkResend(env: Env, fetcher: Fetch = fetch): Promise<Che
         ? { name: "Email (Resend)", status: "warn", required: true, detail: `The key is send-only, so the ${domain} domain can't be checked from here.`, fix: `Confirm ${domain} shows as Verified in Resend.` }
         : { name: "Email (Resend)", status: "broken", required: true, detail: "Resend rejected the key.", fix: "Create a new API key in Resend." };
     }
+    // Resend answers a malformed or unknown key with other 4xx codes too. Only a 200 is a list of domains.
+    if (status !== 200) return { name: "Email (Resend)", status: "broken", required: true, detail: `Resend rejected the key (HTTP ${status}).`, fix: "Create a new API key in Resend." };
     const domains = (Array.isArray(body.data) ? body.data : []) as Array<{ name?: string; status?: string }>;
     const match = domains.find((row) => row.name?.toLowerCase() === domain);
     if (match?.status === "verified") return { name: "Email (Resend)", status: "ok", required: true, detail: `${domain} is verified; mail sends as ${from}.` };
