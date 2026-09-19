@@ -4429,6 +4429,42 @@ export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 
 // ============================================================================
+// AGENT JOBS — specialist work queue for the Agent API spine (P0).
+// Intent → specialist → result → optional human approval. Owned by the
+// api-key user (created_by_user_id). See shared/agentSpine.ts for the
+// Zod contract and state machine.
+// ============================================================================
+export const agentJobs = pgTable("agent_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(),
+  status: text("status").notNull().default("queued"),
+  input: jsonb("input").notNull().default({}),
+  result: jsonb("result"),
+  error: text("error"),
+  specialistId: text("specialist_id"),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  createdByApiKeyId: varchar("created_by_api_key_id"),
+  approvalRequired: boolean("approval_required").notNull().default(false),
+  approvedAt: timestamp("approved_at"),
+  approvedByUserId: varchar("approved_by_user_id"),
+  idempotencyKey: text("idempotency_key"),
+  auditTrail: jsonb("audit_trail").notNull().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_agent_jobs_user_created").on(table.createdByUserId, table.createdAt),
+  index("idx_agent_jobs_user_idempotency").on(table.createdByUserId, table.idempotencyKey),
+]);
+
+export const insertAgentJobSchema = createInsertSchema(agentJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAgentJob = z.infer<typeof insertAgentJobSchema>;
+export type AgentJobRow = typeof agentJobs.$inferSelect;
+
+// ============================================================================
 // API USAGE EVENTS — one row per bearer-authenticated agent/API call.
 // Powers per-key rate limiting audits, the account usage dashboard, and
 // (later) Stripe metered billing. Inputs are never stored — only a hash.

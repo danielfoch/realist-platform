@@ -10,18 +10,16 @@
  */
 import type { Request } from "express";
 import { BRAND_BASE_URL } from "@shared/brand";
+import {
+  AGENT_API_SCOPES,
+  DEFAULT_AGENT_API_SCOPES,
+  type AgentApiScope,
+} from "@shared/agentSpine";
 
 /** Version of the agent platform surface (MCP serverInfo, OpenAPI info.version). */
 export const AGENT_PLATFORM_VERSION = "1.0.0";
 
-export const AGENT_API_SCOPES = [
-  "read",
-  "underwrite",
-  "community:write",
-  "deal:submit",
-  "partner:referrals",
-] as const;
-export type AgentApiScope = (typeof AGENT_API_SCOPES)[number];
+export { AGENT_API_SCOPES, DEFAULT_AGENT_API_SCOPES, type AgentApiScope };
 
 /** Which transport the call arrived on — recorded on views and usage events. */
 export type AgentChannel = "rest" | "v1" | "mcp";

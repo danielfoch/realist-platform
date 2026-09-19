@@ -1,4 +1,5 @@
 import { initializeKeyprOutbox, kickKeyprOutbox } from "./keyprStore";
+import { initializeAgentJobs } from "./agentJobs";
 import { createMultiplexApplicationRouter } from "./multiplexApplications";
 import { initializeMultiplexApplications, saveMultiplexApplication } from "./multiplexApplicationStore";
 import express, { type Request, Response, NextFunction } from "express";
@@ -654,6 +655,7 @@ async function ensureAppTables() {
   kickKeyprOutbox();
   setInterval(kickKeyprOutbox, 60_000).unref();
   await initializeMultiplexApplications();
+  await initializeAgentJobs().catch((error) => console.error("[agent-jobs] schema initialization failed:", error?.message || error));
   app.use("/api/multiplex-applications", createMultiplexApplicationRouter(saveMultiplexApplication));
   await registerRoutes(httpServer, app);
   const { createEventQaStore } = await import("./eventQaStore");
