@@ -689,7 +689,7 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
       )}
 
       {/* CTA band */}
-      <section className="rounded-xl border border-hairline-strong bg-raised p-6">
+      <section className="band-night rounded-xl p-6">
         <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="font-display text-xl font-semibold">Want to actually build this?</h3>

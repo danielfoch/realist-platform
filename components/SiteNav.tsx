@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/listings", label: "Listings" },
@@ -14,88 +13,123 @@ const NAV_ITEMS = [
   { href: "/community", label: "Community" },
 ];
 
+/** Same mark as the homepage journey header (components/scrollcraft). */
+export function BrandMark() {
+  return (
+    <span className="flex items-center gap-2.5 text-ink">
+      <svg width="24" height="27" viewBox="0 0 27 30" fill="none" aria-hidden="true">
+        <path d="M1 29V12l7-4v21H1Zm9 0V4l7-4v29h-7Zm9 0V16l7-4v17h-7Z" fill="currentColor" />
+      </svg>
+      <span className="text-[19px] font-semibold tracking-tight">
+        realist<span className="text-accent">.</span>
+      </span>
+    </span>
+  );
+}
+
+function ArrowUpRight() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 18 18 6M6 6h12v12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
+
+  // The homepage journey carries its own header and chapter navigation.
+  if (pathname === "/") return null;
+
   return (
-    <header className="sticky top-0 z-50 border-b border-hairline bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-13 max-w-[1600px] items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-          {/* Mark is black-on-transparent; invert onto the dark ground. */}
-          <Image src="/logo.png" alt="" width={22} height={22} className="invert" />
-          <span className="text-[15px] font-bold tracking-tight">
-            realist<span className="text-brand">.ca</span>
-          </span>
+    <header className="sticky top-0 z-50 border-b border-hairline bg-paper/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 md:h-20">
+        <Link href="/" aria-label="Realist home" onClick={() => setOpen(false)}>
+          <BrandMark />
         </Link>
 
-        <nav className="hidden items-center gap-0.5 md:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
-                  active
-                    ? "bg-raised text-ink"
-                    : "text-ink-soft hover:bg-surface hover:text-ink"
+                aria-current={active ? "page" : undefined}
+                className={`relative py-2 text-[13px] font-medium transition-colors ${
+                  active ? "text-ink" : "text-ink-faint hover:text-ink"
                 }`}
               >
                 {item.label}
+                {active && <span className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-accent" />}
               </Link>
             );
           })}
-          <Link
-            href="/work-with-us"
-            className="ml-3 rounded bg-brand px-3 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-deep"
-          >
-            Work with us
-          </Link>
         </nav>
 
-        <button
-          type="button"
-          className="md:hidden rounded p-2 text-ink-soft hover:bg-surface"
-          aria-expanded={open}
-          aria-label="Toggle menu"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            {open ? (
-              <>
-                <line x1="5" y1="5" x2="19" y2="19" />
-                <line x1="19" y1="5" x2="5" y2="19" />
-              </>
-            ) : (
-              <>
-                <line x1="4" y1="7" x2="20" y2="7" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <line x1="4" y1="17" x2="20" y2="17" />
-              </>
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/multiplex"
+            className="hidden items-center gap-2 rounded-[3px] bg-brand px-4 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep sm:inline-flex"
+          >
+            Start building
+            <ArrowUpRight />
+          </Link>
+          <button
+            type="button"
+            className="rounded p-2 text-ink hover:bg-raised lg:hidden"
+            aria-expanded={open}
+            aria-controls="site-mobile-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              {open ? (
+                <>
+                  <line x1="5" y1="5" x2="19" y2="19" />
+                  <line x1="19" y1="5" x2="5" y2="19" />
+                </>
+              ) : (
+                <>
+                  <line x1="4" y1="9" x2="20" y2="9" />
+                  <line x1="4" y1="15" x2="20" y2="15" />
+                </>
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {open && (
-        <nav className="border-t border-hairline bg-surface px-4 py-3 md:hidden" aria-label="Mobile">
+        <nav id="site-mobile-menu" className="border-t border-hairline bg-paper px-4 py-3 sm:px-6 lg:hidden" aria-label="Mobile">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className="block rounded px-3 py-2.5 text-[15px] font-medium text-ink-soft hover:bg-raised hover:text-ink"
+              className="flex items-center justify-between border-b border-hairline py-3.5 text-[15px] font-medium text-ink last:border-b-0"
             >
               {item.label}
+              <ArrowUpRight />
             </Link>
           ))}
           <Link
-            href="/work-with-us"
+            href="/multiplex"
             onClick={() => setOpen(false)}
-            className="mt-2 block rounded bg-brand px-3 py-2.5 text-center text-[15px] font-semibold text-white"
+            className="mt-3 flex items-center justify-between rounded-[3px] bg-brand px-4 py-3 text-[14px] font-semibold text-white"
           >
-            Work with us
+            Start building
+            <ArrowUpRight />
           </Link>
         </nav>
       )}

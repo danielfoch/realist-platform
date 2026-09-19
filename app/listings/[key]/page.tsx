@@ -464,7 +464,7 @@ export default async function ListingDetailPage({
         </section>
 
         {/* Work-with-us CTA */}
-        <section className="mt-12 rounded-xl border border-hairline-strong bg-raised p-6 sm:p-8">
+        <section className="band-night mt-12 rounded-xl p-6 sm:p-8">
           <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
             <div className="max-w-2xl">
               <h2 className="font-display text-2xl font-semibold tracking-tight">

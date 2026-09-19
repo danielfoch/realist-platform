@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/SiteNav";
 import {
   PODCAST_APPLE_URL,
   PODCAST_SPOTIFY_URL,
@@ -11,7 +12,7 @@ const FOOTER_COLS: Array<{
   links: Array<{ href: string; label: string; external?: boolean }>;
 }> = [
   {
-    heading: "Tools",
+    heading: "Build smarter",
     links: [
       { href: "/listings", label: "Listings & cap rates" },
       { href: "/multiplex", label: "Multiplex underwriter" },
@@ -19,7 +20,7 @@ const FOOTER_COLS: Array<{
     ],
   },
   {
-    heading: "Learn",
+    heading: "Know more",
     links: [
       { href: "/podcast", label: "Podcast" },
       { href: "/research", label: "Research" },
@@ -28,11 +29,11 @@ const FOOTER_COLS: Array<{
     ],
   },
   {
-    heading: "Company",
+    heading: "Go further, together",
     links: [
-      { href: "/about", label: "About" },
-      { href: "/community", label: "Community & events" },
+      { href: "/community", label: "Meetups & events" },
       { href: "/work-with-us", label: "Work with us" },
+      { href: "/about", label: "About" },
     ],
   },
   {
@@ -47,12 +48,19 @@ const FOOTER_COLS: Array<{
 
 export function SiteFooter() {
   return (
-    <footer className="mt-20 border-t border-hairline bg-surface">
+    <footer className="mt-20 border-t border-hairline">
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-hairline pb-8">
+          <Link href="/" aria-label="Realist home">
+            <BrandMark />
+          </Link>
+          <p className="text-[13px] text-ink-faint">More homes. More possibility.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 py-10 sm:grid-cols-4">
           {FOOTER_COLS.map((col) => (
             <div key={col.heading}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
+              <h3 className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">
                 {col.heading}
               </h3>
               <ul className="mt-3 space-y-2">
@@ -63,12 +71,12 @@ export function SiteFooter() {
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-ink-soft hover:text-brand"
+                        className="text-[13px] text-ink-soft hover:text-brand"
                       >
                         {link.label}
                       </a>
                     ) : (
-                      <Link href={link.href} className="text-sm text-ink-soft hover:text-brand">
+                      <Link href={link.href} className="text-[13px] text-ink-soft hover:text-brand">
                         {link.label}
                       </Link>
                     )}
@@ -79,18 +87,25 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-10 border-t border-hairline pt-6 text-xs leading-relaxed text-ink-faint">
-          <p>
-            © {new Date().getFullYear()} Realist. Tools and data are provided for
-            information only and are not investment, legal, or tax advice.
-          </p>
-          <p className="mt-2">
-            Listing content is provided under license by the Canadian Real Estate
-            Association (CREA). The trademarks REALTOR®, REALTORS® and the REALTOR®
-            logo are controlled by CREA and identify real estate professionals who
-            are members of CREA. The trademarks MLS®, Multiple Listing Service® and
-            the associated logos identify professional services rendered by REALTOR®
-            members of CREA.
+        <div className="border-t border-hairline pt-6 text-[11px] leading-relaxed text-ink-faint">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>© {new Date().getFullYear()} Realist.ca · Made for the Canadian real estate investor.</span>
+            <span className="flex items-center gap-4">
+              <Link href="/privacy" className="hover:text-ink">
+                Privacy
+              </Link>
+              <Link href="/terms" className="hover:text-ink">
+                Terms
+              </Link>
+            </span>
+          </div>
+          <p className="mt-4 max-w-4xl">
+            Tools and data are provided for information only and are not investment, legal, or tax
+            advice. Listing content is provided under license by the Canadian Real Estate Association
+            (CREA). The trademarks REALTOR®, REALTORS® and the REALTOR® logo are controlled by CREA
+            and identify real estate professionals who are members of CREA. The trademarks MLS®,
+            Multiple Listing Service® and the associated logos identify professional services rendered
+            by REALTOR® members of CREA.
           </p>
         </div>
       </div>

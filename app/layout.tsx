@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
+import { HideOnHome } from "@/components/HideOnHome";
 import { JsonLd } from "@/components/JsonLd";
 import { jsonLdDocument, organizationNode, webSiteNode } from "@/lib/seo/jsonld";
 import { SITE_BASE_URL } from "@/lib/brand";
@@ -47,7 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <JsonLd json={jsonLdDocument(organizationNode(), webSiteNode())} />
         <SiteNav />
         <main className="flex-1 flex flex-col">{children}</main>
-        <SiteFooter />
+        <HideOnHome>
+          <SiteFooter />
+        </HideOnHome>
       </body>
     </html>
   );

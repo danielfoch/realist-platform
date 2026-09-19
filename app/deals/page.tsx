@@ -61,6 +61,12 @@ export default async function DealsPage() {
             score each hit, suppress the false positives, and keep the history so you
             can see how long a seller has been motivated.
           </p>
+          <Link
+            href="/deals/map"
+            className="mt-5 inline-flex items-center gap-2 rounded-[3px] border border-hairline-strong bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
+          >
+            See them on the map →
+          </Link>
         </div>
       </section>
 

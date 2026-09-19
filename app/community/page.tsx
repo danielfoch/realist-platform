@@ -15,7 +15,7 @@ export const revalidate = 1800;
 export const metadata: Metadata = {
   title: "Community — investor meetups across Canada",
   description:
-    "The Canadian Real Estate Investor podcast community meets in person: monthly investor meetups across Canada and the flagship Toronto event on September 15. See upcoming events and get invites.",
+    "The Canadian Real Estate Investor podcast community meets in person: monthly investor meetups across Canada, with live RSVP counts from the Meetup network. See upcoming events and get invites.",
   alternates: { canonical: "/community" },
 };
 
@@ -38,28 +38,25 @@ function dateParts(event: MeetupEvent) {
   }
 }
 
-/** The flagship Sept 15, 2026 Toronto event, when the feed carries it. */
-function findSept15Event(events: MeetupEvent[]): MeetupEvent | undefined {
-  return events.find((event) => {
-    try {
-      const local = new Intl.DateTimeFormat("en-CA", {
-        timeZone: event.timezone ?? FALLBACK_TZ,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(event.startsAt));
-      return local === "2026-09-15";
-    } catch {
-      return false;
-    }
+/**
+ * A host who posts a recurring series a year out would bury every other city.
+ * Keep each series (same title, same city) to its next few dates.
+ */
+function capRecurringSeries(events: MeetupEvent[], maxPerSeries = 2): MeetupEvent[] {
+  const seen = new Map<string, number>();
+  return events.filter((event) => {
+    const key = `${event.title}|${cityFromLocation(event.location) ?? ""}`;
+    const count = seen.get(key) ?? 0;
+    seen.set(key, count + 1);
+    return count < maxPerSeries;
   });
 }
 
 export default async function CommunityPage() {
-  const events = await getUpcomingMeetupEvents().catch(() => []);
+  const allEvents = await getUpcomingMeetupEvents().catch(() => []);
+  const events = capRecurringSeries(allEvents);
+  const hiddenCount = allEvents.length - events.length;
   const meetupGroupUrl = getMeetupGroupUrl();
-  const sept15 = findSept15Event(events);
-  const sept15Url = sept15?.url ?? meetupGroupUrl;
 
   return (
     <>
@@ -115,48 +112,6 @@ export default async function CommunityPage() {
                 Join the group on Meetup ↗
               </a>
             )}
-          </div>
-        </div>
-      </section>
-
-      {/* Sept 15 flagship callout */}
-      <section className="border-b border-hairline border-y-0 bg-raised">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center">
-          <div className="flex items-center gap-5">
-            <div className="flex h-20 w-20 shrink-0 flex-col items-center justify-center rounded-lg bg-signal text-white">
-              <span className="text-[11px] font-bold uppercase tracking-widest">Sep</span>
-              <span className="tnum font-display text-3xl font-semibold leading-none">15</span>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">
-                Flagship event · Toronto — September 15
-              </p>
-              <h2 className="font-display mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-                The big one: our Toronto live event.
-              </h2>
-              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-ink-soft">
-                The whole community in one room — live show, market debate, and
-                the people you&rsquo;ve been arguing with in the comments.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3 md:ml-auto md:shrink-0">
-            {sept15Url && (
-              <a
-                href={sept15Url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-md bg-signal px-5 py-3 text-sm font-semibold text-white transition-colors hover:brightness-110"
-              >
-                RSVP on Meetup ↗
-              </a>
-            )}
-            <a
-              href="/community#events"
-              className="rounded-md border border-hairline-strong px-5 py-3 text-sm font-semibold text-ink transition-colors hover:border-ink-faint"
-            >
-              All events
-            </a>
           </div>
         </div>
       </section>
@@ -234,6 +189,12 @@ export default async function CommunityPage() {
                 </article>
               );
             })}
+            {hiddenCount > 0 && (
+              <p className="pt-5 text-sm text-ink-faint">
+                Showing the next two dates of each recurring meetup —{" "}
+                <span className="tnum">{hiddenCount}</span> later dates are on Meetup.
+              </p>
+            )}
           </div>
         ) : (
           <div className="mt-8 rounded-xl border border-hairline bg-surface p-8">
@@ -241,8 +202,7 @@ export default async function CommunityPage() {
               The next round of dates is being locked in.
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-soft">
-              Meetups run monthly and the flagship Toronto event lands September
-              15. {meetupGroupUrl
+              Meetups run monthly across the network. {meetupGroupUrl
                 ? "Events post to the Meetup group first — join it and you'll see new dates the moment hosts publish them."
                 : "Drop your email below and we'll send the invite as soon as each date is live."}
             </p>

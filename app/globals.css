@@ -7,43 +7,50 @@
 @source "../lib";
 
 /*
- * Realist design language — the terminal, not the brochure.
+ * Realist design language — greyscale with red accents.
  *
- * Matches the brand system in the legacy app (design_guidelines.md: "Linear's
- * refined dark interfaces, Stripe's professional restraint"): deep blue-black
- * ground, Realist red as the single loud color, Inter for UI, JetBrains Mono
- * for every financial figure. Deliberately dark-only — this is a data product
- * and the dark surface IS the brand; every color below is painted explicitly.
+ * One system with the homepage journey (components/scrollcraft/scrollcraft.css,
+ * its --rl-* tokens are the source of truth): light grey ground, charcoal ink,
+ * and Realist red as the only color. Inter for UI, JetBrains Mono for labels
+ * and every financial figure, a Georgia italic as the single flourish.
+ * Deliberately light-only; every color below is painted explicitly.
  *
  * Token names are semantic and stable (paper/surface/ink/...) — pages style
- * through them only.
+ * through them only. Two reds, by job: `brand` is the strong red that carries
+ * text and buttons at AA contrast; `accent` is the bright red for dots, rules
+ * and marks that never carry small text.
  */
 @theme {
-  /* Ground + surfaces (cool 220-family navy, from the legacy tokens). */
-  --color-paper: #070b14;        /* page ground        hsl(222 47% 5%)  */
-  --color-surface: #0c1220;      /* cards, panels      hsl(222 45% 9%)  */
-  --color-raised: #121a2c;       /* hovered / elevated                  */
-  --color-ink: #f3f6fb;          /* primary text                        */
-  --color-ink-soft: #a9b3c6;     /* secondary text                      */
-  --color-ink-faint: #66718a;    /* captions, labels                    */
-  --color-hairline: #1b2438;     /* borders                             */
-  --color-hairline-strong: #2a3550;
+  /* Ground + surfaces: neutral greys, no hue. */
+  --color-paper: #f5f5f5;        /* page ground            (--rl-paper)  */
+  --color-surface: #ffffff;      /* cards, panels                        */
+  --color-raised: #ebebeb;       /* hovered / pressed                    */
+  --color-ink: #242424;          /* primary text           (--rl-ink)    */
+  --color-ink-soft: #4d4d4d;     /* secondary text                       */
+  --color-ink-faint: #696969;    /* captions, labels       (--rl-muted)  */
+  --color-hairline: #dadada;     /* borders                (--rl-line)   */
+  --color-hairline-strong: #bdbdbd;
+  --color-night: #202020;        /* the one dark band (closing, CTAs)    */
 
-  /* Realist red — the one loud color. Use sparingly, always for action. */
-  --color-brand: #ff3344;        /* hsl(356 100% 60%)                   */
-  --color-brand-deep: #e01f30;
-  --color-brand-wash: #2a1018;   /* red-tinted panel ground             */
+  /* Realist red — the only color on the page. */
+  --color-brand: #be1730;        /* text + buttons  (--rl-accent-strong) */
+  --color-brand-deep: #98102a;   /* hover / pressed                      */
+  --color-brand-wash: #ffe7eb;   /* red-tinted ground (--rl-accent-soft) */
+  --color-accent: #ff334b;       /* dots, rules, marks     (--rl-accent) */
 
-  /* Secondary signal (legacy accent, orange) + semantics. */
-  --color-signal: #ff7033;       /* hsl(16 100% 60%)                    */
-  --color-signal-wash: #2a180e;
-  --color-good: #2fbf71;
-  --color-bad: #ff5d6c;
+  /* "Signal" collapses into the red family: greyscale + red, nothing else. */
+  --color-signal: #be1730;
+  --color-signal-wash: #ffe7eb;
+  /* Ledger convention: in the black, in the red. */
+  --color-good: #242424;
+  --color-bad: #be1730;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
-  /* Display = Inter set tight; the brand has no serif. */
+  /* Display = Inter set tight, as on the homepage. */
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* The one flourish: italic emphasis inside display headings. */
+  --font-flourish: Georgia, "Times New Roman", serif;
 }
 
 html {
@@ -68,6 +75,12 @@ body {
 .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
+}
+/* The homepage's italic flourish, available to any display heading. */
+.font-display em {
+  font-family: var(--font-flourish);
+  font-weight: 400;
+  letter-spacing: -0.045em;
 }
 
 ::selection {
@@ -119,12 +132,12 @@ body {
   line-height: 1.25;
 }
 
-/* MapLibre chrome, tuned to the terminal. */
+/* MapLibre chrome, tuned to the greyscale system. */
 .maplibregl-map {
   font: inherit;
 }
 .maplibregl-ctrl-attrib {
-  background: rgba(7, 11, 20, 0.75) !important;
+  background: rgba(245, 245, 245, 0.85) !important;
   color: var(--color-ink-faint) !important;
   font-size: 10px !important;
 }
@@ -136,7 +149,7 @@ body {
   color: var(--color-ink) !important;
   border: 1px solid var(--color-hairline-strong);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   padding: 10px 12px !important;
   font-family: var(--font-sans);
 }
@@ -149,4 +162,25 @@ body {
   font-size: 16px;
   right: 4px;
   top: 2px;
+}
+
+/*
+ * The one dark surface, borrowed from the homepage's closing section. Tokens
+ * are re-pointed inside the band, so ordinary utilities (text-ink-soft,
+ * border-hairline…) resolve to their on-dark values without per-element work.
+ */
+.band-night {
+  background: var(--color-night);
+  color: #f5f5f5;
+  --color-paper: #202020;
+  --color-surface: #2b2b2b;
+  --color-raised: #333333;
+  --color-ink: #f5f5f5;
+  --color-ink-soft: #c5c5c5;
+  --color-ink-faint: #a3a3a3;
+  --color-hairline: #3a3a3a;
+  --color-hairline-strong: #5a5a5a;
+}
+.band-night em {
+  color: var(--color-accent);
 }

@@ -55,9 +55,9 @@ export interface TerminalEpisode {
 }
 
 const CATEGORIES = [
-  { key: "foreclosure_pos", label: "Power of sale", color: "#ff3344" },
-  { key: "vtb", label: "VTB", color: "#ff7033" },
-  { key: "motivated", label: "Motivated", color: "#4cc9f0" },
+  { key: "foreclosure_pos", label: "Power of sale", color: "#ff334b" },
+  { key: "vtb", label: "VTB", color: "#98102a" },
+  { key: "motivated", label: "Motivated", color: "#242424" },
 ] as const;
 
 function dealAddress(deal: DealListing): string {
@@ -109,7 +109,7 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
     const map = new maplibregl.Map({
       container: mapContainer.current,
       // Keyless, production-permitted vector basemap (openfreemap.org).
-      style: "https://tiles.openfreemap.org/styles/dark",
+      style: "https://tiles.openfreemap.org/styles/positron",
       // Vancouver → St. John's: the band where the listings actually are.
       bounds: [
         [-128.5, 42.0],
@@ -195,10 +195,10 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
           source: "rents",
           paint: {
             "circle-radius": ["interpolate", ["linear"], ["get", "twoBed"], 1200, 4, 3400, 11],
-            "circle-color": "#66718a",
-            "circle-opacity": 0.35,
-            "circle-stroke-color": "#a9b3c6",
-            "circle-stroke-opacity": 0.5,
+            "circle-color": "#696969",
+            "circle-opacity": 0.22,
+            "circle-stroke-color": "#4d4d4d",
+            "circle-stroke-opacity": 0.55,
             "circle-stroke-width": 1,
           },
         });
@@ -214,8 +214,8 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
             "text-font": ["Noto Sans Regular"],
           },
           paint: {
-            "text-color": "#a9b3c6",
-            "text-halo-color": "#070b14",
+            "text-color": "#4d4d4d",
+            "text-halo-color": "#f5f5f5",
             "text-halo-width": 1,
           },
         });
@@ -227,9 +227,9 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
             .setLngLat(e.lngLat)
             .setHTML(
               `<div style="font-size:13px"><b>${p.city}, ${p.province}</b><br/>` +
-                `<span style="color:#a9b3c6">CMHC avg rent</span><br/>` +
+                `<span style="color:#696969">CMHC avg rent</span><br/>` +
                 `1BR <b>$${Number(p.oneBed).toLocaleString()}</b> · 2BR <b>$${Number(p.twoBed).toLocaleString()}</b><br/>` +
-                `<a href="/listings?city=${encodeURIComponent(p.city)}" style="color:#ff3344">Browse ${p.city} listings →</a></div>`,
+                `<a href="/listings?city=${encodeURIComponent(p.city)}" style="color:#be1730">Browse ${p.city} listings →</a></div>`,
             )
             .addTo(map);
         });
@@ -304,7 +304,7 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
         "circle-radius": 6,
         "circle-color": ["get", "color"],
         "circle-opacity": 0.9,
-        "circle-stroke-color": "#070b14",
+        "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1.5,
       },
     });
@@ -316,8 +316,8 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
         .setLngLat(e.lngLat)
         .setHTML(
           `<div style="font-size:13px"><span style="color:${p.color};font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em">${p.label} · ${p.score}/100</span><br/>` +
-            `<b>${p.address}</b><br/><span style="color:#a9b3c6">${p.city}</span> · <b>${p.price ? "$" + Number(p.price).toLocaleString() : "—"}</b><br/>` +
-            `<a href="/listings/${p.key}" style="color:#ff3344">Open listing →</a></div>`,
+            `<b>${p.address}</b><br/><span style="color:#696969">${p.city}</span> · <b>${p.price ? "$" + Number(p.price).toLocaleString() : "—"}</b><br/>` +
+            `<a href="/listings/${p.key}" style="color:#be1730">Open listing →</a></div>`,
         )
         .addTo(map);
     });
@@ -379,7 +379,7 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
       });
       if (payload.site?.lat && payload.site?.lng && mapRef.current) {
         mapRef.current.flyTo({ center: [payload.site.lng, payload.site.lat], zoom: 15 });
-        new maplibregl.Marker({ color: "#ff3344" })
+        new maplibregl.Marker({ color: "#be1730" })
           .setLngLat([payload.site.lng, payload.site.lat])
           .addTo(mapRef.current);
       }
@@ -397,7 +397,7 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
   /* ── render ────────────────────────────────────────────────────── */
 
   return (
-    <div className="flex flex-col lg:h-[calc(100vh-3.25rem)] lg:flex-row">
+    <div className="flex flex-col lg:h-[calc(100vh-5rem)] lg:flex-row">
       {/* Map */}
       <div className="relative h-[52vh] flex-1 lg:h-auto">
         {/* Inline position: maplibre-gl.css sets .maplibregl-map to relative

@@ -30,10 +30,10 @@ history. Port selectively — never wholesale.
 
 | Route | Purpose |
 |---|---|
-| `/` | Podcast-led home: Canada's #1 real estate podcast, latest episode player, tools, event CTA |
+| `/` | The ten-stage multiplex journey (components/scrollcraft, ported from PR #191): Learn → Own. Carries its own header/footer; the shared nav and footer hide on this route |
 | `/listings` (+`/listings/[key]`) | The ONE map/search: DDF listings across Canada, pre-underwritten (cap rate, cash flow) |
 | `/multiplex` (+`/multiplex/r/[token]`) | Toronto multiplex underwriter — crown jewel. Lot → feasibility + concepts + CMHC proforma |
-| `/deals` (+`/deals/report/[month]`) | Distressed: power-of-sale / VTB search, deal feed, monthly report |
+| `/deals` (+`/deals/map`, `/deals/report/[month]`) | Distressed: power-of-sale / VTB search, deal feed, the map terminal (rents + deal pins + inline underwrite), monthly report |
 | `/podcast` (+`/podcast/[slug]`) | Episode hub + auto-generated SEO episode pages |
 | `/community` | Meetup.com events, integrated look, cross-signup |
 | `/research` (+`/research/[slug]`) | Config-driven reports + links to stats.realist.ca |
@@ -44,6 +44,13 @@ Do not add new top-level routes without collapsing something else. One map tool,
 underwriting engine, one content model.
 
 ## Non-negotiable conventions
+
+- **Palette: greyscale with red accents, light only.** The homepage's `--rl-*` tokens in
+  `components/scrollcraft/scrollcraft.css` are the source of truth and `app/globals.css`
+  mirrors them: paper `#f5f5f5`, ink `#242424`, `brand` `#be1730` for text and buttons
+  (AA contrast), `accent` `#ff334b` for dots/rules/marks only. No other hues — semantic
+  good/bad follow the ledger convention (in the black / in the red). `.band-night` is the
+  one dark surface.
 
 - **One cap-rate/cash-flow engine**: `lib/underwriting/investmentMetrics.ts`. Every
   surface (crawler, listings API, multiplex proforma, client) calls it. Never

@@ -12,12 +12,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_BASE_URL}/listings`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_BASE_URL}/multiplex`, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE_BASE_URL}/deals`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITE_BASE_URL}/deals/map`, changeFrequency: "daily", priority: 0.7 },
     { url: `${SITE_BASE_URL}/podcast`, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_BASE_URL}/research`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE_BASE_URL}/encyclopedia`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITE_BASE_URL}/community`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE_BASE_URL}/about`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_BASE_URL}/work-with-us`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${SITE_BASE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_BASE_URL}/terms`, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   for (const report of sortedConfigReports) {
