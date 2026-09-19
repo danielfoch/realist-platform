@@ -72,6 +72,20 @@ export const MEETUP_NETWORK_GROUPS: MeetupNetworkGroup[] = [
     province: "NB",
     status: "active",
   },
+  {
+    urlname: "calgary-real-estate",
+    name: "Calgary Real Estate",
+    city: "Calgary",
+    province: "AB",
+    status: "active",
+  },
+  {
+    urlname: "canadian-real-estate-investor-meetups-prince-edward-island",
+    name: "Prince Edward Island Real Estate",
+    city: "Charlottetown",
+    province: "PE",
+    status: "active",
+  },
 ];
 
 // ---------------------------------------------------------------------------

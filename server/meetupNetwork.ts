@@ -41,6 +41,10 @@
  *   MEETUP_JWT_PRIVATE_KEY       PEM RSA private key whose public half is
  *                                registered on the consumer. Literal "\n"
  *                                escapes are accepted so it fits on one line.
+ *   MEETUP_JWT_KEY_ID            Signing key id shown beside the key on the
+ *                                consumer's settings page (the JWT `kid`
+ *                                header — Meetup uses it to pick which of the
+ *                                consumer's public keys verifies the assertion).
  *   MEETUP_AUTHORIZED_MEMBER_ID  Meetup member id the consumer acts as (the
  *                                JWT `sub`); must be an admin of the network.
  *
@@ -107,15 +111,17 @@ export interface MeetupJwtCredentials {
   clientId: string;
   memberId: string;
   privateKeyPem: string;
+  /** Signing key id (JWT `kid`); a consumer can hold two keys for rotation. */
+  keyId?: string;
 }
 
-/** The JWT server-flow credentials, or null unless all three are present. */
+/** The JWT server-flow credentials, or null unless the required three are present. */
 function readJwtCredentials(): MeetupJwtCredentials | null {
   const clientId = env("MEETUP_CLIENT_ID");
   const memberId = env("MEETUP_AUTHORIZED_MEMBER_ID");
   const privateKeyPem = env("MEETUP_JWT_PRIVATE_KEY");
   if (!clientId || !memberId || !privateKeyPem) return null;
-  return { clientId, memberId, privateKeyPem };
+  return { clientId, memberId, privateKeyPem, keyId: env("MEETUP_JWT_KEY_ID") || undefined };
 }
 
 // ---------------------------------------------------------------------------
@@ -136,18 +142,22 @@ function base64Url(input: string | Buffer): string {
 }
 
 /**
- * Signed assertion for Meetup's OAuth2 JWT flow: header {alg: RS256, typ: JWT},
- * claims {sub: member, iss: client, aud: api.meetup.com, exp: now + 120s},
- * RS256 over the private key registered on the OAuth consumer.
+ * Signed assertion for Meetup's OAuth2 JWT flow: header {kid, typ: JWT,
+ * alg: RS256}, claims {sub: member, iss: client, aud: api.meetup.com,
+ * exp: now + 120s}, RS256 over the private key registered on the OAuth
+ * consumer. `kid` names which of the consumer's signing keys to verify with.
  */
 export function buildMeetupJwtAssertion(input: {
   clientId: string;
   memberId: string;
   privateKeyPem: string;
+  keyId?: string;
   now?: Date;
 }): string {
   const now = input.now ?? new Date();
-  const header = { alg: "RS256", typ: "JWT" };
+  const header = input.keyId
+    ? { kid: input.keyId, typ: "JWT", alg: "RS256" }
+    : { alg: "RS256", typ: "JWT" };
   const claims = {
     sub: input.memberId,
     iss: input.clientId,

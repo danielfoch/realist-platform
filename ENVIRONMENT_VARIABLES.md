@@ -41,9 +41,10 @@ Every inquiry on the site reaches a human without any of these set. See `server/
 | `MEETUP_CLIENT_ID` | unset | OAuth consumer key; the JWT `iss`. |
 | `MEETUP_CLIENT_SECRET` | unset | OAuth consumer secret. Not used by the JWT grant itself; accepted so the consumer's settings can be pasted together. |
 | `MEETUP_JWT_PRIVATE_KEY` | unset | PEM RSA private key whose public half is registered on the OAuth consumer. Literal `\n` escapes are accepted (single-line env var). |
+| `MEETUP_JWT_KEY_ID` | unset | Signing key id listed beside the key on the consumer's settings page. Sent as the JWT `kid` header so Meetup knows which of the consumer's (up to two) public keys verifies the assertion. |
 | `MEETUP_AUTHORIZED_MEMBER_ID` | unset | Meetup member id the consumer acts as (the JWT `sub`); must be an admin of the network. |
 
-The JWT flow needs `MEETUP_CLIENT_ID`, `MEETUP_JWT_PRIVATE_KEY`, and `MEETUP_AUTHORIZED_MEMBER_ID` together. Tokens are minted at `https://secure.meetup.com/oauth2/access` (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`) and cached until 60s before expiry. Responses are cached in memory for 20 minutes; a failed refresh serves the previous snapshot with `stale: true`.
+The JWT flow needs `MEETUP_CLIENT_ID`, `MEETUP_JWT_PRIVATE_KEY`, and `MEETUP_AUTHORIZED_MEMBER_ID` together; set `MEETUP_JWT_KEY_ID` alongside them. A signing key's private half is shown once, when the key is created on the consumer page — if it was not saved, create a second key rather than hunting for the first. Tokens are minted at `https://secure.meetup.com/oauth2/access` (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`) and cached until 60s before expiry. Responses are cached in memory for 20 minutes; a failed refresh serves the previous snapshot with `stale: true`.
 
 ## Example
 ```env

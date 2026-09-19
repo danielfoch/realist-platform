@@ -39,6 +39,10 @@ import {
 
 const [TORONTO, VANCOUVER, KITCHENER, VAUGHAN, MONCTON] = MEETUP_NETWORK_GROUPS.map((group) => group.urlname);
 const CALGARY = "the-canadian-real-estate-investor-calgary";
+// The registry grows as cities are added; assertions scale with it rather than
+// pinning its size. New groups are appended, so the first five keep their index.
+const REGISTRY = MEETUP_NETWORK_GROUPS.map((group) => group.urlname);
+const N = REGISTRY.length;
 
 // A representative Meetup export: VTIMEZONE with nested DTSTART lines (which
 // must NOT become events), a TZID event with folded SUMMARY/DESCRIPTION and
@@ -311,15 +315,7 @@ describe("mergeGroupLists", () => {
       { urlname: "no-details-yet" },
     ]);
 
-    expect(merged.map((group) => group.urlname)).toEqual([
-      TORONTO,
-      VANCOUVER,
-      KITCHENER,
-      VAUGHAN,
-      MONCTON,
-      CALGARY,
-      "no-details-yet",
-    ]);
+    expect(merged.map((group) => group.urlname)).toEqual([...REGISTRY, CALGARY, "no-details-yet"]);
     expect(merged[3]).toMatchObject({
       name: "Vaughan Real Estate Investors (network)",
       city: "Vaughan",
@@ -328,7 +324,7 @@ describe("mergeGroupLists", () => {
       memberCount: 640,
     });
     expect(merged[0].memberCount).toBeNull();
-    expect(merged[5]).toEqual({
+    expect(merged[N]).toEqual({
       urlname: CALGARY,
       name: "Calgary Real Estate Investors",
       city: "Calgary",
@@ -336,7 +332,7 @@ describe("mergeGroupLists", () => {
       status: "active",
       memberCount: 812,
     });
-    expect(merged[6]).toMatchObject({ name: "No Details Yet", city: "", status: "active", memberCount: null });
+    expect(merged[N + 1]).toMatchObject({ name: "No Details Yet", city: "", status: "active", memberCount: null });
   });
 
   it("dedupes case-insensitively, keeping the first spelling, and fills blank registry cities", () => {
@@ -468,6 +464,19 @@ describe("buildMeetupJwtAssertion", () => {
     expect(verify(jwt, publicKey)).toBe(true);
   });
 
+  it("carries the signing key id as the kid header so Meetup can pick the public key", () => {
+    const jwt = buildMeetupJwtAssertion({
+      clientId: "client-key",
+      memberId: "424242",
+      privateKeyPem: pem,
+      keyId: "signing-key-id",
+      now,
+    });
+    const header = JSON.parse(Buffer.from(jwt.split(".")[0], "base64url").toString("utf8"));
+    expect(header).toEqual({ kid: "signing-key-id", typ: "JWT", alg: "RS256" });
+    expect(verify(jwt, publicKey)).toBe(true);
+  });
+
   it("accepts a single-line PEM with literal \\n escapes (how it lands in env vars)", () => {
     const escaped = `"${pem.replace(/\n/g, "\\n")}"`;
     const jwt = buildMeetupJwtAssertion({ clientId: "c", memberId: "m", privateKeyPem: escaped, now });
@@ -582,13 +591,15 @@ describe("getMeetupNetwork", () => {
       for (const [urlname, body] of Object.entries(feeds)) {
         if (url === icalUrl(urlname)) return icalFeed(body);
       }
+      // Registry groups beyond the ones this case scripts: healthy, nothing posted.
+      if (REGISTRY.some((urlname) => url === icalUrl(urlname))) return icalFeed(vcalendar());
       return icalFeed("not found", 404);
     });
 
     const { getMeetupNetwork } = await loadFreshModule();
     const data = await getMeetupNetwork();
 
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(N);
     const urls = fetchMock.mock.calls.map((call) => String(call[0]));
     expect(urls.sort()).toEqual(MEETUP_NETWORK_GROUPS.map((group) => icalUrl(group.urlname)).sort());
     expect(urls.some((url) => url.includes("api.meetup.com"))).toBe(false);
@@ -619,7 +630,7 @@ describe("getMeetupNetwork", () => {
     // No LOCATION in the feed: the registry city fills in.
     expect(data.events[0].city).toBe("Toronto");
 
-    expect(data.groups).toHaveLength(5);
+    expect(data.groups).toHaveLength(N);
     expect(data.groups[0]).toMatchObject({
       urlname: TORONTO,
       url: `https://www.meetup.com/${TORONTO}/`,
@@ -638,14 +649,14 @@ describe("getMeetupNetwork", () => {
     const withPast = await getMeetupNetwork({ includePast: true });
     expect(withPast.events[0].id).toBe("event_200000000@meetup.com");
     expect(withPast.events).toHaveLength(4);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(N);
   });
 
   it("dedupes concurrent refreshes into one fetch per group", async () => {
     const fetchMock = stubFetch(() => icalFeed(vcalendar()));
     const { getMeetupNetwork } = await loadFreshModule();
     const [a, b] = await Promise.all([getMeetupNetwork(), getMeetupNetwork()]);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(N);
     expect(a.fetchedAt).toBe(b.fetchedAt);
     expect(a.source).toBe("empty");
   });
@@ -671,15 +682,15 @@ describe("getMeetupNetwork", () => {
     const { getMeetupNetwork } = await loadFreshModule();
     const data = await getMeetupNetwork();
 
-    expect(fetchMock).toHaveBeenCalledTimes(6); // registry + Calgary; Toronto not fetched twice
+    expect(fetchMock).toHaveBeenCalledTimes(N + 1); // registry + Calgary; Toronto not fetched twice
     expect(data.proUrlname).toBe("some-other-network");
-    expect(data.groups[5]).toMatchObject({
+    expect(data.groups[N]).toMatchObject({
       urlname: CALGARY,
       name: "The Canadian Real Estate Investor Calgary",
       city: "",
       status: "active",
     });
-    expect(data.groups[5].nextEvent).toMatchObject({ id: "event_310000001@meetup.com", city: "Calgary" });
+    expect(data.groups[N].nextEvent).toMatchObject({ id: "event_310000001@meetup.com", city: "Calgary" });
   });
 
   it("falls back to iCal when the GraphQL query fails, logging once", async () => {
@@ -807,11 +818,11 @@ describe("getMeetupNetwork", () => {
 
     // 3. iCal only for the groups GraphQL did not cover.
     const icalUrls = calls.map((call) => call.url).filter((url) => url.endsWith("/events/ical/"));
-    expect(icalUrls.sort()).toEqual([KITCHENER, MONCTON, VANCOUVER, VAUGHAN].map(icalUrl).sort());
+    expect(icalUrls.sort()).toEqual(REGISTRY.filter((urlname) => urlname !== TORONTO).map(icalUrl).sort());
 
     expect(data.source).toBe("mixed");
     expect(data.stale).toBe(false);
-    expect(data.groups.map((group) => group.urlname)).toEqual([TORONTO, VANCOUVER, KITCHENER, VAUGHAN, MONCTON, CALGARY]);
+    expect(data.groups.map((group) => group.urlname)).toEqual([...REGISTRY, CALGARY]);
     expect(data.groups[0]).toMatchObject({
       name: "Toronto Real Estate (network)",
       city: "Toronto",
@@ -819,7 +830,7 @@ describe("getMeetupNetwork", () => {
       status: "active",
       memberCount: 4100,
     });
-    expect(data.groups[5]).toMatchObject({
+    expect(data.groups[N]).toMatchObject({
       name: "Calgary Real Estate Investors",
       city: "Calgary",
       province: "AB",
@@ -827,7 +838,7 @@ describe("getMeetupNetwork", () => {
       memberCount: 812,
       url: `https://www.meetup.com/${CALGARY}/`,
     });
-    expect(data.groups[5].nextEvent).toEqual({
+    expect(data.groups[N].nextEvent).toEqual({
       id: "310000001",
       groupUrlname: CALGARY,
       groupName: "Calgary Real Estate Investors",
@@ -894,13 +905,13 @@ describe("getMeetupNetwork", () => {
     healthy = false;
     vi.advanceTimersByTime(19 * 60 * 1000);
     expect((await getMeetupNetwork()).stale).toBe(false);
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(N);
 
     // Past the TTL the refresh is attempted, fails everywhere, and the old
     // snapshot is served flagged as stale.
     vi.advanceTimersByTime(2 * 60 * 1000);
     const second = await getMeetupNetwork();
-    expect(fetchMock).toHaveBeenCalledTimes(10);
+    expect(fetchMock).toHaveBeenCalledTimes(2 * N);
     expect(second.stale).toBe(true);
     expect(second.fetchedAt).toBe(first.fetchedAt);
     expect(second.events.map((item) => item.id)).toEqual(["event_300000001@meetup.com"]);
@@ -930,7 +941,7 @@ describe("getMeetupNetwork", () => {
     vi.advanceTimersByTime(21 * 60 * 1000);
     const data = await getMeetupNetwork();
 
-    expect(fetchMock).toHaveBeenCalledTimes(10);
+    expect(fetchMock).toHaveBeenCalledTimes(2 * N);
     expect(data.stale).toBe(false); // the refresh as a whole succeeded
     expect(data.events.map((item) => item.id)).toEqual(["event_300000001@meetup.com"]);
     expect(String(vi.mocked(console.warn).mock.calls.at(-1)?.[0])).toContain(`${TORONTO} (HTTP 503)`);

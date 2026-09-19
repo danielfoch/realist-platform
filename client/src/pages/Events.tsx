@@ -21,6 +21,8 @@ import { marketExperts, type MarketExpert } from "@/lib/marketExperts";
 import { getHostByEventName } from "@/lib/meetupHosts";
 import { ContactHostDialog } from "@/components/ContactHostDialog";
 import { MarketExpertApplicationDialog } from "@/components/MarketExpertApplicationDialog";
+import { MeetupRsvpDialog, type RsvpTarget } from "@/components/meetups/MeetupRsvpDialog";
+import { CalendarByDay, CityGrid, useNetworkCalendar } from "@/components/meetups/NetworkCalendar";
 import unpackingMultiplexesEdmontonImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_10_07_PM_1780344719233.webp";
 import unpackingMultiplexesTorontoImg from "@assets/ChatGPT_Image_Jun_1,_2026,_04_12_34_PM_1780344761775.webp";
 
@@ -336,6 +338,11 @@ export default function Events() {
     queryKey: ["/api/events"],
   });
 
+  // The Meetup.com network (merged with Eventbrite and native events, deduped
+  // by city and date) renders natively below; one dialog serves both lists.
+  const network = useNetworkCalendar();
+  const [rsvpTarget, setRsvpTarget] = useState<RsvpTarget | null>(null);
+
   // Check if an event is a "featured" special event (not a regular meetup)
   const isFeaturedEvent = (event: EventbriteEvent): boolean => {
     const nameLower = event.name.toLowerCase();
@@ -409,10 +416,10 @@ export default function Events() {
               workshops, and networking opportunities.
             </p>
             <p className="mt-3 text-sm">
-              <Link href="/meetups" className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline" data-testid="link-events-to-meetups">
-                Looking for the free monthly meetups? See every city and its next date
-                <ExternalLink className="h-3.5 w-3.5" />
-              </Link>
+              <a href="#meetups" className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline" data-testid="link-events-to-meetups">
+                Free monthly meetups in every city — jump to the calendar
+                <ChevronDown className="h-3.5 w-3.5" />
+              </a>
             </p>
             {data?.lastFetched && (
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -436,6 +443,48 @@ export default function Events() {
             <NativeEventsList />
           </div>
 
+          {/* The Meetup.com network, rendered natively */}
+          <section id="meetups" className="mb-16 scroll-mt-24 space-y-10" data-testid="section-network-meetups">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Users className="h-6 w-6 text-primary" />
+                  <h2 className="text-2xl font-bold">Monthly Meetups</h2>
+                  <Badge variant="outline" className="text-xs">
+                    Free · across Canada
+                  </Badge>
+                </div>
+                <a
+                  href={network.proUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
+                  data-testid="link-events-meetup-network"
+                >
+                  Our network on Meetup.com
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <p className="text-muted-foreground">
+                Every city in the Canadian Real Estate Investor meetup network, live from Meetup.com. RSVP right
+                here — your email doubles as a free Realist account.
+              </p>
+              <CalendarByDay calendar={network} onTarget={setRsvpTarget} maxPerCity={2} />
+              {network.events.length > 0 && (
+                <p className="text-sm">
+                  <Link href="/meetups" className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline" data-testid="link-events-full-calendar">
+                    See the full meetup calendar
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Link>
+                </p>
+              )}
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Find your city</h3>
+              <CityGrid calendar={network} onTarget={setRsvpTarget} />
+            </div>
+          </section>
+
           {isLoading ? (
             <div className="space-y-8">
               <div>
@@ -455,7 +504,7 @@ export default function Events() {
                 </div>
               </div>
             </div>
-          ) : (featuredEvents.length > 0 || groupedUpcoming.length > 0) ? (
+          ) : (featuredEvents.length > 0 || groupedUpcoming.length > 0 || groupedPast.length > 0 || network.events.length > 0) ? (
             <>
               {/* Featured Events Section */}
               {featuredEvents.length > 0 && (
@@ -603,28 +652,6 @@ export default function Events() {
                   })}
                 </div>
               </div>
-
-              {/* Regular Meetups Section */}
-              {groupedUpcoming.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Users className="h-6 w-6 text-primary" />
-                    <h2 className="text-2xl font-bold">Upcoming Meetups</h2>
-                    <Badge variant="outline" className="text-xs">
-                      First Tuesday of every month
-                    </Badge>
-                  </div>
-                  <p className="text-muted-foreground mb-4">
-                    Join investors across Canada at our monthly meetups. Click on a date to see all cities.
-                  </p>
-                  
-                  <div className="space-y-4">
-                    {groupedUpcoming.map((group) => (
-                      <MeetupDaySection key={group.dateKey} group={group} />
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {groupedPast.length > 0 && (
                 <div className="mt-16">
@@ -788,6 +815,7 @@ export default function Events() {
         </div>
       </main>
 
+      <MeetupRsvpDialog target={rsvpTarget} onClose={() => setRsvpTarget(null)} />
     </div>
   );
 }
