@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { SaveDealButton } from "@/components/auth/SaveDealButton";
 import { fmtMoney, fmtNum, fmtPct, fmtSqft } from "./format";
 
 /**
@@ -718,6 +719,19 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
               >
                 {copied ? "Link copied ✓" : "Share this report"}
               </button>
+            )}
+            {payload.shareToken && (
+              <SaveDealButton
+                onDark
+                kind="multiplex"
+                refKey={payload.shareToken}
+                title={site.address?.trim() || "Multiplex underwrite"}
+                snapshot={{
+                  units: u.maxUnitsAsOfRight,
+                  recommended: u.recommendedTakeout.takeout,
+                  score: u.recommendedTakeout.score,
+                }}
+              />
             )}
           </div>
         </div>

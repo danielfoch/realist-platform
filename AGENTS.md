@@ -39,6 +39,7 @@ history. Port selectively — never wholesale.
 | `/research` (+`/research/[slug]`) | Config-driven reports + links to stats.realist.ca |
 | `/encyclopedia` (+`/encyclopedia/[slug]`) | 149 investing guides (ported content) |
 | `/about`, `/work-with-us` | Team, podcast credibility, Konfidis offer funnel (50% cash-back CTA) |
+| `/login` (+`/login/confirm`), `/account` | Sign in / create account (password, Google, emailed link); profile, saved deals, email preference. Not indexed |
 
 Do not add new top-level routes without collapsing something else. One map tool, one
 underwriting engine, one content model.
@@ -61,5 +62,14 @@ underwriting engine, one content model.
   `lib/seo/jsonld.ts`. Sitemaps via `app/sitemap.ts`. Canonical base URL comes from
   `lib/brand.ts` `SITE_BASE_URL` (env `NEXT_PUBLIC_SITE_URL`, default realist.ca).
 - **Secrets** only via env vars — never commit keys. See `.env.example`.
+- **Accounts** (`lib/auth/*`): opaque session tokens, SHA-256 at rest, cookie
+  `realist_session`; every mutating route checks `isSameOrigin`. An emailed link is only
+  spent by the POST from `/login/confirm`, never by a GET (mail scanners pre-fetch).
+  Marketing consent is an append-only ledger (`email_consent`) mirrored on the user —
+  write it through `recordConsent`, never by updating the flag alone.
+- **Legacy members** arrive via `scripts/migrate-users.ts` (rules + tests in
+  `lib/migration/`). It is re-runnable until cutover and never overwrites what a member
+  has changed here. Most legacy accounts have no password: the emailed link is their
+  way in, so `RESEND_API_KEY` must be set before cutover.
 - Pure logic lives in `lib/**` with tests; route handlers and pages stay thin.
 - Ported files keep their original comment voice; do not add porting commentary.

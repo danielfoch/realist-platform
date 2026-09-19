@@ -11,14 +11,17 @@
     "test:watch": "vitest",
     "db:push": "drizzle-kit push",
     "sync:ddf": "tsx scripts/sync-ddf.ts",
-    "sync:rents": "tsx scripts/sync-rents.ts"
+    "sync:rents": "tsx scripts/sync-rents.ts",
+    "migrate:users": "tsx scripts/migrate-users.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.121.0",
     "@neondatabase/serverless": "^1.1.0",
+    "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "maplibre-gl": "^5.24.0",
     "next": "16.3.3",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
@@ -27,6 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.11",

@@ -25,6 +25,7 @@ import {
   jsonLdDocument,
   realEstateListingNode,
 } from "@/lib/seo/jsonld";
+import { SaveDealButton } from "@/components/auth/SaveDealButton";
 import { DdfAttribution } from "@/components/listings/DdfAttribution";
 import {
   filterListingPhotos,
@@ -302,9 +303,26 @@ export default async function ListingDetailPage({
       {/* Header */}
       <section className="border-b border-hairline bg-surface">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <Link href="/listings" className="text-sm font-semibold text-brand hover:text-brand-deep">
-            ← All listings
-          </Link>
+          <div className="flex items-center justify-between gap-4">
+            <Link href="/listings" className="text-sm font-semibold text-brand hover:text-brand-deep">
+              ← All listings
+            </Link>
+            <SaveDealButton
+              kind="listing"
+              refKey={listing.mlsNumber}
+              title={listing.streetLine}
+              snapshot={{
+                price: listing.price,
+                city: listing.city,
+                province: listing.province,
+                netYield: uw?.netYield,
+                grossYield: uw?.grossYield,
+                cashFlowMonthly: uw?.cashFlowMonthly,
+                beds: listing.beds,
+                units: listing.units,
+              }}
+            />
+          </div>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">

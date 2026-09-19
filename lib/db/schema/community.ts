@@ -24,6 +24,9 @@ export const communityLeads = pgTable(
     message: text("message"),
     /** Free-form "what are you buying" from the work-with-us form. */
     propertyInterest: text("property_interest"),
+    /** For source 'meetup_rsvp': which event the person raised their hand for. */
+    eventUid: text("event_uid"),
+    eventTitle: text("event_title"),
     consentMarketing: boolean("consent_marketing").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

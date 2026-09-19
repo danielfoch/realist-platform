@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AccountLinkLabel, accountLink } from "@/components/auth/AccountLinkLabel";
+import { useViewer } from "@/components/auth/useViewer";
 
 const NAV_ITEMS = [
   { href: "/listings", label: "Listings" },
@@ -38,6 +40,8 @@ function ArrowUpRight() {
 export function SiteNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const viewer = useViewer();
+  const account = accountLink(viewer);
 
   useEffect(() => {
     if (!open) return;
@@ -78,6 +82,13 @@ export function SiteNav() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <Link
+            href={account.href}
+            onClick={() => setOpen(false)}
+            className="hidden text-[12px] font-medium text-ink transition-colors hover:text-brand sm:inline-flex"
+          >
+            <AccountLinkLabel viewer={viewer} />
+          </Link>
           <Link
             href="/multiplex"
             className="hidden items-center gap-2 rounded-[3px] bg-brand px-4 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep sm:inline-flex"
@@ -123,6 +134,14 @@ export function SiteNav() {
               <ArrowUpRight />
             </Link>
           ))}
+          <Link
+            href={account.href}
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between py-3.5 text-[15px] font-medium text-ink"
+          >
+            {account.label}
+            <ArrowUpRight />
+          </Link>
           <Link
             href="/multiplex"
             onClick={() => setOpen(false)}

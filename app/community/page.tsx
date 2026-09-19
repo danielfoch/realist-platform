@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
 import { JoinForm } from "@/components/community/JoinForm";
+import { RsvpButton } from "@/components/community/RsvpButton";
 import { breadcrumbNode, eventNode, jsonLdDocument } from "@/lib/seo/jsonld";
 import {
   cityFromLocation,
@@ -122,8 +123,8 @@ export default async function CommunityPage() {
           Upcoming meetups
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          RSVPs run through Meetup so the venues know how much room (and how
-          many chairs) to set up.
+          Save your spot here in ten seconds. The head-count lives on Meetup so
+          venues know how many chairs to set up — we hand you over to finish.
         </p>
 
         {events.length > 0 ? (
@@ -176,16 +177,18 @@ export default async function CommunityPage() {
                       </p>
                     )}
                   </div>
-                  {event.url && (
-                    <a
-                      href={event.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 rounded-md border border-hairline-strong bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-brand hover:text-brand"
-                    >
-                      RSVP on Meetup ↗
-                    </a>
-                  )}
+                  <RsvpButton
+                    event={{
+                      uid: event.uid,
+                      title: event.title,
+                      url: event.url,
+                      whenLabel: [parts.weekday, `${parts.month} ${parts.day}`, parts.time]
+                        .filter(Boolean)
+                        .join(" · "),
+                      city,
+                    }}
+                    fallbackUrl={meetupGroupUrl}
+                  />
                 </article>
               );
             })}

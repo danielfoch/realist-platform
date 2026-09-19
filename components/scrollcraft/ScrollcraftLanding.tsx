@@ -7,6 +7,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { AccountLinkLabel, accountLink } from "@/components/auth/AccountLinkLabel";
+import { useViewer } from "@/components/auth/useViewer";
 import MultiplexScene from "./MultiplexScene";
 import KnowledgeScene from "./KnowledgeScene";
 import OperatingScene from "./OperatingScene";
@@ -892,6 +894,8 @@ const TOOL_GROUPS = [
 export default function ScrollcraftLanding({ onCta }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const viewer = useViewer();
+  const account = accountLink(viewer);
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setReducedMotion(query.matches);
@@ -932,12 +936,12 @@ export default function ScrollcraftLanding({ onCta }: Props) {
           </nav>
           <div className="rl-header-actions">
             <TrackedLink
-              href="/listings"
-              name="nav_listings"
+              href={account.href}
+              name={viewer ? "nav_account" : "nav_login"}
               className="rl-sign-in"
               onCta={onCta}
             >
-              Browse listings
+              <AccountLinkLabel viewer={viewer} />
             </TrackedLink>
             <TrackedLink
               href="/multiplex"
@@ -979,8 +983,8 @@ export default function ScrollcraftLanding({ onCta }: Props) {
               Meet the community
               <Arrow />
             </a>
-            <a href="/listings">
-              Browse listings
+            <a href={account.href}>
+              {account.label}
               <Arrow />
             </a>
           </nav>

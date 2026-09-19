@@ -13,6 +13,8 @@ const joinRequestSchema = z.object({
   city: z.string().trim().max(120).optional(),
   message: z.string().trim().max(2000).optional(),
   propertyInterest: z.string().trim().max(500).optional(),
+  eventUid: z.string().trim().max(200).optional(),
+  eventTitle: z.string().trim().max(300).optional(),
   source: z.enum(COMMUNITY_LEAD_SOURCES).default("meetup_rsvp"),
   consentMarketing: z.boolean().default(false),
 });
@@ -49,6 +51,8 @@ export async function POST(request: Request) {
         city: lead.city || null,
         message: lead.message || null,
         propertyInterest: lead.propertyInterest || null,
+        eventUid: lead.eventUid || null,
+        eventTitle: lead.eventTitle || null,
         source: lead.source,
         consentMarketing: lead.consentMarketing,
       });
