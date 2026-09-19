@@ -1,0 +1,4 @@
+-- Additive documentation only. docs.route is now implemented; agent_jobs.type
+-- already accepts it as unconstrained text. docs:write remains an opt-in
+-- api_keys scope. TransactionFile stubs persist in-process (test store) until
+-- a dedicated table is warranted. No table rewrite required.

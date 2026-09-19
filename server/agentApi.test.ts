@@ -636,10 +636,12 @@ describe("agent API jobs spine", () => {
     expect(response.body.paths["/api/agent/underwrite/listing"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/extract"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/underwrite-url"]).toBeTruthy();
-    expect(response.body.info.version).toBe("1.5.0");
+    expect(response.body.info.version).toBe("1.6.0");
     expect(response.body.paths["/api/agent/crm/contacts/upsert"]).toBeTruthy();
     expect(response.body.paths["/api/agent/browser/act"]).toBeTruthy();
     expect(response.body.paths["/api/agent/browser/playbooks"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/docs/route"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/docs/classes"]).toBeTruthy();
   });
 
   it("blocks browser.act without browser:write or jobs:write", async () => {
@@ -700,6 +702,63 @@ describe("agent API jobs spine", () => {
     expect(response.status).toBe(200);
     expect(response.body.job.status).toBe("succeeded");
     expect(mocks.approveAgentJob).toHaveBeenCalledWith("job-1", "user-1");
+  });
+
+  it("blocks docs.route without docs:write or jobs:write", async () => {
+    const response = await request(app())
+      .post("/api/agent/jobs")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ type: "docs.route", input: { filename: "offer.pdf", textContent: "Agreement of Purchase and Sale" } });
+
+    expect(response.status).toBe(403);
+    expect(response.body.requiredScope).toBe("docs:write");
+    expect(mocks.createAgentJob).not.toHaveBeenCalled();
+  });
+
+  it("creates a docs.route job from the convenience route", async () => {
+    mocks.createAgentJob.mockResolvedValue({
+      job: sampleJob({
+        type: "docs.route",
+        status: "needs_approval",
+        result: { dryRun: true, docClass: "offer", confidence: "high" },
+      }),
+      replayed: false,
+    });
+    mockDbAuth(["docs:write"]);
+
+    const response = await request(app())
+      .post("/api/agent/docs/route")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({
+        filename: "APS.pdf",
+        textContent: "Agreement of Purchase and Sale. OREA Form 100.",
+        dealId: "deal-1",
+        idempotencyKey: "docs-1",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.job.status).toBe("needs_approval");
+    expect(response.body.classification.docClass).toBe("offer");
+    expect(mocks.createAgentJob).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({
+        type: "docs.route",
+        idempotencyKey: "docs-1",
+        input: expect.objectContaining({ dealId: "deal-1" }),
+      }),
+    }));
+  });
+
+  it("lists doc classes and closing checklists behind read", async () => {
+    const response = await request(app())
+      .get("/api/agent/docs/classes")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.classes.map((item: { docClass: string }) => item.docClass)).toEqual(
+      expect.arrayContaining(["offer", "inspection_report", "mortgage_commitment", "other"]),
+    );
+    expect(response.body.checklists.some((row: { stage: string }) => row.stage === "closing")).toBe(true);
+    expect(response.body.ocr).toBe("not_in_v1");
   });
 
   it("lists browser playbooks behind read", async () => {

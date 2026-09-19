@@ -1,4 +1,4 @@
-# Realist specialist spine (P0–P4)
+# Realist specialist spine (P0–P5)
 
 The Agent API is the contract layer every Realist specialist calls. One
 router agent will eventually dispatch tiny specialists (forms, listing
@@ -26,7 +26,7 @@ Existing bearer keys (`realist_live_*`) stay the only auth system.
 - New opt-in scopes (existing keys keep working):
   - `jobs:write` — create / approve / cancel any job type
   - `forms:write` — `forms.fill` jobs (P1 implemented)
-  - `docs:write` — `docs.route` jobs (declared, unused)
+  - `docs:write` — `docs.route` jobs (P5 implemented)
   - `crm:write` — `crm.update` jobs (P3 implemented)
   - `browser:write` — `browser.act` jobs (P4 implemented)
 
@@ -43,7 +43,7 @@ TypeScript + Zod live in `shared/agentSpine.ts`:
 | `Listing` | none | Optional MLS #, status, list price + ISO currency, sourceUrl/sourceHost/externalId |
 | `Deal` | reuses `analyses` | Strategy + assumptions + investment-metrics shape |
 | `Contact` | reuses person spine | Email identity on `users` / `leads` / `crm_contacts` |
-| `TransactionFile` | none | Closing-packet placeholder (`docClass` + status) |
+| `TransactionFile` | in-memory attach on `docs.route` approve | Closing-packet stub (`docClass` + status + filename) |
 | `AgentOrg` | none | Ownership already implied by `api_keys.user_id` |
 | `Job` | `agent_jobs` table | First-class specialist work unit |
 
@@ -63,8 +63,8 @@ registerSpecialistExecutor("forms.fill", async (input) => fillForm(input));
 ```
 
 Unregistered types run the built-in stub (`{ stub: true, todo: "..." }`).
-`forms.fill` (P1), `listing.extract` (P2), `crm.update` (P3), and
-`browser.act` (P4) are implemented. Docs remain a stub.
+`forms.fill` (P1), `listing.extract` (P2), `crm.update` (P3),
+`browser.act` (P4), and `docs.route` (P5) are implemented.
 
 ## Job lifecycle
 
@@ -278,6 +278,44 @@ Unknown hosts may only extract.
 - `GET /api/agent/browser/playbooks` (`read`)
 - `POST /api/agent/browser/act` (`browser:write` or `jobs:write`)
 
+## Docs specialist (P5 — route user-supplied deal files)
+
+`docs.route` classifies inbound deal documents (email attachments,
+uploads, extracted text) and proposes a `TransactionFile` stub for the
+right Realist deal / analysis / MLS number.
+
+**Not stored:** official blank OREA/board forms. Classify
+user-supplied packets only.
+
+**Never invent** party names, purchase prices, or closing dates from
+weak OCR. Those facts stay out of the result. Low confidence stays
+`needs_approval` with a proposed class.
+
+**v1 text only.** There is no PDF library in this repo. High confidence
+needs `textContent`. `base64` is size-capped and recorded as “OCR is a
+follow-up.”
+
+### Job behaviour
+
+1. Create (`POST /api/agent/jobs` or `POST /api/agent/docs/route`)
+   classifies immediately and stays `needs_approval` (`dryRun: true`).
+2. Result: `{ docClass, confidence, suggestedFilename, missingForClosing[], warnings[], transactionFile }`.
+3. Approve persists stub metadata **only** when `dealId`, `analysisId`,
+   or `mlsNumber` resolved the target. Cancel writes nothing.
+4. `missingForClosing` = checklist for `hints.stage` (default `closing`)
+   minus already-routed classes for that target (plus this proposal).
+
+P5 classes: `offer`, `amendment`, `waiver_notice`, `inspection_report`,
+`appraisal`, `mortgage_commitment`, `id_document`, `insurance`,
+`title_search`, `survey`, `hoa_condo_status`, `disclosure`,
+`commission_trust`, `other`. P0 aliases (`waiver`, `mortgage`,
+`identification`, `status_certificate`) still parse.
+
+### Routes
+
+- `GET /api/agent/docs/classes` (`read`)
+- `POST /api/agent/docs/route` (`docs:write` or `jobs:write`)
+
 ## OpenAPI
 
 - Served: `GET /api/agent/openapi.json` (`read` scope)
@@ -292,5 +330,6 @@ Unknown hosts may only extract.
 - CRM diffs + apply: `shared/crmJob.test.ts`, `server/agentCrm.test.ts`
 - Browser playbooks + denylist: `shared/browserAct.test.ts`
 - Browser worker (mocked driver): `server/browserAct.test.ts`
+- Docs classify + checklist: `shared/docsRoute.test.ts`, `server/agentDocs.test.ts`
 - Routes: `server/agentApi.test.ts` (same bearer-mock style as the
   existing estimate-rent / find-deals cases)
