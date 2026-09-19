@@ -7,6 +7,7 @@ import { GOOGLE_STATE_COOKIE, exchangeGoogleCode, googleConfigured } from "@/lib
 import { beginSession } from "@/lib/auth/http";
 import { safeNextPath } from "@/lib/auth/origin";
 import { createUser, findUserByEmail, findUserByGoogleId } from "@/lib/auth/users";
+import { announceNewMember } from "@/lib/leads/member";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
         name: profile.name,
         emailVerified: true,
       });
+      await announceNewMember(user, "google", request);
     }
 
     await beginSession(user.id, request, "google");

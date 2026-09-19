@@ -6,6 +6,7 @@ import { beginSession } from "@/lib/auth/http";
 import { consumeMagicLink } from "@/lib/auth/magicLink";
 import { crossOriginResponse, isSameOrigin, safeNextPath } from "@/lib/auth/origin";
 import { createUser, findUserByEmail } from "@/lib/auth/users";
+import { announceNewMember } from "@/lib/leads/member";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     let user = await findUserByEmail(email);
     if (!user) {
       user = await createUser({ email, emailVerified: true });
+      await announceNewMember(user, "magic_link", request);
     } else if (!user.emailVerifiedAt) {
       await getDb().update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, user.id));
     }

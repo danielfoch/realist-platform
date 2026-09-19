@@ -1,5 +1,5 @@
 /**
- * Transactional email (sign-in links, password resets) through Resend's REST
+ * Transactional email (sign-in links, lead notifications) through Resend's REST
  * API — no SDK. With RESEND_API_KEY unset, emailConfigured() is false and the
  * surfaces that depend on email hide themselves rather than half-working.
  */
@@ -15,7 +15,9 @@ function fromAddress(): string {
 }
 
 export async function sendEmail(input: {
-  to: string;
+  to: string | string[];
+  cc?: string[];
+  replyTo?: string;
   subject: string;
   text: string;
   html: string;
@@ -27,7 +29,9 @@ export async function sendEmail(input: {
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: fromAddress(),
-      to: [input.to],
+      to: Array.isArray(input.to) ? input.to : [input.to],
+      ...(input.cc?.length ? { cc: input.cc } : {}),
+      ...(input.replyTo ? { reply_to: input.replyTo } : {}),
       subject: input.subject,
       text: input.text,
       html: input.html,

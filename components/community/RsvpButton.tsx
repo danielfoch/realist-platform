@@ -45,17 +45,17 @@ export function RsvpButton({ event, fallbackUrl }: { event: RsvpEvent; fallbackU
     formEvent.preventDefault();
     setStep("submitting");
     try {
-      await fetch("/api/community/join", {
+      await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          source: "meetup_rsvp",
+          kind: "meetup_rsvp",
           email: email.trim(),
           name: name.trim() || undefined,
           city: event.city ?? undefined,
-          eventUid: event.uid,
-          eventTitle: event.title,
+          context: { eventUid: event.uid, eventTitle: event.title },
           consentMarketing: consent,
+          pagePath: window.location.pathname,
         }),
       });
     } catch {

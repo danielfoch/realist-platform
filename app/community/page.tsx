@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
-import { JoinForm } from "@/components/community/JoinForm";
+import { LeadForm } from "@/components/leads/LeadForm";
 import { RsvpButton } from "@/components/community/RsvpButton";
 import { breadcrumbNode, eventNode, jsonLdDocument } from "@/lib/seo/jsonld";
 import {
@@ -237,10 +237,11 @@ export default async function CommunityPage() {
             </p>
           </div>
           <div className="rounded-xl border border-hairline bg-paper p-5">
-            <JoinForm
-              source="event"
-              variant="inline"
+            <LeadForm
+              kind="event_invites"
+              layout="inline"
               submitLabel="Get event invites"
+              marketingLabel="Also send me the research letter and new-tool announcements."
               successMessage="You're on the invite list. Watch your inbox for the next date."
             />
           </div>

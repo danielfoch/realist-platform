@@ -67,6 +67,12 @@ underwriting engine, one content model.
   spent by the POST from `/login/confirm`, never by a GET (mail scanners pre-fetch).
   Marketing consent is an append-only ledger (`email_consent`) mirrored on the user —
   write it through `recordConsent`, never by updating the flag alone.
+- **Leads** (`lib/leads/*`): every form is `components/leads/LeadForm.tsx` posting to
+  `/api/leads`; the server calls `captureLead()` — never insert a lead or call the CRM
+  from anywhere else. A lead is committed with one `lead_deliveries` row per destination
+  (GoHighLevel, team email, Keypr) and retried until it lands. New kind of hand-raise =
+  new entry in `LEAD_KINDS` + its tags in `lib/leads/crmPayload.ts`, not a new endpoint.
+  GHL's upsert REPLACES tags, so tags only ever go through the additive tags endpoint.
 - **Legacy members** arrive via `scripts/migrate-users.ts` (rules + tests in
   `lib/migration/`). It is re-runnable until cutover and never overwrites what a member
   has changed here. Most legacy accounts have no password: the emailed link is their

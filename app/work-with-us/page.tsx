@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/JsonLd";
-import { JoinForm } from "@/components/community/JoinForm";
+import { Suspense } from "react";
+import { OfferLeadForm } from "@/components/leads/OfferLeadForm";
 import { breadcrumbNode, jsonLdDocument } from "@/lib/seo/jsonld";
 
 export const metadata: Metadata = {
@@ -231,13 +232,9 @@ export default function WorkWithUsPage() {
             </p>
           </div>
           <div className="rounded-xl border border-paper/15 bg-paper p-6 text-ink">
-            <JoinForm
-              source="work_with_us"
-              variant="full"
-              accent="signal"
-              submitLabel="Send it — let's talk"
-              successMessage="Got it. A human will be in touch within a business day."
-            />
+            <Suspense fallback={<div className="h-72" aria-hidden="true" />}>
+              <OfferLeadForm />
+            </Suspense>
           </div>
         </div>
       </section>

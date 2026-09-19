@@ -6,6 +6,7 @@ import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { toViewer } from "@/lib/auth/current";
 import { recordConsent } from "@/lib/auth/consent";
 import { createUser, findUserByEmail } from "@/lib/auth/users";
+import { announceNewMember } from "@/lib/leads/member";
 
 const schema = z.object({
   email: z.email().max(254),
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     });
     if (parsed.data.consentMarketing) await recordConsent(user.id, true, "signup");
     await beginSession(user.id, request);
+    await announceNewMember(user, "password", request);
     return Response.json({ ok: true, user: toViewer(user) });
   } catch (error) {
     console.error("[auth/signup]", (error as Error).message);
