@@ -125,24 +125,19 @@ function Board({ rows, caption, showMarkets }: { rows: LeaderboardRow[]; caption
 export default async function LeaderboardPage(props: PageProps<"/community/leaderboard">) {
   const query = await props.searchParams;
   const period = parsePeriod(query.period);
-  const city = parseCity(query.city);
   const active = PERIODS.find((entry) => entry.key === period) ?? PERIODS[0];
-  const cityName = city ? cityLabel(city) : null;
-
   const markets = await loadMarkets(period).catch(() => []);
-  // Only markets the board itself links to get a cache entry; a hand-typed city is
-  // answered straight from the database, so stray URLs can't fill the cache. The key
-  // is lowercased because the query matches markets case-insensitively.
-  const known = !city || markets.some((market) => market.city.toLowerCase() === city.toLowerCase());
-  const rows = await (known ? loadBoard(period, city?.toLowerCase() ?? null) : getLeaderboard(period, { city, limit: BOARD_SIZE })).catch(
-    (error: Error) => {
-      console.error("[leaderboard]", error.message);
-      return null;
-    },
-  );
+  // A market filter is one of the board's own markets or it is nothing: a hand-typed ?city= never
+  // becomes a heading or a chip (someone else's words on our page), and never gets a cache entry.
+  const requested = parseCity(query.city);
+  const city = requested && markets.some((market) => market.city.toLowerCase() === requested.toLowerCase()) ? requested : null;
+  const cityName = city ? cityLabel(city) : null;
+  const rows = await loadBoard(period, city?.toLowerCase() ?? null).catch((error: Error) => {
+    console.error("[leaderboard]", error.message);
+    return null;
+  });
 
   const chips = markets.map((market) => market.city);
-  if (cityName && !chips.some((name) => name.toLowerCase() === cityName.toLowerCase())) chips.unshift(cityName);
   const points = scoringPoints();
   const heading = cityName ? `${active.label} · ${cityName}` : active.label;
   const chipClass = (on: boolean) =>

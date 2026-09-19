@@ -48,7 +48,7 @@ export function digestNudge(input: Pick<DigestInput, "stats" | "ahead" | "badge"
   if (badge?.next && badge.next.at - stats.deals <= 3) {
     return `${plural(badge.next.at - stats.deals, "more deal")} and you're ${/^[aeiou]/i.test(badge.next.name) ? "an" : "a"} ${badge.next.name}.`;
   }
-  if (stats.streakWeeks >= 2) return `Underwrite one deal by Sunday and your streak becomes ${stats.streakWeeks + 1} weeks.`;
+  if (stats.streakWeeks >= 2) return `Underwrite one deal this week and your streak becomes ${stats.streakWeeks + 1} weeks.`;
   if (ahead) return `${ahead.name} finished just ahead of you with ${plural(ahead.deals, "deal")}. The board is empty again — go first.`;
   return "Everyone starts this week at zero. One underwrite puts you on the board.";
 }

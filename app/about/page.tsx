@@ -198,8 +198,8 @@ export default function AboutPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-brand">In person</p>
           <h3 className="font-display mt-2 text-xl font-semibold">Meet the community</h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Monthly investor meetups across Canada, and the flagship Toronto
-            event on September 15.
+            Monthly investor meetups across Canada. Find the next one near
+            you and save your spot.
           </p>
           <span className="mt-4 inline-block text-sm font-semibold text-brand group-hover:text-brand-deep">
             See upcoming events →

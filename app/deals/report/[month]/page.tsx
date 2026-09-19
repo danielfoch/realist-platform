@@ -58,7 +58,7 @@ export default async function DistressReportPage({
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <nav className="text-xs text-ink-faint" aria-label="Breadcrumb">
           <Link href="/deals" className="hover:text-brand">
-            ← Motivated deals
+            ← Motivated sellers
           </Link>
         </nav>
         <h1 className="font-display mt-4 text-3xl font-semibold leading-tight tracking-tight">

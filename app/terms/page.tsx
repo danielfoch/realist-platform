@@ -11,20 +11,23 @@ export default function TermsPage() {
     <article className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
       <h1 className="font-display text-4xl font-bold tracking-tight">Terms of Service</h1>
       <div className="prose-notes mt-6 text-[15px]">
-        <p className="text-ink-faint">Last updated: January 2025</p>
+        <p className="text-ink-faint">Last updated: September 2026</p>
 
         <h2>Acceptance of Terms</h2>
         <p>
-          By accessing and using Realist.ca and our Deal Analyzer tool, you agree to be bound by
+          By accessing and using Realist.ca and its tools — the underwriter, the multiplex
+          underwriter, listings, the leaderboard and community features — you agree to be bound by
           these Terms of Service. If you do not agree to these terms, please do not use our
           services.
         </p>
 
         <h2>Use of Service</h2>
         <p>
-          Our Deal Analyzer tool is provided for informational purposes only. The calculations,
-          projections, and analysis provided are estimates and should not be considered financial
-          advice.
+          Our tools are provided for informational purposes only. The calculations, projections,
+          deal memos (including any written with AI) and community numbers are estimates and
+          opinions, and should not be considered financial, legal, tax or real estate advice.
+          Realist is not a brokerage: brokerage and mortgage services are provided by the licensed
+          professionals and partner brokerages you choose to work with.
         </p>
 
         <h2>Disclaimer</h2>
@@ -42,7 +45,29 @@ export default function TermsPage() {
           <li>Use the service only for lawful purposes</li>
           <li>Not attempt to access unauthorized areas of the service</li>
           <li>Not use the service to compete with Realist.ca</li>
+          <li>
+            Underwrite deals honestly: not create accounts, analyses or requests in bulk or by
+            automated means, and not use a display name that impersonates someone or advertises
+            anything. We may remove analyses, leaderboard places or accounts that do.
+          </li>
         </ul>
+
+        <h2>Community and what you make public</h2>
+        <p>
+          The leaderboard and your track-record page show your first name and last initial, your
+          city and statistics about the deals you underwrite, never an address. Aggregated,
+          anonymous medians from members&rsquo; analyses are shown on listings and used to improve the
+          starting numbers the tools offer. You can leave the leaderboard at any time in your
+          account. See our <a href="/privacy">Privacy Policy</a> for the detail.
+        </p>
+
+        <h2>Referral fees</h2>
+        <p>
+          Realtors and mortgage brokers in our network pay Realist a referral fee when a deal closes
+          or funds. It costs you nothing extra, and it is disclosed to you in writing before you
+          sign anything with them. Any commission rebate is paid by the brokerage handling your
+          transaction, where provincial rules permit it, on the terms they confirm in writing.
+        </p>
 
         <h2>Intellectual Property</h2>
         <p>

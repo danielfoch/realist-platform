@@ -35,7 +35,7 @@ export default async function UnderwritePage() {
             Any deal, underwritten in a <em>minute</em>.
           </h1>
           <p className="mt-4 max-w-2xl leading-relaxed text-ink-soft">
-            Off-market, a wholesaler&rsquo;s email, a house you drove past. Four facts in, and you get cash flow, cap rate,
+            Off-market, a wholesaler&rsquo;s email, a house you drove past. The price and the rent in, and you get cash flow, cap rate,
             cash-on-cash, debt coverage and IRR — with Canadian mortgage math — plus the offer price that makes the deal work.
           </p>
         </div>

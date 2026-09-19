@@ -9,6 +9,7 @@ import {
   underwriteDdfListing,
   type RentMemo,
 } from "@/lib/underwriting/underwriteListing";
+import { searchByYield } from "@/lib/ddf/yieldSearch";
 
 export const maxDuration = 60;
 
@@ -33,14 +34,13 @@ const searchSchema = z.object({
   minUnits: z.number().int().min(1).max(200).optional(),
   propertySubType: z.string().trim().min(1).max(60).optional(),
   bounds: boundsSchema.optional(),
+  /** "yield" = highest net yield first, from the crawler's snapshots; default is the live feed's own order. */
+  sort: z.enum(["newest", "yield"]).default("newest"),
+  minYield: z.number().min(0).max(20).optional(),
   page: z.number().int().min(1).max(200).default(1),
 });
 
 export async function POST(request: NextRequest) {
-  if (!isDdfConfigured()) {
-    return NextResponse.json({ error: "listings_unconfigured" }, { status: 503 });
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -56,6 +56,21 @@ export async function POST(request: NextRequest) {
     );
   }
   const params = parsed.data;
+
+  // Yield-sorted browse reads our own snapshots; it doesn't need the live feed to be up.
+  if (params.sort === "yield" || params.minYield) {
+    try {
+      const { listings, count } = await searchByYield({ ...params, pageSize: PAGE_SIZE });
+      return NextResponse.json({ listings, count, page: params.page, pageSize: PAGE_SIZE, sort: "yield" });
+    } catch (error) {
+      console.error("[api/listings/search] yield search:", (error as Error).message);
+      return NextResponse.json({ error: "Listing search failed — please try again." }, { status: 502 });
+    }
+  }
+
+  if (!isDdfConfigured()) {
+    return NextResponse.json({ error: "listings_unconfigured" }, { status: 503 });
+  }
 
   try {
     const result = await searchDdfListings({

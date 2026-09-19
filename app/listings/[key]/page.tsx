@@ -41,7 +41,6 @@ import {
   listingStreetLine,
 } from "@/components/listings/listingDisplay";
 import { fmtMoney, fmtNum } from "@/components/multiplex/format";
-import { CASHBACK_LABEL } from "@/lib/offer";
 
 export const revalidate = 900;
 
@@ -263,11 +262,6 @@ export default async function ListingDetailPage({
         )
       : null;
   const isOntario = listing.province === "ON" || listing.province === "Ontario";
-  const offerQuery = new URLSearchParams({ mls: listing.mlsNumber, address: listing.fullAddress });
-  if (listing.price) offerQuery.set("price", String(listing.price));
-  if (listing.city) offerQuery.set("city", listing.city);
-  if (listing.province) offerQuery.set("province", listing.province);
-  const workWithUsHref = `/work-with-us?${offerQuery.toString()}#lead-form`;
   const multiplexHref = `/multiplex?address=${encodeURIComponent(
     [listing.streetLine, listing.city].filter(Boolean).join(", "),
   )}`;
@@ -484,27 +478,6 @@ export default async function ListingDetailPage({
             )}
             <NextMeetupStrip city={listing.city} />
           </aside>
-        </section>
-
-        {/* Work-with-us CTA */}
-        <section className="band-night mt-12 rounded-xl p-6 sm:p-8">
-          <div className="flex flex-col items-start gap-5 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="font-display text-2xl font-semibold tracking-tight">
-                Want this property?
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                Buy it with our team and get {CASHBACK_LABEL} of our commission back at
-                closing. That&rsquo;s how the tools stay free.
-              </p>
-            </div>
-            <Link
-              href={workWithUsHref}
-              className="shrink-0 rounded-md bg-signal px-5 py-3 text-sm font-semibold text-white transition-colors hover:brightness-110"
-            >
-              Work with us on this one
-            </Link>
-          </div>
         </section>
 
         <div className="mt-10">

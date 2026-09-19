@@ -41,7 +41,7 @@ export function UnderwriteAnything({ learned: national, aiAvailable = false }: {
     rent: numberFrom(params.get("rent")),
     units: Math.max(1, Math.round(numberFrom(params.get("units")) || 1)),
   };
-  const linkComplete = fromLink.address.length >= 5 && fromLink.price > 0 && fromLink.rent > 0;
+  const linkComplete = fromLink.price > 0 && fromLink.rent > 0;
   const [basics, setBasics] = useState<Basics | null>(linkComplete ? fromLink : null);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +56,6 @@ export function UnderwriteAnything({ learned: national, aiAvailable = false }: {
       rent: numberFrom(String(data.get("rent") ?? "")),
       units: Math.max(1, Math.round(numberFrom(String(data.get("units") ?? "")) || 1)),
     };
-    if (next.address.length < 5) return setError("Add the address — it's how this deal is saved to your history.");
     if (!(next.price >= 1000)) return setError("Add the price you'd pay.");
     if (!(next.rent > 0)) return setError("Add the rent you expect, all units combined. A rough number is fine — you can change it.");
     setError(null);
@@ -78,11 +77,11 @@ export function UnderwriteAnything({ learned: national, aiAvailable = false }: {
   if (!basics) {
     return (
       <form onSubmit={start} className="mx-auto max-w-2xl rounded-lg border border-hairline bg-surface p-6">
-        <p className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-brand">Step 1 of 2 · the basics</p>
+        <p className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-brand">Two numbers to start: the price and the rent</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-6">
           <label className={`${labelClass} sm:col-span-6`}>
-            Address
-            <input name="address" type="text" required maxLength={300} defaultValue={fromLink.address} placeholder="123 Example St" autoComplete="off" className={inputClass} />
+            Address <span className="font-normal text-ink-faint">(optional — add it to keep this deal in your history)</span>
+            <input name="address" type="text" maxLength={300} defaultValue={fromLink.address} placeholder="123 Example St" autoComplete="off" className={inputClass} />
           </label>
           <label className={`${labelClass} sm:col-span-4`}>
             City
@@ -127,23 +126,44 @@ export function UnderwriteAnything({ learned: national, aiAvailable = false }: {
     );
   }
 
-  const fullAddress = [basics.address, basics.city, basics.province].filter(Boolean).join(", ");
-  const back = new URLSearchParams({ address: basics.address, price: String(basics.price), rent: String(basics.rent), units: String(basics.units) });
+  const hasAddress = basics.address.length >= 5;
+  const fullAddress = hasAddress ? [basics.address, basics.city, basics.province].filter(Boolean).join(", ") : "";
+  const back = new URLSearchParams({ price: String(basics.price), rent: String(basics.rent), units: String(basics.units) });
+  if (hasAddress) back.set("address", basics.address);
   if (basics.city) back.set("city", basics.city);
   if (basics.province) back.set("province", basics.province);
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
-        <p className="text-sm text-ink-soft">
-          <span className="font-semibold text-ink">{fullAddress}</span>
-        </p>
+        {hasAddress ? (
+          <p className="text-sm text-ink-soft">
+            <span className="font-semibold text-ink">{fullAddress}</span>
+          </p>
+        ) : (
+          <form
+            className="flex flex-1 flex-wrap items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const address = String(new FormData(event.currentTarget).get("address") ?? "").trim();
+              if (address.length >= 5) setBasics({ ...basics, address });
+            }}
+          >
+            <label htmlFor="uw-add-address" className="text-sm text-ink-soft">
+              Want to keep this one?
+            </label>
+            <input id="uw-add-address" name="address" type="text" minLength={5} maxLength={300} placeholder="Add the address" autoComplete="off" className={`${inputClass} !mt-0 max-w-xs`} />
+            <button type="submit" className="rounded-[3px] border border-hairline-strong px-3 py-2 text-xs font-semibold text-ink hover:border-brand hover:text-brand">
+              Save to my history
+            </button>
+          </form>
+        )}
         <button type="button" onClick={() => setBasics(null)} className="text-xs font-medium text-brand hover:text-brand-deep">
           ← Different deal
         </button>
       </div>
       <Underwriter
-        key={`${fullAddress}|${basics.price}|${basics.rent}|${basics.units}`}
-        deal={{ source: "manual", address: fullAddress, city: basics.city || null, province: basics.province || null }}
+        key={`${basics.price}|${basics.rent}|${basics.units}|${basics.province}|${basics.city}`}
+        deal={{ source: "manual", address: fullAddress || null, city: basics.city || null, province: basics.province || null }}
         defaults={houseDefaults({ price: basics.price, monthlyRent: basics.rent, units: basics.units, province: basics.province || null, city: basics.city || null }, learned)}
         learned={learned}
         taxFromListing={false}

@@ -15,6 +15,7 @@ import { SavedDealsList, type SavedDealItem } from "@/components/auth/SavedDeals
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { eyebrowClass, formatDay } from "@/components/auth/shared";
 import { TeamChecklist } from "@/components/team/TeamChecklist";
+import { ConfirmEmailNotice } from "@/components/auth/ConfirmEmailNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,12 @@ export default async function AccountPage() {
           </p>
         </div>
       </section>
+
+      {!user.emailVerifiedAt && !user.legacy && (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-8 sm:px-6">
+          <ConfirmEmailNotice email={user.email} canSend={emailConfigured()} />
+        </div>
+      )}
 
       <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-10 sm:px-6 lg:grid-cols-[1.35fr_1fr] lg:gap-14 lg:py-14">
         <div className="min-w-0 space-y-12">

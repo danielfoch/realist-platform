@@ -29,6 +29,9 @@ interface Filters {
   maxPrice: string;
   minBeds: string;
   multiUnit: boolean;
+  /** "newest" = the live feed's order; "yield" = highest net yield first. */
+  sort: "newest" | "yield";
+  minYield: string;
 }
 
 const EMPTY_FILTERS: Filters = {
@@ -38,6 +41,8 @@ const EMPTY_FILTERS: Filters = {
   maxPrice: "",
   minBeds: "",
   multiUnit: false,
+  sort: "newest",
+  minYield: "",
 };
 
 type Status = "loading" | "ready" | "error" | "unconfigured";
@@ -53,6 +58,9 @@ function buildRequestBody(filters: Filters, page: number): Record<string, unknow
   const minBeds = Number(filters.minBeds);
   if (minBeds > 0) body.minBeds = minBeds;
   if (filters.multiUnit) body.minUnits = 2;
+  if (filters.sort === "yield") body.sort = "yield";
+  const minYield = Number(filters.minYield);
+  if (minYield > 0) body.minYield = minYield;
   return body;
 }
 
@@ -221,15 +229,40 @@ export function ListingsExplorer() {
               type="checkbox"
               checked={draft.multiUnit}
               onChange={(e) => setDraft({ ...draft, multiUnit: e.target.checked })}
-              className="h-4 w-4 accent-[#0f766e]"
+              className="h-4 w-4 accent-[var(--color-brand)]"
             />
             Multi-unit only (2+ units)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            Sort
+            <select
+              value={draft.sort}
+              onChange={(e) => setDraft({ ...draft, sort: e.target.value === "yield" ? "yield" : "newest" })}
+              className="rounded-md border border-hairline-strong bg-surface px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="newest">Newest</option>
+              <option value="yield">Highest yield</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            Net yield
+            <select
+              value={draft.minYield}
+              onChange={(e) => setDraft({ ...draft, minYield: e.target.value, sort: e.target.value ? "yield" : draft.sort })}
+              className="rounded-md border border-hairline-strong bg-surface px-2 py-1.5 text-sm text-ink focus:border-brand focus:outline-none"
+            >
+              <option value="">Any</option>
+              <option value="4">4%+</option>
+              <option value="5">5%+</option>
+              <option value="6">6%+</option>
+              <option value="7">7%+</option>
+            </select>
           </label>
           <Link
             href="/deals"
             className="ml-auto text-sm font-semibold text-signal hover:brightness-90"
           >
-            Motivated deals →
+            Motivated sellers →
           </Link>
         </div>
       </form>

@@ -88,7 +88,10 @@ export function SiteNav() {
   const viewer = useViewer();
   const account = accountLink(viewer);
   // Members go straight to the tool; everyone else is one click from an account.
-  const cta = viewer ? { href: "/underwrite", label: "Underwrite a deal" } : { href: "/login?mode=signup&next=/listings", label: "Join free" };
+  // …and come back to the page (and the deal) they were on.
+  const cta = viewer
+    ? { href: "/underwrite", label: "Underwrite a deal" }
+    : { href: `/login?mode=signup&next=${encodeURIComponent(pathname.startsWith("/login") ? "/listings" : pathname)}`, label: "Join free" };
 
   useEffect(() => {
     if (!open) return;
@@ -151,10 +154,14 @@ export function SiteNav() {
           </Link>
           <Link
             href={cta.href}
-            className="hidden items-center gap-2 rounded-[3px] bg-brand px-4 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep sm:inline-flex"
+            className="inline-flex items-center gap-2 rounded-[3px] bg-brand px-3 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep sm:px-4 sm:py-2.5"
           >
-            {cta.label}
-            <ArrowUpRight />
+            {/* On a phone the button is the whole pitch: keep it to a word. */}
+            <span className="sm:hidden">{viewer ? "Underwrite" : "Join free"}</span>
+            <span className="hidden sm:inline">{cta.label}</span>
+            <span className="hidden sm:inline">
+              <ArrowUpRight />
+            </span>
           </Link>
           <button
             type="button"

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { safeNextPath } from "@/lib/auth/origin";
@@ -165,7 +166,9 @@ export function LoginPanel() {
         )}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-        Save listings and multiplex underwrites, and pick them up again from any device.
+        {signingIn
+          ? "Your analyses, saved deals and place on the leaderboard are waiting."
+          : "Free. Keep every deal you underwrite, unlock the full memo on all of them, and take your place on the leaderboard."}
       </p>
 
       <div className="mt-7 rounded-lg border border-hairline bg-surface">
@@ -267,6 +270,20 @@ export function LoginPanel() {
                 />
                 Email me about meetups and Realist updates. Unsubscribe any time.
               </label>
+            )}
+            {!signingIn && (
+              <p className="text-xs leading-relaxed text-ink-faint">
+                Members appear on the leaderboard as first name and last initial — never with an address — and you can
+                turn that off in your account. By joining you agree to the{" "}
+                <Link href="/terms" className="underline underline-offset-2 hover:text-ink">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             )}
             <button type="submit" disabled={disabled} className={`${primaryButtonClass} w-full`}>
               {busy === "password"

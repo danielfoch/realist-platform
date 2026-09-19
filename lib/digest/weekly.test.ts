@@ -29,7 +29,7 @@ describe("weekly digest", () => {
   });
 
   it("gives one concrete thing to do", () => {
-    expect(digestNudge(base)).toBe("Underwrite one deal by Sunday and your streak becomes 10 weeks.");
+    expect(digestNudge(base)).toBe("Underwrite one deal this week and your streak becomes 10 weeks.");
     expect(digestNudge({ ...base, stats: { ...base.stats, deals: 98 } })).toBe("2 more deals and you're a Deal hunter.");
     expect(digestNudge({ ...base, stats: { ...base.stats, deals: 9 }, badge: { name: "First underwrite", next: { name: "Analyst", at: 10 } } })).toBe("1 more deal and you're an Analyst.");
     expect(digestNudge({ ...base, stats: { ...base.stats, streakWeeks: 0 } })).toMatch(/^Priya R\. finished just ahead of you with 9 deals/);

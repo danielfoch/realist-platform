@@ -62,7 +62,7 @@ const FAQ = [
   },
   {
     q: "Do I have to buy a property I found on Realist?",
-    a: "That's the flagship funnel, but no — if you found the property elsewhere and still want our partner team (and the rebate), reach out. The tools just make it more likely your numbers are right.",
+    a: "No — if you found the property elsewhere and still want our partner team (and the rebate), reach out. The tools just make it more likely your numbers are right.",
   },
   {
     q: "Who am I actually working with?",
@@ -99,8 +99,8 @@ export default function WorkWithUsPage() {
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
               The tools are free because the business isn&rsquo;t subscriptions —
-              it&rsquo;s deals. When you buy with our partner team, we rebate {CASHBACK_LABEL}
-              of our commission to you at closing. You keep more cash; we keep
+              it&rsquo;s deals. When you buy with our partner team, we rebate {CASHBACK_LABEL} of
+              our commission to you at closing. You keep more cash; we keep
               building tools.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -195,7 +195,7 @@ export default function WorkWithUsPage() {
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
           Cash-back offers attract fine print. Here&rsquo;s ours, in plain
-          English, above the fold.
+          English.
         </p>
         <div className="mt-8 divide-y divide-hairline border-t border-hairline">
           {FAQ.map((item) => (

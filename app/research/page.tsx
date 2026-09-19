@@ -13,6 +13,16 @@ export const metadata: Metadata = {
   alternates: { canonical: "/research" },
 };
 
+const TAG_ACRONYMS: Record<string, string> = { cpi: "CPI", cmhc: "CMHC", statcan: "StatCan", gta: "GTA", boc: "BoC", crea: "CREA", rbc: "RBC", mli: "MLI" };
+
+/** "bank-of-canada" → "Bank of Canada": a topic a person reads, not a slug. */
+function tagLabel(tag: string): string {
+  return tag
+    .split("-")
+    .map((word, index) => TAG_ACRONYMS[word] ?? (word === "of" && index > 0 ? "of" : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ");
+}
+
 export default function ResearchPage() {
   return (
     <>
@@ -83,12 +93,16 @@ export default function ResearchPage() {
                 <span className="rounded-full border border-brand/40 bg-brand-wash/50 px-2 py-0.5 text-[11px] font-medium capitalize text-brand">
                   {report.kind}
                 </span>
-                {report.tags.slice(0, 4).map((tag) => (
+                {report.tags
+                  // Internal bookkeeping tags ("config-report") aren't topics.
+                  .filter((tag) => !/config|internal/i.test(tag))
+                  .slice(0, 4)
+                  .map((tag) => (
                   <span
                     key={tag}
                     className="rounded-full border border-hairline bg-surface px-2 py-0.5 text-[11px] font-medium text-ink-faint"
                   >
-                    {tag}
+                    {tagLabel(tag)}
                   </span>
                 ))}
               </div>

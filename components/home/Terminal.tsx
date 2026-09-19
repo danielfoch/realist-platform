@@ -446,7 +446,7 @@ export function Terminal({ episode }: { episode: TerminalEpisode | null }) {
           ) : deals?.warming ? (
             <span>Scanning the MLS® for motivated deals — pins land shortly…</span>
           ) : (
-            <span>Grey circles = CMHC average 2BR rent · deal pins arrive when the scanner connects</span>
+            <span>Grey circles = CMHC average 2BR rent · deal pins appear as listings are scanned</span>
           )}
         </div>
       </div>

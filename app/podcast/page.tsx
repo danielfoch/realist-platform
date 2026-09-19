@@ -14,6 +14,8 @@ import {
 
 export const revalidate = 1800;
 
+const RECENT_COUNT = 24;
+
 export const metadata: Metadata = {
   title: `${PODCAST_NAME} — Canada's #1 Real Estate Podcast`,
   description:
@@ -33,7 +35,15 @@ function formatDate(pubDate: string): string {
 
 export default async function PodcastPage() {
   const episodes = await getPodcastEpisodes().catch(() => []);
-  const [latest, ...rest] = episodes;
+  const [latest, ...older] = episodes;
+  // The recent ones get the full treatment; the back catalogue is a compact archive of links.
+  // Every episode stays one click (and one crawl) away without shipping 400 descriptions.
+  const rest = older.slice(0, RECENT_COUNT);
+  const archive = new Map<string, typeof older>();
+  for (const episode of older.slice(RECENT_COUNT)) {
+    const year = String(new Date(episode.pubDate).getUTCFullYear() || "Earlier");
+    archive.set(year, [...(archive.get(year) ?? []), episode]);
+  }
 
   return (
     <>
@@ -129,6 +139,33 @@ export default async function PodcastPage() {
             );
           })}
         </div>
+
+        {archive.size > 0 && (
+          <div className="mt-14">
+            <h2 className="font-display text-2xl font-semibold tracking-tight">Every episode</h2>
+            {[...archive.entries()].map(([year, list]) => (
+              <details key={year} className="group border-b border-hairline py-4" open={false}>
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink">
+                  <span>
+                    {year} <span className="tnum font-normal text-ink-faint">· {list.length} episodes</span>
+                  </span>
+                  <span className="text-brand transition-transform group-open:rotate-45" aria-hidden="true">
+                    +
+                  </span>
+                </summary>
+                <ul className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                  {list.map((episode) => (
+                    <li key={episode.slug} className="text-sm leading-snug">
+                      <Link href={`/podcast/${episode.slug}`} className="text-ink-soft hover:text-brand">
+                        {episode.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </div>
+        )}
 
         {episodes.length === 0 && (
           <p className="py-12 text-center text-ink-soft">

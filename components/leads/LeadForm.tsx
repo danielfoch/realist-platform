@@ -279,7 +279,7 @@ export function LeadForm({
       )}
       {shows("city") && (
         <label className={labelClass}>
-          City you&rsquo;re buying in
+          {kind === "pro_application" ? "City you work in" : "City you’re buying in"}
           <input
             name="city"
             type="text"

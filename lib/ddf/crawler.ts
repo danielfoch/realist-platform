@@ -214,6 +214,8 @@ async function buildSnapshot(
       null,
     rawJson: {
       listOfficeBoard: listing.ListOfficeBoard || listing.OriginatingSystemName || null,
+      // CREA requires the listing brokerage on every surface a listing appears on, including yield-sorted browse.
+      listOfficeName: listing.ListOfficeName || null,
       photosCount: listing.PhotosCount,
       modificationTimestamp: listing.ModificationTimestamp,
     },
