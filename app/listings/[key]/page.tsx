@@ -218,11 +218,13 @@ export async function generateMetadata({
     .join(" — ");
 
   return {
-    title: [listing.fullAddress, priceLabel, "Investment Analysis"]
+    title: [listing.fullAddress, priceLabel, listing.price ? "Investment Analysis" : null]
       .filter(Boolean)
       .join(" - "),
     description,
     alternates: { canonical: `/listings/${encodeURIComponent(listing.mlsNumber)}` },
+    // A listing with no sale price is a rental (or price-on-request): nothing to underwrite, nothing to index.
+    ...(listing.price ? {} : { robots: { index: false, follow: true } }),
     openGraph: listing.photos[0]
       ? { images: [{ url: listing.photos[0] }] }
       : undefined,
@@ -358,7 +360,7 @@ export default async function ListingDetailPage({
             </div>
             <div className="text-right">
               <p className="tnum font-display text-3xl font-semibold">
-                {listing.price ? fmtMoney(listing.price) : "Price on request"}
+                {listing.price ? fmtMoney(listing.price) : "No sale price — likely a rental"}
               </p>
               <p className="tnum mt-1 text-xs text-ink-faint">
                 MLS® {listing.mlsNumber}
@@ -434,11 +436,14 @@ export default async function ListingDetailPage({
               />
             ) : (
               <p className="rounded-lg border border-dashed border-hairline-strong bg-surface p-5 text-sm text-ink-soft">
-                We couldn&rsquo;t underwrite this one — usually a land or
-                price-on-request listing where a rent estimate doesn&rsquo;t
-                apply.{" "}
+                There&rsquo;s nothing to underwrite here — this is usually a rental, land, or a
+                price-on-request listing.{" "}
+                <Link href="/listings" className="font-medium text-brand hover:text-brand-deep">
+                  See what&rsquo;s for sale nearby →
+                </Link>{" "}
+                or{" "}
                 <Link href="/underwrite" className="font-medium text-brand hover:text-brand-deep">
-                  Underwrite it with your own numbers →
+                  underwrite a deal with your own numbers →
                 </Link>
               </p>
             )}
