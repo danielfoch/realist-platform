@@ -9,7 +9,7 @@ import {
   underwriteDdfListing,
   type RentMemo,
 } from "@/lib/underwriting/underwriteListing";
-import { searchByYield } from "@/lib/ddf/yieldSearch";
+import { PROVINCE_NAMES, searchByYield } from "@/lib/ddf/yieldSearch";
 
 export const maxDuration = 60;
 
@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
   try {
     const result = await searchDdfListings({
       city: params.city,
-      stateOrProvince: params.province,
+      // CREA knows provinces by name; links and saved searches often carry the two-letter code.
+      stateOrProvince: params.province ? (PROVINCE_NAMES[params.province.trim().toUpperCase()] ?? params.province) : undefined,
       minPrice: params.minPrice,
       maxPrice: params.maxPrice,
       minBeds: params.minBeds,

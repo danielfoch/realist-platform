@@ -56,15 +56,20 @@ export interface DdfListing {
   Media?: DdfMediaItem[];
   ModificationTimestamp?: string;
   OriginalEntryTimestamp?: string;
+  /** CREA's key for the listing brokerage; its name lives on the Office resource (see attachOfficeNames). */
+  ListOfficeKey?: string;
+  /** Filled in by attachOfficeNames — Property itself has no such field. */
   ListOfficeName?: string;
   NumberOfUnitsTotal?: number;
   AssociationFee?: number;
   AssociationFeeFrequency?: string;
-  LotFrontage?: number;
-  LotDepth?: number;
+  FrontageLengthNumeric?: number;
+  FrontageLengthNumericUnits?: string;
   LotSizeArea?: number;
-  LotSizeAreaUnits?: string;
+  LotSizeUnits?: string;
   LotSizeDimensions?: string;
+  Zoning?: string;
+  ZoningDescription?: string;
   [key: string]: any;
 }
 
@@ -101,8 +106,12 @@ export const DDF_SELECT_FIELDS = [
   "AssociationFee", "AssociationFeeFrequency",
   "PhotosCount", "Media",
   "ModificationTimestamp", "OriginalEntryTimestamp",
-  "LotFrontage", "LotDepth", "LotSizeArea", "LotSizeAreaUnits", "LotSizeDimensions",
-  "ListOfficeName",
+  // Names as CREA's published Property schema has them (ddfapi-docs.realtor.ca). It has no
+  // LotFrontage/LotDepth/LotSizeAreaUnits and no ListOfficeName: frontage is FrontageLengthNumeric,
+  // and the brokerage is a key into the Office resource.
+  "FrontageLengthNumeric", "FrontageLengthNumericUnits", "LotSizeArea", "LotSizeUnits", "LotSizeDimensions",
+  "Zoning", "ZoningDescription",
+  "ListOfficeKey",
 ].join(",");
 
 function retryAfterMs(header: string | null): number {
@@ -141,12 +150,14 @@ async function ddfRateLimitedFetch(url: string, init: RequestInit): Promise<Resp
 
 const rejectedSelectFields = new Set<string>();
 const rejectedFilterProperties = new Set<string>();
+let cityPrefixRejected = false;
 const MAX_SCHEMA_RETRIES = 8;
 
 /** For tests. */
 export function forgetDdfSchemaRejections(): void {
   rejectedSelectFields.clear();
   rejectedFilterProperties.clear();
+  cityPrefixRejected = false;
 }
 
 /** Record what a 400 says CREA no longer accepts. True when it taught us something new. */
@@ -164,6 +175,11 @@ export function learnFromDdfError(body: string): boolean {
     // The same name can't be filtered or sorted on either.
     rejectedFilterProperties.add(unknown[1]);
     console.warn(`[ddf] CREA no longer has a Property field named ${unknown[1]}; dropped from queries`);
+    return true;
+  }
+  if (/startswith/i.test(details) && !cityPrefixRejected) {
+    cityPrefixRejected = true;
+    console.warn("[ddf] CREA won't evaluate startswith(); city searches fall back to exact names");
     return true;
   }
   const unfilterable = details.match(/The property '([A-Za-z0-9_]+)' cannot be used in the \$filter/);
@@ -198,8 +214,12 @@ function topLevelClauses(filter: string): string[] {
 
 /** The same query, minus whatever CREA has told us it rejects. */
 export function adaptDdfUrl(url: string): string {
-  if (rejectedSelectFields.size === 0 && rejectedFilterProperties.size === 0) return url;
+  if (rejectedSelectFields.size === 0 && rejectedFilterProperties.size === 0 && !cityPrefixRejected) return url;
   const parsed = new URL(url);
+  if (cityPrefixRejected) {
+    const current = parsed.searchParams.get("$filter");
+    if (current) parsed.searchParams.set("$filter", current.replace(/\(City eq '((?:[^']|'')*)' or startswith\(City,'(?:[^']|'')*'\)\)/g, "City eq '$1'"));
+  }
   const select = parsed.searchParams.get("$select");
   if (select) {
     const kept = select.split(",").filter((field) => !rejectedSelectFields.has(field.trim()));
@@ -232,7 +252,8 @@ export function adaptDdfUrl(url: string): string {
 const TEXT_FIELDS = [
   "PropertySubType", "StructureType", "StandardStatus", "City", "CityRegion", "StateOrProvince", "PostalCode", "Country",
   "UnparsedAddress", "StreetNumber", "StreetName", "StreetSuffix", "StreetDirPrefix", "StreetDirSuffix", "UnitNumber",
-  "PublicRemarks", "ListOfficeName", "LotSizeDimensions", "LotSizeAreaUnits", "LivingAreaUnits", "BuildingAreaUnits",
+  "PublicRemarks", "ListOfficeName", "ListOfficeKey", "LotSizeDimensions", "LotSizeUnits", "FrontageLengthNumericUnits", "Zoning", "ZoningDescription",
+  "LivingAreaUnits", "BuildingAreaUnits",
   "LeaseAmountFrequency", "AssociationFeeFrequency", "ListingId", "ListingKey",
 ] as const;
 
@@ -245,7 +266,68 @@ export function coerceDdfListing<T extends object>(raw: T): T {
     else if (typeof value === "number" || typeof value === "boolean") listing[field] = String(value);
     else listing[field] = "";
   }
+  // The Toronto-area board publishes the community inside the city: "Toronto (Regent Park)",
+  // "Markham (Greensborough)". Rents, learned defaults, buy boxes and meetups are all keyed by
+  // city — so the city is the city, and the community goes where a community belongs.
+  const city = typeof listing.City === "string" ? listing.City.match(/^(.+?)\s*\((.+)\)\s*$/) : null;
+  if (city) {
+    listing.City = city[1].trim();
+    if (!listing.CityRegion) listing.CityRegion = city[2].trim();
+  }
   return raw;
+}
+
+// ---------------------------------------------------------------------------
+// The listing brokerage. CREA requires its name wherever a listing is shown;
+// Property carries only ListOfficeKey, and the name is on the Office resource.
+// Offices change rarely: one lookup per unseen key, remembered for a day.
+// ---------------------------------------------------------------------------
+
+const officeNames = new Map<string, { name: string | null; at: number }>();
+const OFFICE_TTL_MS = 24 * 60 * 60 * 1000;
+const OFFICE_BATCH = 20;
+
+/** For tests. */
+export function forgetDdfOffices(): void {
+  officeNames.clear();
+}
+
+/** Fill in ListOfficeName on each listing. Never throws: a listing without a name is handled downstream. */
+export async function attachOfficeNames<T extends { ListOfficeKey?: string; ListOfficeName?: string }>(listings: T[], token: string): Promise<T[]> {
+  const now = Date.now();
+  const unknown = [...new Set(listings.map((listing) => listing.ListOfficeKey).filter((key): key is string => typeof key === "string" && key.length > 0))].filter((key) => {
+    const known = officeNames.get(key);
+    return !known || now - known.at > OFFICE_TTL_MS;
+  });
+  for (let i = 0; i < unknown.length; i += OFFICE_BATCH) {
+    const batch = unknown.slice(i, i + OFFICE_BATCH);
+    try {
+      const query = new URLSearchParams({
+        $filter: batch.map((key) => `OfficeKey eq '${key.replace(/'/g, "''")}'`).join(" or "),
+        $select: "OfficeKey,OfficeName",
+        $top: String(OFFICE_BATCH),
+      });
+      const response = await ddfRateLimitedFetch(`${DDF_API_BASE}/Office?${query.toString()}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+      if (!response.ok) {
+        console.warn(`[ddf] office lookup failed: HTTP ${response.status} ${(await response.text().catch(() => "")).slice(0, 200)}`);
+        continue;
+      }
+      const data = (await response.json()) as { value?: Array<{ OfficeKey?: unknown; OfficeName?: unknown }> };
+      for (const key of batch) officeNames.set(key, { name: null, at: now });
+      for (const office of data.value ?? []) {
+        if (typeof office.OfficeKey === "string" || typeof office.OfficeKey === "number") {
+          officeNames.set(String(office.OfficeKey), { name: typeof office.OfficeName === "string" && office.OfficeName.trim() ? office.OfficeName.trim() : null, at: now });
+        }
+      }
+    } catch (error) {
+      console.warn("[ddf] office lookup failed:", (error as Error).message);
+    }
+  }
+  for (const listing of listings) {
+    const name = listing.ListOfficeKey ? officeNames.get(listing.ListOfficeKey)?.name : null;
+    if (name) listing.ListOfficeName = name;
+  }
+  return listings;
 }
 
 /** Every Property request goes through here: rate limits honoured, schema changes absorbed. */
@@ -308,6 +390,15 @@ export async function getDdfToken(): Promise<string> {
   return tokenMint;
 }
 
+/**
+ * "Toronto" has to find "Toronto (Regent Park)" too — that is how the Toronto-area board
+ * publishes nearly all of its listings; an exact match alone finds a few dozen.
+ */
+export function cityFilter(city: string): string {
+  const escaped = city.trim().replace(/'/g, "''");
+  return `(City eq '${escaped}' or startswith(City,'${escaped} ('))`;
+}
+
 export async function searchDdfListings(params: {
   city?: string;
   stateOrProvince?: string;
@@ -344,7 +435,7 @@ export async function searchDdfListings(params: {
   }
 
   if (params.city) {
-    filters.push(`City eq '${params.city.replace(/'/g, "''")}'`);
+    filters.push(cityFilter(params.city));
   }
   if (params.stateOrProvince) {
     filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);
@@ -426,7 +517,7 @@ export async function searchDdfListings(params: {
   }
 
   const data: DdfSearchResponse = await response.json();
-  let listings = (data.value || []).map(coerceDdfListing);
+  let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
   // When CREA won't filter on status for us, do it here: a listing that states a different status is dropped.
   const wantedStatus = (params.standardStatus || "Active").toLowerCase();
   listings = listings.filter((listing) => !listing.StandardStatus || listing.StandardStatus.toLowerCase() === wantedStatus);
@@ -491,7 +582,7 @@ export async function searchDdfByRemarks(params: {
     filters.push(`StateOrProvince eq '${params.stateOrProvince.replace(/'/g, "''")}'`);
   }
   if (params.city) {
-    filters.push(`City eq '${params.city.replace(/'/g, "''")}'`);
+    filters.push(cityFilter(params.city));
   }
   if (params.minPrice) {
     filters.push(`ListPrice ge ${params.minPrice}`);
@@ -546,7 +637,7 @@ export async function searchDdfByRemarks(params: {
   }
 
   const data: DdfSearchResponse = await response.json();
-  const allListings = (data.value || []).map(coerceDdfListing);
+  const allListings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
   const totalCount = data["@odata.count"] || allListings.length;
 
   if (totalCount > requestedTop && !params.skip) {
@@ -559,7 +650,7 @@ export async function searchDdfByRemarks(params: {
         const pageResponse = await ddfApiFetch(`${DDF_API_BASE}/Property?${pageParams.toString()}`, fetchOpts);
         if (pageResponse.ok) {
           const pageData = await pageResponse.json();
-          if (pageData?.value) allListings.push(...(pageData.value as DdfListing[]).map(coerceDdfListing));
+          if (pageData?.value) allListings.push(...(await attachOfficeNames((pageData.value as DdfListing[]).map(coerceDdfListing), token)));
         }
       } catch {
       }
@@ -589,7 +680,8 @@ export async function getDdfListing(listingKey: string): Promise<DdfListing | nu
     throw new Error(`DDF listing fetch failed: ${response.status}`);
   }
 
-  return coerceDdfListing((await response.json()) as DdfListing);
+  const [listing] = await attachOfficeNames([coerceDdfListing((await response.json()) as DdfListing)], token);
+  return listing;
 }
 
 export function normalizeDdfListing(ddf: DdfListing): any {
@@ -646,10 +738,11 @@ export function normalizeDdfListing(ddf: DdfListing): any {
     listDate: ddf.OriginalEntryTimestamp || undefined,
     totalActualRent: ddf.TotalActualRent || undefined,
     numberOfUnitsTotal: ddf.NumberOfUnitsTotal || undefined,
-    lotFrontage: ddf.LotFrontage || undefined,
-    lotDepth: ddf.LotDepth || undefined,
+    lotFrontage: ddf.FrontageLengthNumeric || undefined,
+    lotFrontageUnit: ddf.FrontageLengthNumericUnits || undefined,
     lotArea: ddf.LotSizeArea || undefined,
-    lotAreaUnit: ddf.LotSizeAreaUnits || undefined,
+    lotAreaUnit: ddf.LotSizeUnits || undefined,
+    zoning: ddf.ZoningDescription || ddf.Zoning || undefined,
     lotDimensions: ddf.LotSizeDimensions || undefined,
     listOfficeName: ddf.ListOfficeName || undefined,
     modificationTimestamp: ddf.ModificationTimestamp || undefined,
@@ -681,7 +774,9 @@ export async function searchDdfByMlsNumber(mlsNumber: string): Promise<DdfListin
   }
 
   const data: DdfSearchResponse = await response.json();
-  return data.value?.[0] ? coerceDdfListing(data.value[0]) : null;
+  if (!data.value?.[0]) return null;
+  const [listing] = await attachOfficeNames([coerceDdfListing(data.value[0])], token);
+  return listing;
 }
 
 export function isDdfConfigured(): boolean {

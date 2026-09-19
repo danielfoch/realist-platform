@@ -28,7 +28,7 @@ export interface YieldSearchParams {
   pageSize: number;
 }
 
-const PROVINCE_NAMES: Record<string, string> = {
+export const PROVINCE_NAMES: Record<string, string> = {
   ON: "Ontario", QC: "Quebec", BC: "British Columbia", AB: "Alberta", MB: "Manitoba", SK: "Saskatchewan", NS: "Nova Scotia",
   NB: "New Brunswick", NL: "Newfoundland and Labrador", PE: "Prince Edward Island", YT: "Yukon", NT: "Northwest Territories", NU: "Nunavut",
 };

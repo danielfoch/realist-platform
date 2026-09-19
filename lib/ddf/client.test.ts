@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adaptDdfUrl, forgetDdfSchemaRejections, learnFromDdfError, searchDdfListings } from "./client";
+import { adaptDdfUrl, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, learnFromDdfError, searchDdfListings } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -254,7 +254,7 @@ describe("adapting to CREA's schema", () => {
         if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
         calls.push(target);
         const query = new URL(target).searchParams;
-        if (query.get("$select")?.includes("LotFrontage")) return new Response(SELECT_GONE, { status: 400 });
+        if (query.get("$select")?.split(",").includes("Stories")) return new Response(SELECT_GONE.replace("LotFrontage", "Stories"), { status: 400 });
         if (query.get("$filter")?.includes("StandardStatus")) return new Response(FILTER_GONE, { status: 400 });
         return new Response(JSON.stringify({ "@odata.count": 2, value: [{ ListingKey: "1", StandardStatus: "Active", ListPrice: 1 }, { ListingKey: "2", StandardStatus: "Pending", ListPrice: 2 }] }), { status: 200 });
       }),
@@ -281,5 +281,52 @@ describe("the shape of what CREA sends", () => {
     const { isVacantLandLikeProperty } = await import("./propertyEligibility");
     expect(isVacantLandLikeProperty({ StructureType: ["Vacant Land"] as unknown as string })).toBe(true);
     expect(isVacantLandLikeProperty({ StructureType: ["House"] as unknown as string, PropertySubType: "Single Family" })).toBe(false);
+  });
+});
+
+describe("cities, as the Toronto-area board publishes them", () => {
+  beforeEach(() => forgetDdfSchemaRejections());
+
+  it("searches a city by its name AND by 'Name (Community)'", () => {
+    expect(cityFilter("Toronto")).toBe("(City eq 'Toronto' or startswith(City,'Toronto ('))");
+    expect(cityFilter("St. John's")).toBe("(City eq 'St. John''s' or startswith(City,'St. John''s ('))");
+  });
+
+  it("files the community under the community, so everything keyed by city still says Toronto", () => {
+    expect(coerceDdfListing({ City: "Toronto (Regent Park)" })).toEqual({ City: "Toronto", CityRegion: "Regent Park" });
+    expect(coerceDdfListing({ City: "Woodstock (Woodstock - North)", CityRegion: "Already set" })).toEqual({ City: "Woodstock", CityRegion: "Already set" });
+    expect(coerceDdfListing({ City: "Ottawa" })).toEqual({ City: "Ottawa" });
+  });
+
+  it("falls back to exact names if CREA ever refuses startswith()", () => {
+    const url = `https://ddfapi.realtor.ca/odata/v1/Property?${new URLSearchParams({ $filter: `${cityFilter("Toronto")} and ListPrice ge 500000` })}`;
+    expect(learnFromDdfError(JSON.stringify({ error: { details: "Unknown function 'startswith'.", message: "invalid query" } }))).toBe(true);
+    expect(new URL(adaptDdfUrl(url)).searchParams.get("$filter")).toBe("City eq 'Toronto' and ListPrice ge 500000");
+  });
+});
+
+describe("the listing brokerage", () => {
+  beforeEach(() => forgetDdfOffices());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("comes from the Office resource, once per office, and is remembered", async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        asked.push(new URL(String(input)).searchParams.get("$filter") ?? "");
+        return new Response(JSON.stringify({ value: [{ OfficeKey: "100", OfficeName: "Steel City Realty, Brokerage" }, { OfficeKey: "200", OfficeName: " " }] }), { status: 200 });
+      }),
+    );
+    const listings = await attachOfficeNames([{ ListOfficeKey: "100" }, { ListOfficeKey: "100" }, { ListOfficeKey: "200" }, {}], "token");
+    expect(listings.map((listing) => (listing as { ListOfficeName?: string }).ListOfficeName)).toEqual(["Steel City Realty, Brokerage", "Steel City Realty, Brokerage", undefined, undefined]);
+    expect(asked).toEqual(["OfficeKey eq '100' or OfficeKey eq '200'"]);
+    await attachOfficeNames([{ ListOfficeKey: "100" }, { ListOfficeKey: "200" }], "token");
+    expect(asked).toHaveLength(1); // both answers remembered — including "this office has no name"
+  });
+
+  it("never costs a search its results when the lookup fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })));
+    await expect(attachOfficeNames([{ ListOfficeKey: "300" }], "token")).resolves.toEqual([{ ListOfficeKey: "300" }]);
   });
 });
