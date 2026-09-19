@@ -6,13 +6,58 @@ import { useEffect, useState } from "react";
 import { AccountLinkLabel, accountLink } from "@/components/auth/AccountLinkLabel";
 import { useViewer } from "@/components/auth/useViewer";
 
-const NAV_ITEMS = [
-  { href: "/listings", label: "Listings" },
-  { href: "/multiplex", label: "Multiplex" },
-  { href: "/deals", label: "Deals" },
-  { href: "/podcast", label: "Podcast" },
-  { href: "/research", label: "Research" },
-  { href: "/community", label: "Community" },
+/**
+ * Five doors, one per thing an investor comes here to do. Everything else on
+ * the site lives behind one of them — add a page to a door, not a sixth door.
+ */
+const DOORS: Array<{ href: string; label: string; match: string[]; children: Array<{ href: string; label: string; note: string }> }> = [
+  {
+    href: "/listings",
+    label: "Find deals",
+    match: ["/listings", "/deals"],
+    children: [
+      { href: "/listings", label: "Listings", note: "Every listing in Canada, already underwritten" },
+      { href: "/deals", label: "Motivated sellers", note: "Power of sale, VTB, estate — scored daily" },
+      { href: "/deals/map", label: "Deal map", note: "Rents and deals on one map" },
+    ],
+  },
+  {
+    href: "/underwrite",
+    label: "Underwrite",
+    match: ["/underwrite", "/multiplex"],
+    children: [
+      { href: "/underwrite", label: "Any rental property", note: "Cash flow, returns and the price that works" },
+      { href: "/multiplex", label: "Toronto multiplex", note: "Zoning, massing and the CMHC proforma" },
+    ],
+  },
+  {
+    href: "/team",
+    label: "Power team",
+    match: ["/team", "/work-with-us"],
+    children: [
+      { href: "/team", label: "Get introduced", note: "The nine people around a deal" },
+      { href: "/work-with-us", label: "Buy with cash back", note: "Our team, one showing, money back at closing" },
+    ],
+  },
+  {
+    href: "/community",
+    label: "Community",
+    match: ["/community", "/u"],
+    children: [
+      { href: "/community", label: "Meetups", note: "In person, across Canada, every month" },
+      { href: "/community/leaderboard", label: "Leaderboard", note: "Who's underwriting the most deals" },
+    ],
+  },
+  {
+    href: "/podcast",
+    label: "Learn",
+    match: ["/podcast", "/research", "/encyclopedia", "/about"],
+    children: [
+      { href: "/podcast", label: "Podcast", note: "Canada's #1 real estate show, twice a week" },
+      { href: "/research", label: "Research", note: "Reports and market data" },
+      { href: "/encyclopedia", label: "Encyclopedia", note: "149 plain-English investing guides" },
+    ],
+  },
 ];
 
 /** Same mark as the homepage journey header (components/scrollcraft). */
@@ -42,6 +87,8 @@ export function SiteNav() {
   const [open, setOpen] = useState(false);
   const viewer = useViewer();
   const account = accountLink(viewer);
+  // Members go straight to the tool; everyone else is one click from an account.
+  const cta = viewer ? { href: "/underwrite", label: "Underwrite a deal" } : { href: "/login?next=/listings", label: "Join free" };
 
   useEffect(() => {
     if (!open) return;
@@ -62,21 +109,34 @@ export function SiteNav() {
           <BrandMark />
         </Link>
 
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
+          {DOORS.map((door) => {
+            const active = door.match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`relative py-2 text-[13px] font-medium transition-colors ${
-                  active ? "text-ink" : "text-ink-faint hover:text-ink"
-                }`}
-              >
-                {item.label}
-                {active && <span className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-accent" />}
-              </Link>
+              <div key={door.href} className="group relative">
+                <Link
+                  href={door.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative block py-2 text-[13px] font-medium transition-colors ${
+                    active ? "text-ink" : "text-ink-faint hover:text-ink group-focus-within:text-ink"
+                  }`}
+                >
+                  {door.label}
+                  {active && <span className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-accent" />}
+                </Link>
+                <div className="invisible absolute left-1/2 top-full z-50 w-72 -translate-x-1/2 pt-3 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                  <ul className="rounded-lg border border-hairline bg-surface p-1.5 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.25)]">
+                    {door.children.map((child) => (
+                      <li key={child.href}>
+                        <Link href={child.href} className="block rounded-[3px] px-3 py-2.5 transition-colors hover:bg-raised focus-visible:bg-raised">
+                          <span className="block text-[13px] font-semibold text-ink">{child.label}</span>
+                          <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">{child.note}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             );
           })}
         </nav>
@@ -90,10 +150,10 @@ export function SiteNav() {
             <AccountLinkLabel viewer={viewer} />
           </Link>
           <Link
-            href="/multiplex"
+            href={cta.href}
             className="hidden items-center gap-2 rounded-[3px] bg-brand px-4 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-deep sm:inline-flex"
           >
-            Start building
+            {cta.label}
             <ArrowUpRight />
           </Link>
           <button
@@ -123,16 +183,20 @@ export function SiteNav() {
 
       {open && (
         <nav id="site-mobile-menu" className="border-t border-hairline bg-paper px-4 py-3 sm:px-6 lg:hidden" aria-label="Mobile">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between border-b border-hairline py-3.5 text-[15px] font-medium text-ink last:border-b-0"
-            >
-              {item.label}
-              <ArrowUpRight />
-            </Link>
+          {DOORS.map((door) => (
+            <div key={door.href} className="border-b border-hairline py-3">
+              <Link href={door.href} onClick={() => setOpen(false)} className="flex items-center justify-between text-[15px] font-semibold text-ink">
+                {door.label}
+                <ArrowUpRight />
+              </Link>
+              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                {door.children.map((child) => (
+                  <Link key={child.href} href={child.href} onClick={() => setOpen(false)} className="py-1 text-[13px] text-ink-soft hover:text-brand">
+                    {child.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
           <Link
             href={account.href}
@@ -143,11 +207,11 @@ export function SiteNav() {
             <ArrowUpRight />
           </Link>
           <Link
-            href="/multiplex"
+            href={cta.href}
             onClick={() => setOpen(false)}
             className="mt-3 flex items-center justify-between rounded-[3px] bg-brand px-4 py-3 text-[14px] font-semibold text-white"
           >
-            Start building
+            {cta.label}
             <ArrowUpRight />
           </Link>
         </nav>

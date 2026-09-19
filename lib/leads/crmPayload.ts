@@ -17,6 +17,8 @@ const KIND_TAGS: Record<LeadKind, string[]> = {
   financing: ["financing_consultation"],
   power_team: ["power_team_request"],
   underwriting_help: ["underwriting_help"],
+  pro_application: ["expert_application"],
+  first_underwrite: ["deal-analyzed"],
   active_underwriter: ["deal-analyzed", "active-underwriter"],
 };
 
@@ -30,6 +32,8 @@ export const KIND_LABELS: Record<LeadKind, string> = {
   financing: "Financing request",
   power_team: "Power team intro",
   underwriting_help: "Underwriting help",
+  pro_application: "Professional application",
+  first_underwrite: "First underwrite",
   active_underwriter: "Active underwriter",
 };
 
@@ -57,7 +61,8 @@ export function crmTags(lead: Pick<Lead, "kind" | "city" | "province" | "routing
   tags.add(`route-${lead.routing.replace(/_/g, "-")}`);
 
   const roles = Array.isArray(lead.context?.roles) ? (lead.context.roles as unknown[]) : [];
-  for (const role of roles) tags.add(`needs-${slug(String(role))}`);
+  const prefix = lead.kind === "pro_application" ? "pro" : "needs";
+  for (const role of roles) tags.add(`${prefix}-${slug(String(role))}`);
   return [...tags];
 }
 
@@ -110,7 +115,9 @@ export function leadSummaryLines(lead: Lead): string[] {
 
   const context = lead.context ?? {};
   const roles = Array.isArray(context.roles) ? (context.roles as unknown[]).map(String) : [];
-  if (roles.length) lines.push(`Looking for: ${roles.map(roleLabel).join(", ")}`);
+  if (roles.length) lines.push(`${lead.kind === "pro_application" ? "Works as" : "Looking for"}: ${roles.map(roleLabel).join(", ")}`);
+  if (typeof context.company === "string") lines.push(`Company: ${context.company}`);
+  if (typeof context.licence === "string") lines.push(`Licence: ${context.licence}`);
   if (typeof context.eventTitle === "string") lines.push(`Event: ${context.eventTitle}`);
   if (typeof context.interest === "string") lines.push(`Buying: ${context.interest}`);
   if (typeof context.timeline === "string") lines.push(`Timeline: ${context.timeline}`);

@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -23,7 +24,11 @@ const schema = z.object({
   province: optionalText(60),
   investorFocus: optionalText(600),
   consentMarketing: z.boolean().optional(),
+  showOnLeaderboard: z.boolean().optional(),
 });
+
+/** What other people can see of a member: the board, the teaser and /u/<id> are all cached. */
+const PUBLIC_FIELDS = ["name", "city", "showOnLeaderboard"] as const;
 
 /** Update the signed-in member's profile. Only supplied fields change. */
 export async function PATCH(request: Request) {
@@ -45,6 +50,12 @@ export async function PATCH(request: Request) {
     }
     if (consentMarketing !== undefined && consentMarketing !== user.consentMarketing) {
       await recordConsent(user.id, consentMarketing, "account_settings");
+    }
+    // Stepping off the board (or changing the name on it) takes effect now, not when a cache expires.
+    if (PUBLIC_FIELDS.some((field) => profile[field] !== undefined && profile[field] !== user[field])) {
+      revalidateTag("leaderboard", { expire: 0 });
+      revalidatePath(`/u/${user.id}`);
+      revalidatePath("/community");
     }
     const [fresh] = await getDb().select().from(users).where(eq(users.id, user.id)).limit(1);
     return Response.json({ ok: true, user: toViewer(fresh) });

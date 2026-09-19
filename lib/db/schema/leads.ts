@@ -16,6 +16,8 @@ export const LEAD_KINDS = [
   "financing", // mortgage / CMHC MLI Select conversation
   "power_team", // wants an introduction to a professional
   "underwriting_help", // wants a human to pressure-test their numbers
+  "pro_application", // a professional who wants to work with Realist investors
+  "first_underwrite", // behavioural: a member's first logged analysis (CRM only, no email)
   "active_underwriter", // behavioural: crossed an analysis threshold (no form)
 ] as const;
 export type LeadKind = (typeof LEAD_KINDS)[number];

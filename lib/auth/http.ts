@@ -10,6 +10,7 @@ import {
   type SessionVia,
 } from "./sessions";
 import { touchLastLogin } from "./users";
+import { claimAnonymousAnalyses } from "@/lib/analyses/store";
 
 /** The anonymous visitor id set by /api/multiplex/underwrite. */
 const ANON_COOKIE = "realist_sid";
@@ -26,6 +27,7 @@ async function claimAnonymousWork(userId: string, anonymousId: string | undefine
       .update(multiplexUnderwritings)
       .set({ userId })
       .where(and(eq(multiplexUnderwritings.sessionId, anonymousId), isNull(multiplexUnderwritings.userId)));
+    await claimAnonymousAnalyses(userId, anonymousId);
   } catch (error) {
     console.error("[auth] claiming anonymous work failed:", (error as Error).message);
   }

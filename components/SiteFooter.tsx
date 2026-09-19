@@ -12,27 +12,30 @@ const FOOTER_COLS: Array<{
   links: Array<{ href: string; label: string; external?: boolean }>;
 }> = [
   {
-    heading: "Build smarter",
+    heading: "Find & underwrite",
     links: [
-      { href: "/listings", label: "Listings & cap rates" },
+      { href: "/listings", label: "Listings, pre-underwritten" },
+      { href: "/deals", label: "Motivated sellers" },
+      { href: "/underwrite", label: "Underwrite any deal" },
       { href: "/multiplex", label: "Multiplex underwriter" },
-      { href: "/deals", label: "Motivated deals" },
     ],
   },
   {
-    heading: "Know more",
+    heading: "Team & community",
+    links: [
+      { href: "/team", label: "Power team" },
+      { href: "/work-with-us", label: "Buy with cash back" },
+      { href: "/community", label: "Meetups" },
+      { href: "/community/leaderboard", label: "Leaderboard" },
+    ],
+  },
+  {
+    heading: "Learn",
     links: [
       { href: "/podcast", label: "Podcast" },
       { href: "/research", label: "Research" },
       { href: "/encyclopedia", label: "Encyclopedia" },
       { href: STATS_BASE_URL, label: "Market stats", external: true },
-    ],
-  },
-  {
-    heading: "Go further, together",
-    links: [
-      { href: "/community", label: "Meetups & events" },
-      { href: "/work-with-us", label: "Work with us" },
       { href: "/about", label: "About" },
     ],
   },

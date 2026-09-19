@@ -36,6 +36,10 @@ export const users = pgTable(
     /** What they invest in / are looking for — free text from the profile page. */
     investorFocus: text("investor_focus"),
     role: text("role").$type<"user" | "admin">().default("user").notNull(),
+    /** The member's own power-team checklist: role key → "have" | "need". */
+    powerTeam: jsonb("power_team").$type<Record<string, "have" | "need">>(),
+    /** Appear as "First L." on the leaderboard and have a public track-record page. */
+    showOnLeaderboard: boolean("show_on_leaderboard").default(true).notNull(),
     emailVerifiedAt: timestamp("email_verified_at"),
     /** CASL: express marketing consent, with when and where it was given. */
     consentMarketing: boolean("consent_marketing").default(false).notNull(),

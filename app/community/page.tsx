@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { JsonLd } from "@/components/JsonLd";
 import { LeadForm } from "@/components/leads/LeadForm";
 import { RsvpButton } from "@/components/community/RsvpButton";
@@ -10,6 +11,10 @@ import {
   type MeetupEvent,
 } from "@/lib/community/meetup";
 import { PODCAST_NAME } from "@/lib/brand";
+import { getLeaderboard, type LeaderboardRow } from "@/lib/analyses/community";
+import { safeCity } from "@/lib/analyses/profile";
+import { focusRing, textLinkClass } from "@/components/community/TrackRecord";
+import { fmtNum } from "@/components/multiplex/format";
 
 export const revalidate = 1800;
 
@@ -53,8 +58,20 @@ function capRecurringSeries(events: MeetupEvent[], maxPerSeries = 2): MeetupEven
   });
 }
 
+/** This week's top five, or null when the board can't be read — the section then doesn't render at all. */
+async function loadTopUnderwriters(): Promise<LeaderboardRow[] | null> {
+  try {
+    return await getLeaderboard("week", { limit: 5 });
+  } catch {
+    return null;
+  }
+}
+
 export default async function CommunityPage() {
-  const allEvents = await getUpcomingMeetupEvents().catch(() => []);
+  const [allEvents, topUnderwriters] = await Promise.all([
+    getUpcomingMeetupEvents().catch(() => []),
+    loadTopUnderwriters(),
+  ]);
   const events = capRecurringSeries(allEvents);
   const hiddenCount = allEvents.length - events.length;
   const meetupGroupUrl = getMeetupGroupUrl();
@@ -222,6 +239,48 @@ export default async function CommunityPage() {
           </div>
         )}
       </section>
+
+      {/* This week's leaderboard, in brief */}
+      {topUnderwriters && (
+        <section aria-labelledby="top-underwriters" className="border-t border-hairline">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <h2 id="top-underwriters" className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+                This week&rsquo;s top underwriters
+              </h2>
+              <Link href="/community/leaderboard" className={`text-sm ${textLinkClass}`}>
+                See the full board →
+              </Link>
+            </div>
+            {topUnderwriters.length > 0 ? (
+              <ol className="mt-6 divide-y divide-hairline border-y border-hairline">
+                {topUnderwriters.map((row) => (
+                  <li key={row.userId} className="flex items-center gap-4 py-3">
+                    <span className="tnum w-6 shrink-0 text-sm text-ink-faint">{row.rank}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      <Link href={`/u/${encodeURIComponent(row.userId)}`} className={`font-semibold text-ink hover:text-brand ${focusRing}`}>
+                        {row.name}
+                      </Link>
+                      {safeCity(row.city) && <span className="text-ink-faint"> · {safeCity(row.city)}</span>}
+                    </span>
+                    <span className="tnum shrink-0 text-sm text-ink-soft">
+                      {fmtNum(row.deals)} {row.deals === 1 ? "deal" : "deals"}
+                    </span>
+                    <span className="tnum w-16 shrink-0 text-right text-sm font-semibold text-ink">
+                      {fmtNum(row.score)}
+                      <span className="sr-only"> points</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="mt-3 text-sm text-ink-soft">
+                Nobody&rsquo;s on this week&rsquo;s board yet — underwrite a deal and you&rsquo;re first.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Email capture */}
       <section className="border-t border-hairline bg-surface">

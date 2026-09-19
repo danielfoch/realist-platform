@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { calculateGrossYield, calculateInvestmentMetrics, calculateListingYield } from "./investmentMetrics";
+import {
+  calculateGrossYield,
+  calculateInvestmentMetrics,
+  calculateListingYield,
+  calculateMonthlyDebtService,
+  monthlyMortgageRate,
+} from "./investmentMetrics";
 
 describe("investment metrics", () => {
   it("calculates gross yield", () => {
@@ -69,5 +75,37 @@ describe("calculateListingYield", () => {
       estimatedExpenses: 0,
       estimatedNoi: 0,
     });
+  });
+});
+
+describe("financing math (v2)", () => {
+  it("compounds semi-annually, the Canadian way — not r/12", () => {
+    // $400,000 at 5.50% over 25 years: $2,441.57 at a Canadian lender, $2,456.35 US-style.
+    expect(calculateMonthlyDebtService(400_000, 5.5, 25)).toBeCloseTo(2441.57, 1);
+    expect(monthlyMortgageRate(5.5)).toBeCloseTo(0.0045317, 6);
+    expect(monthlyMortgageRate(0)).toBe(0);
+    expect(calculateMonthlyDebtService(120_000, 0, 10)).toBe(1000);
+  });
+
+  it("measures returns on all the cash it takes to close, not just the down payment", () => {
+    const base = { monthlyRent: 4000, annualPropertyTax: 5000, annualInsurance: 1800 };
+    const withDefaultClosing = calculateInvestmentMetrics(500_000, base);
+    const noClosing = calculateInvestmentMetrics(500_000, { ...base, closingCosts: 0 });
+    expect(withDefaultClosing.cashInvested).toBe(110_000); // 20% down + 2% closing
+    expect(noClosing.cashInvested).toBe(100_000);
+    expect(withDefaultClosing.loanAmount).toBe(400_000);
+    expect(withDefaultClosing.monthlyDebtService).toBeCloseTo(2441.57, 1);
+    // Same cash flow, more cash in: cash-on-cash must be lower.
+    expect(withDefaultClosing.monthlyCashFlow).toBe(noClosing.monthlyCashFlow);
+    expect(withDefaultClosing.cashOnCashReturn!).toBeLessThan(noClosing.cashOnCashReturn!);
+  });
+
+  it("lets rent growth lift the IRR and leaves year-one numbers alone", () => {
+    const base = { monthlyRent: 4000, annualPropertyTax: 5000, annualInsurance: 1800 };
+    const flat = calculateInvestmentMetrics(500_000, { ...base, annualRentGrowthPercent: 0 });
+    const growing = calculateInvestmentMetrics(500_000, { ...base, annualRentGrowthPercent: 3 });
+    expect(growing.irr!).toBeGreaterThan(flat.irr!);
+    expect(growing.monthlyCashFlow).toBe(flat.monthlyCashFlow);
+    expect(growing.capRate).toBe(flat.capRate);
   });
 });

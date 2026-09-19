@@ -9,6 +9,7 @@ import {
   PODCAST_SPOTIFY_URL,
   PODCAST_YOUTUBE_URL,
 } from "@/lib/brand";
+import { CASHBACK_LABEL } from "@/lib/offer";
 
 export const metadata: Metadata = {
   title: "About — the podcast behind the platform",
@@ -210,7 +211,7 @@ export default function AboutPage() {
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-signal">The offer</p>
           <h3 className="font-display mt-2 text-xl font-semibold">
-            Get 50% of our commission back
+            Get {CASHBACK_LABEL} of our commission back
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
             Buy a property you found on Realist with our partner team and half

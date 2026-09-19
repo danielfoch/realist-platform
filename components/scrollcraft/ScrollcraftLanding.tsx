@@ -183,7 +183,7 @@ export const CHAPTERS = [
       "Project support",
     ],
     cta: "Build your project team",
-    href: "/work-with-us",
+    href: "/team?roles=contractor,architect#request",
     note: "One plan. The right people around it.",
   },
   {
@@ -217,7 +217,7 @@ export const CHAPTERS = [
       "Stay with Realist beyond completion. Plan your asset’s long-term performance with property management partners, AI-assisted tenant support, maintenance, leasing, and reporting.",
     tags: ["Asset strategy", "Property management", "AI-assisted operations"],
     cta: "Build your management team",
-    href: "/work-with-us",
+    href: "/team?roles=property_manager#request",
     note: "Real people and specialist partners. Working alongside you.",
   },
 ];
@@ -847,6 +847,11 @@ const TOOL_GROUPS = [
         href: "/listings",
       },
       {
+        name: "Underwrite any deal",
+        note: "Cash flow, returns, and the price that works.",
+        href: "/underwrite",
+      },
+      {
         name: "AI multiplex underwriter",
         note: "Site risks, scenarios, and AI-written insights.",
         href: "/multiplex",
@@ -873,9 +878,14 @@ const TOOL_GROUPS = [
         href: "/community",
       },
       {
-        name: "Meet the hosts",
-        note: "Daniel Foch and Nick Hill, behind the mic.",
-        href: "/about",
+        name: "Power team",
+        note: "Introductions to the nine people around a deal.",
+        href: "/team",
+      },
+      {
+        name: "Leaderboard",
+        note: "Who's underwriting the most deals this week.",
+        href: "/community/leaderboard",
       },
       {
         name: "Work with Realist",

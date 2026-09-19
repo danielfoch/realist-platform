@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { dealKeyFor } from "./dealKey";
+import { reopenHref } from "./history";
+
+const manual = {
+  mlsNumber: null,
+  address: "45 Secret Ave, Hamilton, ON",
+  city: "Hamilton",
+  province: "ON",
+  price: 749_900.4,
+  monthlyRent: 4200,
+  units: 2,
+};
+
+/** What /underwrite does with the link: join the parts back into one address. */
+function rebuilt(href: string): string {
+  const params = new URL(href, "https://realist.ca").searchParams;
+  return [params.get("address"), params.get("city"), params.get("province")].filter(Boolean).join(", ");
+}
+
+describe("reopenHref", () => {
+  it("sends a listing to its listing page", () => {
+    expect(reopenHref({ ...manual, mlsNumber: "X 50/1" })).toBe("/listings/X%2050%2F1");
+  });
+
+  it("reopens an off-market deal in the underwriter with its basics", () => {
+    expect(reopenHref(manual)).toBe("/underwrite?address=45+Secret+Ave&city=Hamilton&province=ON&price=749900&rent=4200&units=2");
+  });
+
+  it("round-trips to the same deal, so reopening never logs a duplicate", () => {
+    for (const row of [manual, { ...manual, province: null, address: "45 Secret Ave, Hamilton" }, { ...manual, city: null, province: null, address: "45 Secret Ave" }]) {
+      const href = reopenHref(row);
+      expect(href).not.toBeNull();
+      expect(dealKeyFor({ address: rebuilt(href as string) })).toBe(dealKeyFor({ address: row.address }));
+    }
+  });
+
+  it("passes the address whole when it wasn't stored as street, city, province", () => {
+    const href = reopenHref({ ...manual, address: "Lot 7 Concession 4 near Hamilton" }) as string;
+    expect(rebuilt(href)).toBe("Lot 7 Concession 4 near Hamilton");
+  });
+
+  it("leaves out numbers it doesn't have and gives up without an address", () => {
+    expect(reopenHref({ ...manual, monthlyRent: null, units: null })).toBe("/underwrite?address=45+Secret+Ave&city=Hamilton&province=ON&price=749900");
+    expect(reopenHref({ ...manual, address: null })).toBeNull();
+    expect(reopenHref({ ...manual, address: "n/a" })).toBeNull();
+  });
+});

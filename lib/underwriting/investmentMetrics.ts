@@ -44,7 +44,7 @@ export const INVESTMENT_METRIC_FLAGS: MetricFeatureFlags = {
 };
 
 export const INVESTMENT_METRIC_DEFAULTS = {
-  CALCULATION_VERSION: "realist-investment-metrics-v1",
+  CALCULATION_VERSION: "realist-investment-metrics-v2",
   DEFAULT_VACANCY_PERCENT: readNumber("DEFAULT_VACANCY_PERCENT", 5),
   DEFAULT_MAINTENANCE_PERCENT: readNumber("DEFAULT_MAINTENANCE_PERCENT", 5),
   DEFAULT_MANAGEMENT_PERCENT: readNumber("DEFAULT_MANAGEMENT_PERCENT", 8),
@@ -53,6 +53,10 @@ export const INVESTMENT_METRIC_DEFAULTS = {
   DEFAULT_HOLD_PERIOD_YEARS: readNumber("DEFAULT_HOLD_PERIOD_YEARS", 5),
   DEFAULT_APPRECIATION_PERCENT: readNumber("DEFAULT_APPRECIATION_PERCENT", 3),
   DEFAULT_SELLING_COST_PERCENT: readNumber("DEFAULT_SELLING_COST_PERCENT", 5),
+  /** Land transfer tax, legal, inspection, appraisal — cash that never becomes equity. */
+  DEFAULT_CLOSING_COST_PERCENT: readNumber("DEFAULT_CLOSING_COST_PERCENT", 2),
+  /** NOI growth used for the hold-period cash flows (rents and costs rising together). */
+  DEFAULT_RENT_GROWTH_PERCENT: readNumber("DEFAULT_RENT_GROWTH_PERCENT", 2),
 };
 
 export interface InvestmentMetricAssumptions {
@@ -73,6 +77,9 @@ export interface InvestmentMetricAssumptions {
   holdPeriodYears?: number | null;
   annualAppreciationPercent?: number | null;
   sellingCostPercent?: number | null;
+  /** Dollars. Defaults to DEFAULT_CLOSING_COST_PERCENT of the price. */
+  closingCosts?: number | null;
+  annualRentGrowthPercent?: number | null;
   rentSource?: string | null;
   taxSource?: string | null;
 }
@@ -89,6 +96,11 @@ export interface CalculatedInvestmentMetrics {
   monthlyCashFlow: number | null;
   dscr: number | null;
   expenseRatio: number | null;
+  /** Monthly principal + interest. */
+  monthlyDebtService: number | null;
+  loanAmount: number | null;
+  /** Down payment plus closing costs: what it takes to get the keys. */
+  cashInvested: number | null;
   assumptionsComplete: boolean;
   capRateConfidence: MetricConfidence;
   irrConfidence: MetricConfidence;
@@ -150,6 +162,8 @@ function normalizeAssumptions(assumptions: InvestmentMetricAssumptions): Calcula
     holdPeriodYears: assumptions.holdPeriodYears ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_HOLD_PERIOD_YEARS,
     annualAppreciationPercent: assumptions.annualAppreciationPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_APPRECIATION_PERCENT,
     sellingCostPercent: assumptions.sellingCostPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_SELLING_COST_PERCENT,
+    closingCosts: assumptions.closingCosts ?? null,
+    annualRentGrowthPercent: assumptions.annualRentGrowthPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_RENT_GROWTH_PERCENT,
     rentSource: assumptions.rentSource ?? null,
     taxSource: assumptions.taxSource ?? null,
   };
@@ -161,9 +175,19 @@ export function calculateGrossYield(price: number, assumptions: InvestmentMetric
   return roundMetric(((monthlyRent * 12) / price) * 100, 2);
 }
 
-function calculateMonthlyDebtService(loanAmount: number, annualInterestRatePercent: number, amortizationYears: number): number {
+/**
+ * Canadian fixed-rate mortgages quote a nominal rate compounded semi-annually,
+ * not monthly — the effective monthly rate is (1 + r/2)^(1/6) − 1. At 5.5% that
+ * is a payment about 0.6% lower than the US-style r/12 most calculators use.
+ */
+export function monthlyMortgageRate(annualInterestRatePercent: number): number {
+  if (!(annualInterestRatePercent > 0)) return 0;
+  return Math.pow(1 + annualInterestRatePercent / 100 / 2, 1 / 6) - 1;
+}
+
+export function calculateMonthlyDebtService(loanAmount: number, annualInterestRatePercent: number, amortizationYears: number): number {
   if (loanAmount <= 0) return 0;
-  const monthlyRate = annualInterestRatePercent / 100 / 12;
+  const monthlyRate = monthlyMortgageRate(annualInterestRatePercent);
   const months = Math.max(1, Math.round(amortizationYears * 12));
   if (monthlyRate <= 0) return loanAmount / months;
   return loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
@@ -171,7 +195,7 @@ function calculateMonthlyDebtService(loanAmount: number, annualInterestRatePerce
 
 function calculateRemainingLoanBalance(loanAmount: number, annualInterestRatePercent: number, amortizationYears: number, elapsedYears: number): number {
   if (loanAmount <= 0) return 0;
-  const monthlyRate = annualInterestRatePercent / 100 / 12;
+  const monthlyRate = monthlyMortgageRate(annualInterestRatePercent);
   const totalMonths = Math.max(1, Math.round(amortizationYears * 12));
   const elapsedMonths = Math.max(0, Math.min(totalMonths, Math.round(elapsedYears * 12)));
   if (monthlyRate <= 0) {
@@ -269,8 +293,13 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     ? roundMetric((annualOperatingExpenses / annualGrossRent) * 100, 2)
     : null;
 
-  const equityInvested = price > 0 ? price * (downPaymentPercent / 100) : 0;
-  const loanAmount = price > 0 ? Math.max(0, price - equityInvested) : 0;
+  const downPayment = price > 0 ? price * (downPaymentPercent / 100) : 0;
+  const loanAmount = price > 0 ? Math.max(0, price - downPayment) : 0;
+  const closingCosts = assumptions.closingCosts ?? (price > 0 ? price * (INVESTMENT_METRIC_DEFAULTS.DEFAULT_CLOSING_COST_PERCENT / 100) : 0);
+  assumptions.closingCosts = closingCosts;
+  // Returns are measured on every dollar that leaves the buyer's account.
+  const equityInvested = downPayment + closingCosts;
+  const rentGrowth = (assumptions.annualRentGrowthPercent ?? INVESTMENT_METRIC_DEFAULTS.DEFAULT_RENT_GROWTH_PERCENT) / 100;
   const monthlyDebtService = calculateMonthlyDebtService(loanAmount, interestRate, amortizationYears);
   const annualDebtService = monthlyDebtService * 12;
   const monthlyCashFlow = noi != null ? roundMetric((noi - annualDebtService) / 12, 2) : null;
@@ -284,12 +313,12 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     && holdPeriodYears > 0
     && sellingCostPercent >= 0;
   if (irrInputsComplete && noi != null) {
-    const annualCashFlow = noi - annualDebtService;
     const projectedSalePrice = price * Math.pow(1 + (annualAppreciationPercent / 100), holdPeriodYears);
     const sellingCosts = projectedSalePrice * (sellingCostPercent / 100);
     const remainingBalance = calculateRemainingLoanBalance(loanAmount, interestRate, amortizationYears, holdPeriodYears);
     const cashFlows = [-equityInvested];
     for (let year = 1; year <= holdPeriodYears; year += 1) {
+      const annualCashFlow = noi * Math.pow(1 + rentGrowth, year - 1) - annualDebtService;
       cashFlows.push(year === holdPeriodYears
         ? annualCashFlow + projectedSalePrice - sellingCosts - remainingBalance
         : annualCashFlow);
@@ -326,6 +355,9 @@ export function calculateInvestmentMetrics(price: number, rawAssumptions: Invest
     monthlyCashFlow,
     dscr,
     expenseRatio,
+    monthlyDebtService: price > 0 ? roundMetric(monthlyDebtService, 2) : null,
+    loanAmount: price > 0 ? roundMetric(loanAmount, 0) : null,
+    cashInvested: price > 0 ? roundMetric(equityInvested, 0) : null,
     assumptionsComplete,
     capRateConfidence,
     irrConfidence,
@@ -354,7 +386,8 @@ export function calculateListingYield(
   }
   const metrics = calculateInvestmentMetrics(listPrice, {
     monthlyRent,
-    annualPropertyTax: taxAnnualAmount,
+    // A listing that doesn't report its tax bill still has one: let the engine infer it.
+    annualPropertyTax: taxAnnualAmount > 0 ? taxAnnualAmount : null,
     annualInsurance: listPrice * 0.003,
     annualCondoFees: monthlyAssociationFee * 12,
   });

@@ -98,6 +98,18 @@ export function breadcrumbNode(items: Array<{ name: string; path: string }>): Js
   };
 }
 
+/** FAQPage — only for questions and answers that are visibly on the page. */
+export function faqNode(items: Array<{ question: string; answer: string }>): JsonLdNode {
+  return {
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
 /** Wrap nodes in one @graph document. */
 export function jsonLdDocument(...nodes: Array<JsonLdNode | undefined>): string {
   return JSON.stringify({

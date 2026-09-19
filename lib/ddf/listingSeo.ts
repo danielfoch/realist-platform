@@ -25,6 +25,9 @@ export type ListingSeoRecord = {
   bathroomsFull: number | null;
   bathroomsHalf: number | null;
   squareFootage: number | null;
+  numberOfUnits: number | null;
+  taxAnnual: string | number | null;
+  associationFee: string | number | null;
   publicRemarks: string | null;
   estimatedMonthlyRent: string | number | null;
   netYield: string | number | null;
@@ -197,6 +200,9 @@ const SNAPSHOT_SEO_SELECT = sql`
     s.bathrooms_total AS "bathroomsFull",
     NULL::int AS "bathroomsHalf",
     NULLIF(ROUND(s.living_area), 0)::int AS "squareFootage",
+    s.number_of_units AS "numberOfUnits",
+    NULLIF(s.tax_annual_amount, 0) AS "taxAnnual",
+    NULLIF(s.association_fee, 0) AS "associationFee",
     s.public_remarks AS "publicRemarks",
     s.estimated_monthly_rent AS "estimatedMonthlyRent",
     s.net_yield AS "netYield",

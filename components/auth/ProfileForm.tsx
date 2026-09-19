@@ -20,6 +20,7 @@ export interface ProfileValues {
   province: string;
   investorFocus: string;
   consentMarketing: boolean;
+  showOnLeaderboard: boolean;
 }
 
 const PROVINCES: Array<[code: string, name: string]> = [
@@ -62,6 +63,7 @@ export function ProfileForm({ email, initial }: { email: string; initial: Profil
       province: values.province,
       investorFocus: values.investorFocus,
       consentMarketing: values.consentMarketing,
+      showOnLeaderboard: values.showOnLeaderboard,
     });
     if (!result.ok) {
       setError(result.error);
@@ -166,6 +168,17 @@ export function ProfileForm({ email, initial }: { email: string; initial: Profil
           className={checkboxClass}
         />
         Email me about meetups and Realist updates. Unsubscribe any time.
+      </label>
+      <label className="flex items-start gap-2 text-xs leading-relaxed text-ink-faint">
+        <input
+          type="checkbox"
+          name="showOnLeaderboard"
+          checked={values.showOnLeaderboard}
+          onChange={(event) => set("showOnLeaderboard", event.target.checked)}
+          disabled={saving}
+          className={checkboxClass}
+        />
+        Show me on the leaderboard and give me a public track-record page (as &ldquo;First L.&rdquo;)
       </label>
 
       {error && (

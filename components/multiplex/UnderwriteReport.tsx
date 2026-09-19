@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { SaveDealButton } from "@/components/auth/SaveDealButton";
 import { fmtMoney, fmtNum, fmtPct, fmtSqft } from "./format";
+import { CASHBACK_LABEL } from "@/lib/offer";
 
 /**
  * Renders the merged underwrite payload from POST /api/multiplex/underwrite
@@ -695,7 +696,7 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
           <div>
             <h3 className="font-display text-xl font-semibold">Want to actually build this?</h3>
             <p className="mt-1 max-w-xl text-sm text-ink-soft">
-              Buy the site with our partner team and get 50% of our commission back at
+              Buy the site with our partner team and get {CASHBACK_LABEL} of our commission back at
               closing — plus an intro to the lenders and builders who do these projects.
             </p>
           </div>
@@ -704,7 +705,7 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
               href={`/work-with-us?property=${encodeURIComponent(site.address ?? "")}`}
               className="rounded-md bg-signal px-4 py-2.5 text-sm font-semibold text-white hover:brightness-110"
             >
-              Buy this with 50% cash-back
+              Buy this with {CASHBACK_LABEL} cash-back
             </Link>
             {shareUrl && (
               <button

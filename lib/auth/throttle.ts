@@ -13,13 +13,13 @@ import { authThrottle } from "@/lib/db/schema";
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 10;
 
-export async function isThrottled(key: string, now: Date = new Date()): Promise<boolean> {
+export async function isThrottled(key: string, now: Date = new Date(), max: number = MAX_FAILURES): Promise<boolean> {
   try {
     const rows = await getDb().select().from(authThrottle).where(eq(authThrottle.key, key)).limit(1);
     const row = rows[0];
     if (!row) return false;
     if (now.getTime() - row.windowStartedAt.getTime() > WINDOW_MS) return false;
-    return row.count >= MAX_FAILURES;
+    return row.count >= max;
   } catch {
     return false;
   }

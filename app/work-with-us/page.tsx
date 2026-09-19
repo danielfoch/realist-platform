@@ -4,26 +4,27 @@ import { JsonLd } from "@/components/JsonLd";
 import { Suspense } from "react";
 import { OfferLeadForm } from "@/components/leads/OfferLeadForm";
 import { breadcrumbNode, jsonLdDocument } from "@/lib/seo/jsonld";
+import { CASHBACK_LABEL, CASHBACK_PERCENT, CASHBACK_SHARE_WORDS } from "@/lib/offer";
 
 export const metadata: Metadata = {
-  title: "Work with us — get 50% of our commission back",
+  title: `Work with us — get ${CASHBACK_LABEL} of our commission back`,
   description:
-    "Find a property on Realist, buy it with our partner team, and get half our commission back at closing. How the cash-back offer works, who it's for, and the honest fine print.",
+    `Find a property on Realist, buy it with our partner team, and get ${CASHBACK_SHARE_WORDS} of our commission back at closing. How the cash-back offer works, who it's for, and the honest fine print.`,
   alternates: { canonical: "/work-with-us" },
 };
 
 const STEPS = [
   {
-    title: "Find it on Realist",
-    body: "Use the tools the way you already do: screen pre-underwritten listings, run a multiplex site, or chase a motivated-seller deal. When a property clears your numbers, you're ready.",
+    title: "Review it from your desk",
+    body: "Every listing on Realist opens already underwritten. Change the numbers, read the deal memo, solve for the price that works. Most properties never earn a showing — that's the point. You stop touring and start deciding.",
   },
   {
-    title: "Buy it with our team",
-    body: "Tell us what you're circling and we introduce you to our partner team. They handle the offer, the negotiation, and the closing like any full-service agent — because they are one.",
+    title: "One showing, the one that matters",
+    body: "When a deal survives your numbers, a licensed agent on our partner team walks it with you — once — to verify what a listing can't tell you: the condition, the units, the street. Then they write and negotiate the offer like any full-service agent, because they are one.",
   },
   {
-    title: "Get 50% back at closing",
-    body: "When the deal closes, half of our side's commission is rebated to you — typically applied as a credit on closing. No punch cards, no points, real money on your statement.",
+    title: `Get ${CASHBACK_LABEL} back at closing`,
+    body: `You did the searching and the screening, so you shouldn't pay for it twice. When the deal closes, ${CASHBACK_SHARE_WORDS} of our side's commission is rebated to you — typically a credit on closing. Real money on your statement.`,
   },
 ] as const;
 
@@ -57,7 +58,7 @@ const FAQ = [
   },
   {
     q: "Does using the offer cost me more?",
-    a: "No. Buyer-side commission is customarily paid out of the transaction the same way it would be with any agent. The difference is that half of our share comes back to you instead of staying with us.",
+    a: `No. Buyer-side commission is customarily paid out of the transaction the same way it would be with any agent. The difference is that ${CASHBACK_SHARE_WORDS} of our share comes back to you instead of staying with us.`,
   },
   {
     q: "Do I have to buy a property I found on Realist?",
@@ -94,11 +95,11 @@ export default function WorkWithUsPage() {
             </p>
             <h1 className="font-display mt-4 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
               Find it on Realist. Buy it with our team.
-              <span className="text-signal"> Get half our commission back.</span>
+              <span className="text-signal"> Get {CASHBACK_SHARE_WORDS} of our commission back.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
               The tools are free because the business isn&rsquo;t subscriptions —
-              it&rsquo;s deals. When you buy with our partner team, we rebate 50%
+              it&rsquo;s deals. When you buy with our partner team, we rebate {CASHBACK_LABEL}
               of our commission to you at closing. You keep more cash; we keep
               building tools.
             </p>
@@ -135,7 +136,7 @@ export default function WorkWithUsPage() {
               <div className="flex items-baseline justify-between gap-4">
                 <dt className="font-semibold text-ink">Your rebate at closing</dt>
                 <dd className="tnum font-display text-2xl font-semibold text-signal">
-                  ~$10,000
+                  ~${Math.round((20000 * CASHBACK_PERCENT) / 100).toLocaleString("en-CA")}
                 </dd>
               </div>
             </dl>
@@ -154,7 +155,8 @@ export default function WorkWithUsPage() {
           How it works
         </h2>
         <p className="mt-2 max-w-2xl text-ink-soft">
-          Three steps, and two of them are things you were doing anyway.
+          Buying an investment property is a numbers decision. So do the numbers first, and see only
+          the one that passes.
         </p>
         <ol className="mt-8 grid gap-5 md:grid-cols-3">
           {STEPS.map((step, index) => (

@@ -14,6 +14,8 @@
  *   listing_watchers     → saved_deals      (kind 'listing'; only deliberate watches)
  *   saved_deals          → saved_deals      (kind 'analysis', read-only archive entries)
  *   multiplex_underwritings → multiplex_underwritings (verbatim)
+ *   analyses (buy & hold) → deal_analyses   (recomputed on today's engine: track records,
+ *                                            the leaderboard and learned defaults start warm)
  *   everything else a member owned → legacy_user_records (row-for-row JSON, secrets stripped)
  *
  * Properties: the source connection is forced read-only; the run is idempotent
@@ -32,6 +34,7 @@ import {
   type LegacyRow,
   type MappedUser,
 } from "../lib/migration/legacyUsers";
+import { mapLegacyAnalysis } from "../lib/migration/legacyAnalyses";
 
 const COMMIT = process.argv.includes("--commit");
 
@@ -55,6 +58,7 @@ const ARCHIVE_TABLES: Array<{ table: string; where?: string }> = [
 ];
 
 const REQUIRED_TARGET_TABLES = [
+  "deal_analyses",
   "users",
   "email_consent",
   "saved_deals",
@@ -273,6 +277,19 @@ async function main() {
     log(`analyzer saves → archive list: ${newLegacyDeals.length} new (${legacyDeals.length - newLegacyDeals.length} carried earlier)`);
     log(`multiplex underwrites:        ${underwritings.length}`);
 
+    // v1 analyses → today's analysis log. Members keep theirs; anonymous sessions still teach the market.
+    const legacyAnalyses = await readAll(source, "analyses");
+    const mappedAnalyses = legacyAnalyses.flatMap((row) => {
+      const mapped = mapLegacyAnalysis(row);
+      if (!mapped) return [];
+      const userId = row.user_id ? idMap.get(String(row.user_id)) ?? null : null;
+      const sessionId = typeof row.session_id === "string" && row.session_id ? row.session_id.slice(0, 64) : null;
+      if (!userId && !sessionId) return [];
+      return [{ mapped, userId, sessionId, actorKey: userId ? `user:${userId}` : `sid:legacy-${sessionId}` }];
+    });
+    log(`v1 analyses read:             ${legacyAnalyses.length}`);
+    log(`  carried to the analysis log: ${mappedAnalyses.length} (${mappedAnalyses.filter((a) => a.userId).length} by members, ${mappedAnalyses.filter((a) => a.mapped.eligible).length} leaderboard-eligible)`);
+
     const archive: Array<{ table: string; rows: LegacyRow[]; keyColumn: string }> = [];
     for (const { table, where } of ARCHIVE_TABLES) {
       if (!(await tableExists(source, table))) continue;
@@ -386,6 +403,24 @@ async function main() {
           100,
         );
         log(`multiplex underwrites written: ${written}`);
+      }
+
+      if (mappedAnalyses.length) {
+        const written = await insertRows(
+          client,
+          `INSERT INTO deal_analyses (actor_key, user_id, session_id, deal_key, source, mls_number, address, city, province, fsa,
+                                      units, price, inputs, defaults, edited, monthly_rent, cap_rate, cash_on_cash, dscr,
+                                      monthly_cash_flow, irr, quality, eligible, is_public, engine_version, created_at, updated_at)`,
+          // Never overwrite an analysis the member has redone here.
+          "ON CONFLICT (actor_key, deal_key) DO NOTHING",
+          mappedAnalyses.map(({ mapped: a, userId, sessionId, actorKey }) => [
+            actorKey, userId, sessionId, a.dealKey, a.source, a.mlsNumber, a.address, a.city, a.province, a.fsa,
+            a.units, a.price, JSON.stringify(a.inputs), JSON.stringify(a.defaults), JSON.stringify(a.edited), a.monthlyRent,
+            a.capRate, a.cashOnCash, a.dscr, a.monthlyCashFlow, a.irr, a.quality, a.eligible, true, a.engineVersion, a.createdAt, a.createdAt,
+          ]),
+          100,
+        );
+        log(`analyses written:             ${written}`);
       }
 
       for (const { table, rows, keyColumn } of archive) {

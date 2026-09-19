@@ -22,9 +22,10 @@ export type LeadFormKind =
   | "showing"
   | "financing"
   | "power_team"
-  | "underwriting_help";
+  | "underwriting_help"
+  | "pro_application";
 
-type Field = "name" | "phone" | "city" | "province" | "interest" | "timeline" | "roles" | "message";
+type Field = "name" | "phone" | "city" | "province" | "interest" | "timeline" | "roles" | "company" | "licence" | "message";
 
 export interface LeadFormProperty {
   address?: string | null;
@@ -125,7 +126,7 @@ export function LeadForm({
       return typeof value === "string" && value.trim() ? value.trim() : undefined;
     };
     if (shows("roles") && roles.length === 0) {
-      setError("Pick at least one person you need on your team.");
+      setError(kind === "pro_application" ? "Pick what you do." : "Pick at least one person you need on your team.");
       setStatus("error");
       return;
     }
@@ -146,6 +147,8 @@ export function LeadForm({
         ...(text("interest") ? { interest: text("interest") } : {}),
         ...(text("timeline") ? { timeline: text("timeline") } : {}),
         ...(roles.length ? { roles } : {}),
+        ...(text("company") ? { company: text("company") } : {}),
+        ...(text("licence") ? { licence: text("licence") } : {}),
       },
       consentMarketing: data.get("consentMarketing") === "on",
       consentPartner: showPartnerBox && data.get("consentPartner") === "on",
@@ -319,7 +322,7 @@ export function LeadForm({
       )}
       {shows("roles") && (
         <fieldset className="sm:col-span-2">
-          <legend className={labelClass}>Who do you need?</legend>
+          <legend className={labelClass}>{kind === "pro_application" ? "What do you do?" : "Who do you need?"}</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {POWER_TEAM_ROLES.map((role) => {
               const on = roles.includes(role.key);
@@ -339,6 +342,18 @@ export function LeadForm({
             })}
           </div>
         </fieldset>
+      )}
+      {shows("company") && (
+        <label className={labelClass}>
+          Company / brokerage
+          <input name="company" type="text" maxLength={200} autoComplete="organization" className={inputClass} />
+        </label>
+      )}
+      {shows("licence") && (
+        <label className={labelClass}>
+          Licence or designation <span className="font-normal text-ink-faint">(if any)</span>
+          <input name="licence" type="text" maxLength={200} placeholder="RECO, FSRA, LSO, CPA…" className={inputClass} />
+        </label>
       )}
       {shows("message") && (
         <label className={`${labelClass} sm:col-span-2`}>

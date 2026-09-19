@@ -39,6 +39,8 @@ export interface ListingUnderwrite {
   noi: number;
   /** Estimated monthly cash flow at 20% down / default financing. */
   cashFlowMonthly: number | null;
+  /** Monthly condo / association fee the listing reports, 0 when none. */
+  condoFeesMonthly: number;
 }
 
 type RentLadderResult = { rent: number; source: string };
@@ -131,7 +133,7 @@ export async function underwriteDdfListing(
   // engine for the levered view (20% down / 5.5% / 25yr defaults).
   const metrics = calculateInvestmentMetrics(price, {
     monthlyRent: rent,
-    annualPropertyTax: taxAnnual,
+    annualPropertyTax: taxAnnual > 0 ? taxAnnual : null,
     annualInsurance: price * 0.003,
     annualCondoFees: associationFee * 12,
     rentSource: source,
@@ -145,6 +147,7 @@ export async function underwriteDdfListing(
     netYield,
     noi: estimatedNoi,
     cashFlowMonthly: metrics.monthlyCashFlow,
+    condoFeesMonthly: associationFee,
   };
 }
 
@@ -159,15 +162,20 @@ export function underwriteFromSnapshot(record: {
   estimatedMonthlyRent: number | string | null;
   grossYield: number | string | null;
   netYield: number | string | null;
+  taxAnnual?: number | string | null;
+  associationFee?: number | string | null;
 }): ListingUnderwrite | null {
   const price = Number(record.listPrice);
   const rent = Number(record.estimatedMonthlyRent);
   if (!(price > 0) || !(rent > 0)) return null;
 
+  const tax = Number(record.taxAnnual);
+  const condoFees = Number(record.associationFee);
   const metrics = calculateInvestmentMetrics(price, {
     monthlyRent: rent,
-    annualPropertyTax: null,
+    annualPropertyTax: tax > 0 ? tax : null,
     annualInsurance: price * 0.003,
+    annualCondoFees: condoFees > 0 ? condoFees * 12 : 0,
     rentSource: "snapshot",
   });
 
@@ -182,5 +190,6 @@ export function underwriteFromSnapshot(record: {
     netYield: Number.isFinite(netYield) && netYield !== 0 ? netYield : (metrics.capRate ?? 0),
     noi: metrics.noi ?? 0,
     cashFlowMonthly: metrics.monthlyCashFlow,
+    condoFeesMonthly: condoFees > 0 ? condoFees : 0,
   };
 }

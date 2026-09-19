@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SaveDealButton } from "@/components/auth/SaveDealButton";
+import { UnderwrittenMark } from "@/components/underwrite/UnderwrittenMark";
 import { fmtMoney } from "@/components/multiplex/format";
 import {
   filterListingPhotos,
@@ -114,6 +115,9 @@ export function ListingCard({ listing }: { listing: ListingSearchResult }) {
           )}
         </div>
       </Link>
+      <div className="pointer-events-none absolute left-2.5 top-2.5 z-10">
+        <UnderwrittenMark mlsNumber={listing.mlsNumber} />
+      </div>
       <div className="absolute right-2.5 top-2.5 z-10">
         <SaveDealButton
           compact

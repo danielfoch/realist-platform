@@ -21,6 +21,8 @@ export function teamEmailSubject(lead: Pick<Lead, "kind" | "name" | "email" | "c
 }
 
 export async function deliverToTeam(lead: Lead): Promise<DeliveryResult> {
+  // CRM-only signals: worth a tag for segmenting, not worth an email.
+  if (lead.kind === "first_underwrite") return { outcome: "skipped" };
   if (lead.kind === "signup" && process.env.LEAD_EMAIL_SIGNUPS !== "1") return { outcome: "skipped" };
   const { to, cc } = teamRecipients(lead.intent);
   if (!emailConfigured() || to.length === 0) return { outcome: "not_configured" };

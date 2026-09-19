@@ -13,7 +13,7 @@ import { deliverDue } from "@/lib/leads/outbox";
  */
 
 // "signup" and "active_underwriter" are raised by the server, never by a form.
-const FORM_KINDS = ["event_invites", "meetup_rsvp", "offer", "showing", "financing", "power_team", "underwriting_help"] as const;
+const FORM_KINDS = ["event_invites", "meetup_rsvp", "offer", "showing", "financing", "power_team", "underwriting_help", "pro_application"] as const;
 
 const flatValue = z.union([z.string().max(500), z.number(), z.boolean(), z.null(), z.array(z.string().max(80)).max(12)]);
 
@@ -63,8 +63,9 @@ export async function POST(request: Request) {
   const { website, ...input } = parsed.data;
   if (website) return Response.json({ ok: true });
 
+  // Generous on purpose: at a live event a whole room submits from one Wi-Fi address.
   const ipKey = `lead-ip:${clientIp(request)}`;
-  if (await isThrottled(ipKey)) {
+  if (await isThrottled(ipKey, new Date(), 80)) {
     return Response.json({ ok: false, error: "That's a lot of requests — give it a few minutes and try again." }, { status: 429 });
   }
   await recordFailure(ipKey);

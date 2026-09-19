@@ -122,7 +122,8 @@ export function totalPremiumPct(params: {
 
 /** Monthly payment per dollar of loan for rate (annual, decimal) & amort years. */
 export function paymentFactorMonthly(annualRate: number, amortYears: number): number {
-  const r = annualRate / 12;
+  // Canadian convention: nominal rate compounded semi-annually.
+  const r = annualRate > 0 ? Math.pow(1 + annualRate / 2, 1 / 6) - 1 : 0;
   const n = amortYears * 12;
   if (r === 0) return 1 / n;
   return r / (1 - Math.pow(1 + r, -n));

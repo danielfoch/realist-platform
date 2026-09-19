@@ -26,6 +26,13 @@ import {
   realEstateListingNode,
 } from "@/lib/seo/jsonld";
 import { SaveDealButton } from "@/components/auth/SaveDealButton";
+import { NextMeetupStrip } from "@/components/community/NextMeetupStrip";
+import { Underwriter } from "@/components/underwrite/Underwriter";
+import { ConsensusStrip } from "@/components/underwrite/ConsensusStrip";
+import { getDealConsensus } from "@/lib/analyses/community";
+import { getLearnedDefaults } from "@/lib/analyses/learn";
+import { memoWriterConfigured } from "@/lib/ai/dealMemoWriter";
+import { houseDefaults } from "@/lib/underwriting/underwriter";
 import { DdfAttribution } from "@/components/listings/DdfAttribution";
 import {
   filterListingPhotos,
@@ -34,8 +41,14 @@ import {
   listingStreetLine,
 } from "@/components/listings/listingDisplay";
 import { fmtMoney, fmtNum } from "@/components/multiplex/format";
+import { CASHBACK_LABEL } from "@/lib/offer";
 
 export const revalidate = 900;
+
+/** Nothing is prebuilt, but declaring this is what lets each listing be cached after its first view. */
+export function generateStaticParams() {
+  return [];
+}
 
 interface ListingView {
   mlsNumber: string;
@@ -129,9 +142,9 @@ function viewFromSnapshot(record: ListingSeoRecord): ListingView {
     sqft: record.squareFootage,
     propertyType: record.structureType || record.propertyType,
     yearBuilt: null,
-    taxAnnual: null,
+    taxAnnual: toNum(record.taxAnnual),
     parking: null,
-    units: null,
+    units: record.numberOfUnits,
     daysOnMarket: null,
     listDate: record.listDate ? new Date(record.listDate).toISOString() : null,
     status: record.status,
@@ -219,34 +232,6 @@ function FactRow({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function UnderwriteStat({
-  label,
-  value,
-  tone,
-  hint,
-}: {
-  label: string;
-  value: string;
-  tone?: "good" | "bad";
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
-        {label}
-      </p>
-      <p
-        className={`tnum font-display mt-1 text-xl font-semibold ${
-          tone === "good" ? "text-good" : tone === "bad" ? "text-bad" : ""
-        }`}
-      >
-        {value}
-      </p>
-      {hint && <p className="mt-0.5 text-[11px] text-ink-faint">{hint}</p>}
-    </div>
-  );
-}
-
 export default async function ListingDetailPage({
   params,
 }: PageProps<"/listings/[key]">) {
@@ -255,7 +240,23 @@ export default async function ListingDetailPage({
   if (!listing) notFound();
 
   const uw = listing.underwrite;
-  const cashFlow = uw?.cashFlowMonthly ?? null;
+  const [learned, consensus] = await Promise.all([
+    getLearnedDefaults(listing.city, listing.province),
+    getDealConsensus(`mls:${listing.mlsNumber.toUpperCase()}`).catch(() => null),
+  ]);
+  const defaults =
+    listing.price && listing.price > 0
+      ? houseDefaults(
+          {
+            price: listing.price,
+            units: listing.units,
+            monthlyRent: uw?.estimatedRent ?? null,
+            annualPropertyTax: listing.taxAnnual,
+            monthlyCondoFees: uw?.condoFeesMonthly ?? null,
+          },
+          learned,
+        )
+      : null;
   const isOntario = listing.province === "ON" || listing.province === "Ontario";
   const workWithUsHref = `/work-with-us?property=${encodeURIComponent(
     `${listing.fullAddress} (MLS® ${listing.mlsNumber})`,
@@ -371,64 +372,58 @@ export default async function ListingDetailPage({
           </section>
         )}
 
-        {/* Underwrite + facts */}
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
-          <div>
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-display text-xl font-semibold tracking-tight">
-                Pre-underwrite
+        {/* Underwriter */}
+        <section id="underwrite" className="mt-10 scroll-mt-20">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
+                Underwrite this <em>deal</em>
               </h2>
-              {uw && (
-                <span className="rounded-full bg-brand-wash px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-deep">
-                  Rent: {uw.rentSourceLabel}
-                </span>
-              )}
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-soft">
+                Every number is yours to change. The result, and the price that
+                makes it work, update as you type.
+              </p>
             </div>
-            {uw ? (
-              <>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <UnderwriteStat
-                    label="Est. rent"
-                    value={`${fmtMoney(uw.estimatedRent)}/mo`}
-                    hint={uw.rentSourceLabel}
-                  />
-                  <UnderwriteStat label="Gross yield" value={fmtYield(uw.grossYield)} />
-                  <UnderwriteStat label="Net yield" value={fmtYield(uw.netYield)} />
-                  <UnderwriteStat
-                    label="Est. NOI"
-                    value={uw.noi ? `${fmtMoney(uw.noi)}/yr` : "—"}
-                  />
-                  <UnderwriteStat
-                    label="Cash flow"
-                    value={cashFlow != null ? `${fmtMoney(cashFlow)}/mo` : "—"}
-                    tone={cashFlow == null ? undefined : cashFlow >= 0 ? "good" : "bad"}
-                    hint="At 20% down"
-                  />
-                  {listing.taxAnnual != null && (
-                    <UnderwriteStat
-                      label="Property tax"
-                      value={`${fmtMoney(listing.taxAnnual)}/yr`}
-                    />
-                  )}
-                </div>
-                <p className="mt-3 rounded-md bg-brand-wash/60 px-3 py-2 text-xs leading-relaxed text-brand-deep">
-                  Assumes 20% down, 5.5% rate, 25-year amortization, with
-                  vacancy, maintenance, management, and insurance estimated
-                  where the listing doesn&rsquo;t report them. An estimate to
-                  rank deals — not a substitute for your own underwriting.
-                </p>
-              </>
+            <ConsensusStrip consensus={consensus} />
+          </div>
+          <div className="mt-6">
+            {defaults ? (
+              <Underwriter
+                deal={{
+                  source: "listing",
+                  mlsNumber: listing.mlsNumber,
+                  address: listing.fullAddress,
+                  city: listing.city,
+                  province: listing.province,
+                  postalCode: listing.postalCode,
+                  propertyType: listing.propertyType,
+                }}
+                defaults={defaults}
+                learned={learned}
+                rentSourceLabel={uw?.rentSourceLabel ?? null}
+                yearBuilt={listing.yearBuilt ? Number(listing.yearBuilt) || null : null}
+                taxFromListing={listing.taxAnnual != null && listing.taxAnnual > 0}
+                aiAvailable={memoWriterConfigured()}
+              />
             ) : (
-              <p className="mt-4 rounded-lg border border-dashed border-hairline-strong bg-surface p-5 text-sm text-ink-soft">
-                We couldn&rsquo;t pre-underwrite this one — usually a land or
+              <p className="rounded-lg border border-dashed border-hairline-strong bg-surface p-5 text-sm text-ink-soft">
+                We couldn&rsquo;t underwrite this one — usually a land or
                 price-on-request listing where a rent estimate doesn&rsquo;t
-                apply.
+                apply.{" "}
+                <Link href="/underwrite" className="font-medium text-brand hover:text-brand-deep">
+                  Underwrite it with your own numbers →
+                </Link>
               </p>
             )}
+          </div>
+        </section>
 
+        {/* Remarks + facts */}
+        <section className="mt-12 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+          <div>
             {/* Remarks */}
             {listing.remarks && (
-              <div className="mt-8">
+              <div>
                 <h2 className="font-display text-xl font-semibold tracking-tight">
                   About this listing
                 </h2>
@@ -478,6 +473,7 @@ export default async function ListingDetailPage({
                 </span>
               </Link>
             )}
+            <NextMeetupStrip city={listing.city} />
           </aside>
         </section>
 
@@ -489,7 +485,7 @@ export default async function ListingDetailPage({
                 Want this property?
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                Buy it with our team and get 50% of our commission back at
+                Buy it with our team and get {CASHBACK_LABEL} of our commission back at
                 closing. That&rsquo;s how the tools stay free.
               </p>
             </div>

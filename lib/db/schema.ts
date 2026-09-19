@@ -10,4 +10,5 @@ export * from "./schema/distress";
 export * from "./schema/multiplex";
 export * from "./schema/community";
 export * from "./schema/leads";
+export * from "./schema/analyses";
 export * from "./schema/auth";

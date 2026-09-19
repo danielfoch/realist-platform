@@ -26,23 +26,25 @@ history. Port selectively — never wholesale.
   handlers guarded by `CRON_SECRET`. Long-running syncs (DDF crawl) run via
   `scripts/*.ts` on GitHub Actions cron.
 
-## Information architecture (the whole site — keep it this small)
+## Information architecture — five doors, one per job an investor comes here to do
 
-| Route | Purpose |
-|---|---|
-| `/` | The eleven-stage multiplex journey (components/scrollcraft, ported from PR #191): Learn → Operate. Carries its own header/footer; the shared nav and footer hide on this route |
-| `/listings` (+`/listings/[key]`) | The ONE map/search: DDF listings across Canada, pre-underwritten (cap rate, cash flow) |
-| `/multiplex` (+`/multiplex/r/[token]`) | Toronto multiplex underwriter — crown jewel. Lot → feasibility + concepts + CMHC proforma |
-| `/deals` (+`/deals/map`, `/deals/report/[month]`) | Distressed: power-of-sale / VTB search, deal feed, the map terminal (rents + deal pins + inline underwrite), monthly report |
-| `/podcast` (+`/podcast/[slug]`) | Episode hub + auto-generated SEO episode pages |
-| `/community` | Meetup.com events, integrated look, cross-signup |
-| `/research` (+`/research/[slug]`) | Config-driven reports + links to stats.realist.ca |
-| `/encyclopedia` (+`/encyclopedia/[slug]`) | 149 investing guides (ported content) |
-| `/about`, `/work-with-us` | Team, podcast credibility, Konfidis offer funnel (50% cash-back CTA) |
-| `/login` (+`/login/confirm`), `/account` | Sign in / create account (password, Google, emailed link); profile, saved deals, email preference. Not indexed |
+The nav (`components/SiteNav.tsx` `DOORS`) is the map. A new page goes behind an existing
+door; there is no sixth door.
 
-Do not add new top-level routes without collapsing something else. One map tool, one
-underwriting engine, one content model.
+| Door | Routes | What happens there |
+|---|---|---|
+| **Find deals** | `/listings` (+`/listings/[key]`), `/deals` (+`/deals/map`, `/deals/report/[month]`) | The ONE map/search: DDF listings across Canada, already underwritten. Every listing page IS an underwriter. Distressed: power-of-sale / VTB feed, map terminal, monthly report |
+| **Underwrite** | `/underwrite`, `/multiplex` (+`/multiplex/r/[token]`) | Any rental in a minute (two steps: four facts, then the full underwriter); the Toronto multiplex underwriter — lot → feasibility + concepts + CMHC proforma |
+| **Power team** | `/team`, `/work-with-us` | Introductions to the nine people around a deal (+ the professional lane); the offer funnel: desk review → one showing → offer with cash back |
+| **Community** | `/community`, `/community/leaderboard`, `/u/[id]` | Meetups (Meetup.com, native look, RSVP captured here first); the leaderboard; public track-record profiles |
+| **Learn** | `/podcast` (+`/podcast/[slug]`), `/research` (+`/research/[slug]`), `/encyclopedia` (+`/encyclopedia/[slug]`), `/about` | Episode hub + auto SEO pages; config-driven reports + stats.realist.ca; 149 guides |
+
+Also: `/` (the ten-stage journey, `components/scrollcraft`, carries its own header/footer),
+`/login` (+`/login/confirm`), `/account` (profile, track record, analyses, saved deals,
+power-team checklist) — not indexed.
+
+The loop the product exists to turn: **find → underwrite → (save · share · rank) → team/offer → meet**.
+Every underwrite feeds the member's history, the leaderboard and the learned market defaults.
 
 ## Non-negotiable conventions
 
@@ -67,6 +69,26 @@ underwriting engine, one content model.
   spent by the POST from `/login/confirm`, never by a GET (mail scanners pre-fetch).
   Marketing consent is an append-only ledger (`email_consent`) mirrored on the user —
   write it through `recordConsent`, never by updating the flag alone.
+- **One underwriter**: `components/underwrite/Underwriter.tsx` over `lib/underwriting/underwriter.ts`
+  (inputs, house defaults, edit detection, offer-price solver, verdict, quality) over the
+  one engine. It runs in the browser on every keystroke; the server recomputes on save and
+  never trusts a browser's results. Mortgage math is Canadian (semi-annual compounding);
+  returns are on all cash in (down payment + closing costs).
+- **The analysis log** (`deal_analyses`, `lib/analyses/*`): one row per person per deal.
+  A page view is not an analysis — a row is written only after an edit or a verdict.
+  `defaults` = what we offered, `inputs` = what they kept or changed, `edited` = the diff.
+- **The flywheel** (`lib/analyses/learn.ts`, nightly `/api/cron/learn`): a field's learned
+  value comes ONLY from analyses where the person changed that field (an untouched default
+  is inertia, not evidence), needs ≥5 different MEMBERS who are ≥25% of those who worked a
+  deal in that market, city → province → national. Anonymous sessions are free to mint, so
+  they never count toward learned values, listing medians or the leaderboard. Never weaken these to "get more data".
+- **Community numbers** (`lib/analyses/community.ts`): medians on a deal appear only once
+  3+ people have underwritten it; the leaderboard ranks members by quality-weighted unique
+  deals; names are "First L."; off-market addresses are never shown to other people.
+- **The deal memo** (`lib/underwriting/dealMemo.ts`): rules-based, computed in the browser,
+  every sentence derived from the engine. `lib/ai/dealMemoWriter.ts` may re-narrate it with
+  Claude and is rejected if it states a number not in the payload.
+- **The cash-back figure** lives in `lib/offer.ts` only (`NEXT_PUBLIC_CASHBACK_PERCENT`).
 - **Leads** (`lib/leads/*`): every form is `components/leads/LeadForm.tsx` posting to
   `/api/leads`; the server calls `captureLead()` — never insert a lead or call the CRM
   from anywhere else. A lead is committed with one `lead_deliveries` row per destination
