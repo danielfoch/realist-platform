@@ -29,7 +29,7 @@ function numberFrom(value: string | null): number {
   return isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-export function UnderwriteAnything({ learned: national, aiAvailable = false }: { learned: LearnedDefaults; aiAvailable?: boolean }) {
+export function UnderwriteAnything({ learned: national, aiAvailable = false, askAvailable = false }: { learned: LearnedDefaults; aiAvailable?: boolean; askAvailable?: boolean }) {
   // Starts from what the whole country has taught; a market's own values replace it once we know the market.
   const [learned, setLearned] = useState<LearnedDefaults>(national);
   const params = useSearchParams();
@@ -168,6 +168,7 @@ export function UnderwriteAnything({ learned: national, aiAvailable = false }: {
         learned={learned}
         taxFromListing={false}
         aiAvailable={aiAvailable}
+        askAvailable={askAvailable}
         returnPath={`/underwrite?${back.toString()}`}
       />
     </div>

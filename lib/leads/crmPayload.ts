@@ -18,6 +18,7 @@ const KIND_TAGS: Record<LeadKind, string[]> = {
   power_team: ["power_team_request"],
   underwriting_help: ["underwriting_help"],
   pro_application: ["expert_application"],
+  buy_box: ["buy-box-known"],
   team_gap: ["power_team_gap"],
   unsubscribe: ["unsubscribed"],
   first_underwrite: ["deal-analyzed"],
@@ -35,6 +36,7 @@ export const KIND_LABELS: Record<LeadKind, string> = {
   power_team: "Power team intro",
   underwriting_help: "Underwriting help",
   pro_application: "Professional application",
+  buy_box: "Buy box",
   team_gap: "Power team gap",
   unsubscribe: "Unsubscribed",
   first_underwrite: "First underwrite",
@@ -65,6 +67,7 @@ export function crmTags(lead: Pick<Lead, "kind" | "city" | "province" | "routing
   tags.add(`route-${lead.routing.replace(/_/g, "-")}`);
 
   const roles = Array.isArray(lead.context?.roles) ? (lead.context.roles as unknown[]) : [];
+  for (const market of Array.isArray(lead.context?.markets) ? (lead.context.markets as unknown[]) : []) tags.add(`buys-${slug(String(market))}`);
   const prefix = lead.kind === "pro_application" ? "pro" : "needs";
   for (const role of roles) tags.add(`${prefix}-${slug(String(role))}`);
   return [...tags];
@@ -128,6 +131,13 @@ export function leadSummaryLines(lead: Lead): string[] {
   if (typeof context.interest === "string") lines.push(`Buying: ${context.interest}`);
   if (typeof context.timeline === "string") lines.push(`Timeline: ${context.timeline}`);
   if (typeof context.dealsAnalyzed === "number") lines.push(`Deals underwritten: ${context.dealsAnalyzed}`);
+  if (typeof context.buyBox === "string") lines.push(`What they buy (learned from ${context.calls ?? "their"} calls): ${context.buyBox}`);
+  const brief = context.brief as Record<string, unknown> | undefined;
+  if (brief && typeof brief === "object") {
+    if (typeof brief.headline === "string") lines.push(`Their read: ${brief.headline}`);
+    for (const item of Array.isArray(brief.verify) ? (brief.verify as unknown[]).slice(0, 6) : []) lines.push(`  To verify: ${String(item)}`);
+    for (const item of Array.isArray(brief.watch) ? (brief.watch as unknown[]).slice(0, 4) : []) lines.push(`  Their concern: ${String(item)}`);
+  }
 
   const numbers = context.numbers as Record<string, unknown> | undefined;
   if (numbers && typeof numbers === "object") {

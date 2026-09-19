@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/components/multiplex/format";
 import { closingCostsNote } from "@/lib/underwriting/closingCosts";
+import { AskRealist } from "./AskRealist";
 import { DealMemoPanel } from "./DealMemoPanel";
+import { DeskReviewRail } from "./DeskReviewRail";
 import {
   LEARNABLE_FIELDS,
   RENT_RATIO_FIELD,
@@ -358,6 +360,7 @@ export function Underwriter({
   yearBuilt = null,
   taxFromListing,
   aiAvailable = false,
+  askAvailable = false,
   returnPath,
   rentEstimate = null,
 }: {
@@ -372,6 +375,8 @@ export function Underwriter({
   taxFromListing?: boolean;
   /** Whether the AI-narrated memo can be requested on this deployment. */
   aiAvailable?: boolean;
+  /** Whether Ask Realist (the tool-using AI realtor) is switched on. */
+  askAvailable?: boolean;
   /** Where signing in should bring the person back to: this deal, as they left it. */
   returnPath?: string;
   /** Our raw rent estimate, before any learned adjustment (listings with an estimated rent only). */
@@ -388,6 +393,8 @@ export function Underwriter({
     status: saved ? "saved" : "idle",
   });
   const [shareNote, setShareNote] = useState<string | null>(null);
+  // What this member has already asked for on this deal (showing, offer…).
+  const [requests, setRequests] = useState<string[]>([]);
   // On a phone the result sits screens below the inputs. While the person is in the inputs and
   // can't see it, a slim bar carries the answer along with them.
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -457,9 +464,11 @@ export function Underwriter({
             analysis?: SavedAnalysisState | null;
             signedIn?: boolean;
             stats?: { deals: number; streakWeeks: number };
+            requests?: string[];
           } | null,
         ) => {
           if (!alive || !body) return;
+          setRequests(Array.isArray(body.requests) ? body.requests : []);
           setVisitor({
             signedIn: body.signedIn ?? null,
             otherDeals: Math.max(0, (body.stats?.deals ?? 0) - (body.analysis ? 1 : 0)),
@@ -627,6 +636,20 @@ export function Underwriter({
 
   return (
     <>
+      {hasDeal && (
+        <div className="mb-5">
+          <DeskReviewRail
+            state={{
+              underwritten: log.status === "saved",
+              called: verdict,
+              showingRequested: requests.includes("showing"),
+              offerRequested: requests.includes("offer"),
+            }}
+            showingHref={`/work-with-us?${offerParams.toString()}&want=showing#lead-form`}
+            offerHref={`/work-with-us?${offerParams.toString()}#lead-form`}
+          />
+        </div>
+      )}
       <div ref={rootRef} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         {/* Inputs */}
         <div className="space-y-3">
@@ -943,6 +966,15 @@ export function Underwriter({
           locked={visitor.signedIn === false && visitor.otherDeals >= GUEST_FULL_MEMOS}
           loginHref={`/login?mode=signup&next=${encodeURIComponent(loginNext)}`}
           signedIn={visitor.signedIn === true}
+        />
+      )}
+      {result.assumptionsComplete && askAvailable && (
+        <AskRealist
+          deal={memoDeal}
+          mlsNumber={deal.mlsNumber}
+          inputs={inputs}
+          signedIn={visitor.signedIn === true}
+          loginHref={`/login?mode=signup&next=${encodeURIComponent(loginNext)}`}
         />
       )}
     </>

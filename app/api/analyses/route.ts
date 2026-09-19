@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { resolveActor } from "@/lib/analyses/actor";
+import { announceBuyBox, getBuyBox } from "@/lib/analyses/buyBox";
 import { BADGES, getActorStats } from "@/lib/analyses/community";
 import { dealKeyFor } from "@/lib/analyses/dealKey";
 import { AnalysisCapError, NotAnAnalysisError, getAnalysis, listAnalyses, saveAnalysis } from "@/lib/analyses/store";
@@ -10,6 +11,7 @@ import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { getDb } from "@/lib/db";
 import { leads } from "@/lib/db/schema";
 import { captureLead } from "@/lib/leads/capture";
+import { requestsByDeal } from "@/lib/leads/dealRequests";
 import { deliverDue } from "@/lib/leads/outbox";
 import { clampInputs } from "@/lib/underwriting/underwriter";
 
@@ -55,10 +57,14 @@ export async function GET(request: Request) {
   try {
     const actor = await resolveActor({ create: false });
     if (!actor) return none;
-    const [analysis, stats] = await Promise.all([getAnalysis(actor.key, dealKey), getActorStats(actor.key)]);
+    const [analysis, stats, requests] = await Promise.all([
+      getAnalysis(actor.key, dealKey),
+      getActorStats(actor.key),
+      actor.user ? requestsByDeal(actor.user.id).then((byDeal) => byDeal.get(dealKey) ?? []) : Promise.resolve([]),
+    ]);
     const inputs = analysis ? clampInputs(analysis.inputs) : null;
     return Response.json(
-      { analysis: analysis && inputs ? { inputs, verdict: analysis.verdict } : null, signedIn: Boolean(actor.user), stats },
+      { analysis: analysis && inputs ? { inputs, verdict: analysis.verdict } : null, signedIn: Boolean(actor.user), stats, requests },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
@@ -121,6 +127,15 @@ export async function POST(request: Request) {
         consentMarketing: user.consentMarketing,
       });
       if (!duplicate) after(() => deliverDue({ leadId: lead.id }).catch(() => {}));
+    }
+
+    // Every call refines what we know this member buys. When the picture changes, the CRM hears about it.
+    if (actor.user && parsed.data.verdict) {
+      const box = await getBuyBox(actor.user.id).catch(() => null);
+      if (box) {
+        const leadId = await announceBuyBox(actor.user, box).catch(() => null);
+        if (leadId) after(() => deliverDue({ leadId }).catch(() => {}));
+      }
     }
 
     // Behaviour is the best lead signal there is: tell the team once, not on every deal.

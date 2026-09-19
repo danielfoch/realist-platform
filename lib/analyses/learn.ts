@@ -48,6 +48,19 @@ const PROVINCE_NAMES: Record<string, string> = {
 
 type Scope = "city" | "province" | "national";
 
+/** Stored beside the learned assumptions, but read separately: they describe decisions, not inputs. */
+export const PURSUE_CAP_FIELD = "pursueCapRate";
+export const PASS_CAP_FIELD = "passCapRate";
+
+export interface MarketDecisionLine {
+  /** Median cap rate of the deals members here said yes to. */
+  pursueAt: number;
+  /** Median cap rate of the deals they walked away from. */
+  passAt: number | null;
+  calls: number;
+  scopeLabel: string;
+}
+
 export async function rebuildLearnedAssumptions(): Promise<{ written: number }> {
   const db = getDb();
   const fields = sql.join(LEARNABLE_FIELDS.map((field) => sql`${field}`), sql`, `);
@@ -62,7 +75,7 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
     const result = await db.execute(sql`
       WITH base AS (
         SELECT ${k1} AS k1, ${k2} AS k2, a.actor_key, a.edited, a.inputs,
-          coalesce(a.learned_applied, '[]'::jsonb) AS kept, a.source, a.rent_source, a.rent_estimate
+          coalesce(a.learned_applied, '[]'::jsonb) AS kept, a.source, a.rent_source, a.rent_estimate, a.verdict, a.cap_rate
         FROM deal_analyses a
         JOIN users u ON u.id = a.user_id
         WHERE a.eligible AND ${PROVEN_MEMBER} AND a.updated_at > (now() AT TIME ZONE 'utc') - ${WINDOW} ${present}
@@ -106,12 +119,25 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
       SELECT m.k1 AS province, m.k2 AS city, m.field, m.p25, m.median, m.p75, m.sample_size, m.contributors, e.engaged
       FROM (SELECT * FROM moved UNION ALL SELECT * FROM rent) m
       JOIN engaged e ON e.k1 = m.k1 AND e.k2 = m.k2
+      UNION ALL
+      -- The market's decision line: the cap rate members say yes at, and the one they walk away from.
+      -- A call is its own evidence (nobody makes one by accident), so every calling member is "engaged".
+      SELECT b.k1, b.k2, CASE b.verdict WHEN 'pursue' THEN ${PURSUE_CAP_FIELD}::text ELSE ${PASS_CAP_FIELD}::text END,
+        percentile_cont(0.25) WITHIN GROUP (ORDER BY b.cap_rate),
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY b.cap_rate),
+        percentile_cont(0.75) WITHIN GROUP (ORDER BY b.cap_rate),
+        count(*)::int, count(DISTINCT b.actor_key)::int, count(DISTINCT b.actor_key)::int
+      FROM base b
+      WHERE b.verdict IN ('pursue', 'pass') AND b.cap_rate IS NOT NULL AND b.source <> 'multiplex'
+      GROUP BY b.k1, b.k2, b.verdict
+      HAVING count(DISTINCT b.actor_key) >= ${MIN_CONTRIBUTORS}
     `);
 
     for (const row of result.rows as Array<Record<string, unknown>>) {
       const field = String(row.field) as LearnableField | typeof RENT_RATIO_FIELD;
       const median = Number(row.median);
-      const [low, high] = field === RENT_RATIO_FIELD ? RENT_RATIO_BOUNDS : (LEARNABLE_BOUNDS[field] ?? [-Infinity, Infinity]);
+      const isDecisionLine = String(row.field) === PURSUE_CAP_FIELD || String(row.field) === PASS_CAP_FIELD;
+      const [low, high] = isDecisionLine ? [-5, 25] : field === RENT_RATIO_FIELD ? RENT_RATIO_BOUNDS : (LEARNABLE_BOUNDS[field] ?? [-Infinity, Infinity]);
       if (!isFinite(median) || median < low || median > high) continue;
       const contributors = Number(row.contributors);
       const engaged = Math.max(Number(row.engaged), contributors);
@@ -168,4 +194,32 @@ export async function getLearnedDefaults(city: string | null | undefined, provin
 export async function learnedAssumptionCount(): Promise<number> {
   const [row] = await getDb().select({ count: sql<number>`count(*)::int` }).from(learnedAssumptions).where(and(eq(learnedAssumptions.scope, "city")));
   return row?.count ?? 0;
+}
+
+/** Where this market's members draw the line. The most local scope with evidence wins. */
+export async function getMarketDecisionLine(city: string | null | undefined, province: string | null | undefined): Promise<MarketDecisionLine | null> {
+  const code = provinceCode(province);
+  const cityKey = code && city?.trim() ? `${code}|${city.trim().toLowerCase()}` : null;
+  const keys = [cityKey, code, "CA"].filter((key): key is string => Boolean(key));
+  let rows: Array<typeof learnedAssumptions.$inferSelect> = [];
+  try {
+    rows = await getDb()
+      .select()
+      .from(learnedAssumptions)
+      .where(and(inArray(learnedAssumptions.scopeKey, keys), inArray(learnedAssumptions.field, [PURSUE_CAP_FIELD, PASS_CAP_FIELD])));
+  } catch {
+    return null;
+  }
+  for (const key of keys) {
+    const pursue = rows.find((row) => row.scopeKey === key && row.field === PURSUE_CAP_FIELD);
+    if (!pursue) continue;
+    const pass = rows.find((row) => row.scopeKey === key && row.field === PASS_CAP_FIELD);
+    return {
+      pursueAt: pursue.median,
+      passAt: pass?.median ?? null,
+      calls: pursue.sampleSize + (pass?.sampleSize ?? 0),
+      scopeLabel: pursue.scope === "city" ? titleCase(key.split("|")[1] ?? "") : pursue.scope === "province" ? (PROVINCE_NAMES[key] ?? key) : "Canada",
+    };
+  }
+  return null;
 }

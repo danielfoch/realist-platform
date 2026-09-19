@@ -29,8 +29,10 @@ import { SaveDealButton } from "@/components/auth/SaveDealButton";
 import { NextMeetupStrip } from "@/components/community/NextMeetupStrip";
 import { Underwriter } from "@/components/underwrite/Underwriter";
 import { ConsensusStrip } from "@/components/underwrite/ConsensusStrip";
+import { DecisionLine } from "@/components/underwrite/DecisionLine";
 import { getDealConsensus } from "@/lib/analyses/community";
-import { getLearnedDefaults } from "@/lib/analyses/learn";
+import { getLearnedDefaults, getMarketDecisionLine } from "@/lib/analyses/learn";
+import { askRealistConfigured } from "@/lib/ai/askRealist";
 import { memoWriterConfigured } from "@/lib/ai/dealMemoWriter";
 import { houseDefaults } from "@/lib/underwriting/underwriter";
 import { DdfAttribution } from "@/components/listings/DdfAttribution";
@@ -239,9 +241,10 @@ export default async function ListingDetailPage({
   if (!listing) notFound();
 
   const uw = listing.underwrite;
-  const [learned, consensus] = await Promise.all([
+  const [learned, consensus, decisionLine] = await Promise.all([
     getLearnedDefaults(listing.city, listing.province),
     getDealConsensus(`mls:${listing.mlsNumber.toUpperCase()}`).catch(() => null),
+    getMarketDecisionLine(listing.city, listing.province),
   ]);
   // A reported rent is a fact; only our own estimates get moved by what the market has taught.
   const rentIsEstimate = Boolean(uw) && uw?.rentSource !== "ddf_actual";
@@ -385,7 +388,10 @@ export default async function ListingDetailPage({
                 makes it work, update as you type.
               </p>
             </div>
-            <ConsensusStrip consensus={consensus} />
+            <div className="flex flex-col gap-2 sm:items-end">
+              <ConsensusStrip consensus={consensus} />
+              <DecisionLine line={decisionLine} />
+            </div>
           </div>
           <div className="mt-6">
             {defaults ? (
@@ -405,6 +411,7 @@ export default async function ListingDetailPage({
                 yearBuilt={listing.yearBuilt ? Number(listing.yearBuilt) || null : null}
                 taxFromListing={listing.taxAnnual != null && listing.taxAnnual > 0}
                 aiAvailable={memoWriterConfigured()}
+                askAvailable={askRealistConfigured()}
                 returnPath={`/listings/${encodeURIComponent(listing.mlsNumber)}#underwrite`}
                 rentEstimate={rentIsEstimate ? (uw?.estimatedRent ?? null) : null}
               />

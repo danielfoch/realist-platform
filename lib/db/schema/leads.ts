@@ -17,6 +17,7 @@ export const LEAD_KINDS = [
   "power_team", // wants an introduction to a professional
   "underwriting_help", // wants a human to pressure-test their numbers
   "pro_application", // a professional who wants to work with Realist investors
+  "buy_box", // behavioural: what this member buys, learned from their calls (CRM only)
   "team_gap", // behavioural: marked people they still need on their power-team checklist (CRM only)
   "unsubscribe", // turned Realist email off — so the CRM stops mailing them too (CRM only)
   "first_underwrite", // behavioural: a member's first logged analysis (CRM only, no email)

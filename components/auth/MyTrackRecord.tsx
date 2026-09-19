@@ -48,7 +48,7 @@ function signedMoney(value: number): string {
   return `${value < 0 ? "−" : "+"}${fmtMoney(Math.abs(value))}`;
 }
 
-function AnalysisRow({ row }: { row: DealAnalysis }) {
+function AnalysisRow({ row, stage }: { row: DealAnalysis; stage: string | null }) {
   const href = reopenHref(row);
   const title = row.address?.trim() || (row.mlsNumber ? `MLS® ${row.mlsNumber}` : "Untitled deal");
   const cashFlow = row.monthlyCashFlow;
@@ -83,14 +83,24 @@ function AnalysisRow({ row }: { row: DealAnalysis }) {
           {!row.eligible && " · Not counted: the results fall outside what a real rental produces"}
         </p>
       </div>
-      <span className="shrink-0 pt-0.5">
+      <span className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
         <VerdictChip verdict={row.verdict} />
+        {stage && <span className="tnum rounded-full bg-ink px-2 py-0.5 text-[10px] font-medium uppercase tracking-[1px] text-white">{stage}</span>}
       </span>
     </li>
   );
 }
 
-export function AnalysesList({ analyses }: { analyses: DealAnalysis[] }) {
+/** Where a deal stands once it has left the desk: the furthest request made on it. */
+function stageLabel(stages: readonly string[] | undefined): string | null {
+  if (!stages?.length) return null;
+  if (stages.includes("offer")) return "Offer in motion";
+  if (stages.includes("showing")) return "Showing requested";
+  if (stages.includes("financing")) return "Financing requested";
+  return null;
+}
+
+export function AnalysesList({ analyses, stages = {} }: { analyses: DealAnalysis[]; stages?: Record<string, string[]> }) {
   if (analyses.length === 0) {
     return (
       <div className="rounded-lg border border-hairline bg-surface p-8">
@@ -116,7 +126,7 @@ export function AnalysesList({ analyses }: { analyses: DealAnalysis[] }) {
     <div>
       <ul className="divide-y divide-hairline border-y border-hairline">
         {first.map((row) => (
-          <AnalysisRow key={row.id} row={row} />
+          <AnalysisRow key={row.id} row={row} stage={stageLabel(stages[row.dealKey])} />
         ))}
       </ul>
       {rest.length > 0 && (
@@ -127,7 +137,7 @@ export function AnalysesList({ analyses }: { analyses: DealAnalysis[] }) {
           </summary>
           <ul className="divide-y divide-hairline border-y border-hairline">
             {rest.map((row) => (
-              <AnalysisRow key={row.id} row={row} />
+              <AnalysisRow key={row.id} row={row} stage={stageLabel(stages[row.dealKey])} />
             ))}
           </ul>
         </details>

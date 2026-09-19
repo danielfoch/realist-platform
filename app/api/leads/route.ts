@@ -7,6 +7,7 @@ import { and, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { leads } from "@/lib/db/schema";
 import { emailConfigured } from "@/lib/email";
+import { briefFor } from "@/lib/leads/brief";
 import { captureLead } from "@/lib/leads/capture";
 import { deliverDue } from "@/lib/leads/outbox";
 
@@ -89,7 +90,10 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "We have your requests from today — someone will be in touch. For anything urgent, reply to our email." }, { status: 429 });
     }
     const user = await getCurrentUser();
-    const { lead, duplicate } = await captureLead({ ...input, userId: user?.id ?? null });
+    // For a request about a deal, attach what this person underwrote and wants checked — from OUR records.
+    const dealRequest = input.kind === "showing" || input.kind === "offer" || input.kind === "financing" || input.kind === "underwriting_help";
+    const context = dealRequest ? { ...input.context, ...(await briefFor(input.property)) } : input.context;
+    const { lead, duplicate } = await captureLead({ ...input, context, userId: user?.id ?? null });
     // Deliver once the response is on its way: the person never waits on the CRM.
     if (!duplicate) after(() => deliverDue({ leadId: lead.id }).catch((error) => console.error("[leads] inline delivery:", error)));
     // Tells the form whether to say "check your inbox".

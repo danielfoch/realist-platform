@@ -18,7 +18,12 @@ export interface YieldSearchParams {
   maxPrice?: number;
   minBeds?: number;
   minUnits?: number;
+  maxUnits?: number;
   minYield?: number;
+  /** Several markets at once (a member's buy box). */
+  cities?: string[];
+  /** Listings to leave out — ones the person has already underwritten. */
+  excludeMls?: string[];
   page: number;
   pageSize: number;
 }
@@ -44,7 +49,10 @@ export async function searchByYield(params: YieldSearchParams): Promise<{ listin
       params.minPrice ? sql`s.list_price >= ${params.minPrice}` : null,
       params.maxPrice ? sql`s.list_price <= ${params.maxPrice}` : null,
       params.minBeds ? sql`s.bedrooms_total >= ${params.minBeds}` : null,
-      params.minUnits ? sql`s.number_of_units >= ${params.minUnits}` : null,
+      params.minUnits ? sql`coalesce(s.number_of_units, 1) >= ${params.minUnits}` : null,
+      params.maxUnits ? sql`coalesce(s.number_of_units, 1) <= ${params.maxUnits}` : null,
+      params.cities?.length ? sql`lower(s.city) IN (${sql.join(params.cities.map((city) => sql`${city.trim().toLowerCase()}`), sql`, `)})` : null,
+      params.excludeMls?.length ? sql`upper(s.mls_number) NOT IN (${sql.join(params.excludeMls.map((mls) => sql`${mls.toUpperCase()}`), sql`, `)})` : null,
     ].filter((part): part is NonNullable<typeof part> => part !== null),
     sql` AND `,
   );
@@ -95,4 +103,32 @@ export async function searchByYield(params: YieldSearchParams): Promise<{ listin
     };
   });
   return { listings, count: rows.length ? Number(rows[0].total) : 0 };
+}
+
+/** A market's active listings as aggregates only — nothing here identifies a listing. */
+export async function marketAggregates(city: string | null | undefined): Promise<{ listings: number; medianPrice: number | null; medianNetYield: number | null; bestNetYield: number | null } | null> {
+  const name = city?.trim().toLowerCase();
+  if (!name) return null;
+  const result = await getDb().execute(sql`
+    WITH latest AS (
+      SELECT DISTINCT ON (s.mls_number) s.list_price, s.net_yield
+      FROM ddf_listing_snapshots s
+      WHERE lower(s.city) = ${name}
+        AND s.captured_at >= now() - interval '7 days'
+        AND coalesce(nullif(s.standard_status, ''), 'Active') ILIKE 'active%'
+        AND s.mls_number IS NOT NULL AND s.list_price > 0 AND s.net_yield BETWEEN 0 AND 25
+      ORDER BY s.mls_number, s.snapshot_month DESC, s.captured_at DESC
+    )
+    SELECT count(*)::int AS listings,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY list_price) AS median_price,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY net_yield) AS median_yield,
+      max(net_yield) AS best_yield
+    FROM latest
+  `);
+  const row = (result.rows[0] ?? {}) as Record<string, unknown>;
+  const listings = Number(row.listings ?? 0);
+  // A handful of listings isn't a market.
+  if (listings < 10) return null;
+  const round = (value: unknown, step: number) => (value == null ? null : Math.round(Number(value) / step) * step);
+  return { listings, medianPrice: round(row.median_price, 1000), medianNetYield: round(row.median_yield, 0.1), bestNetYield: round(row.best_yield, 0.1) };
 }

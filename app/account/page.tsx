@@ -16,6 +16,11 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { eyebrowClass, formatDay } from "@/components/auth/shared";
 import { TeamChecklist } from "@/components/team/TeamChecklist";
 import { ConfirmEmailNotice } from "@/components/auth/ConfirmEmailNotice";
+import { BuyBoxCard } from "@/components/community/BuyBoxCard";
+import type { ListingSearchResult } from "@/components/listings/listingDisplay";
+import { dealsForBox, getBuyBox } from "@/lib/analyses/buyBox";
+import type { BuyBox } from "@/lib/analyses/thesis";
+import { requestsByDeal } from "@/lib/leads/dealRequests";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +56,18 @@ async function loadTrackRecord(userId: string): Promise<{ stats: ActorStats; ana
   }
 }
 
+/** What they buy, and what's on the market that fits. Any trouble reads as "not learned yet". */
+async function loadThesis(userId: string): Promise<{ box: BuyBox | null; deals: ListingSearchResult[] }> {
+  try {
+    const box = await getBuyBox(userId);
+    if (!box) return { box: null, deals: [] };
+    return { box, deals: await dealsForBox(userId, box).catch(() => []) };
+  } catch (error) {
+    console.error("[account] loading the buy box failed:", (error as Error).message);
+    return { box: null, deals: [] };
+  }
+}
+
 function SectionHeading({ id, children }: { id: string; children: string }) {
   return (
     <h2 id={id} className="font-display text-xl font-semibold tracking-tight">
@@ -63,7 +80,14 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
 
-  const [saved, record] = await Promise.all([loadSavedDeals(user.id), loadTrackRecord(user.id)]);
+  const [saved, record, thesis, stages] = await Promise.all([
+    loadSavedDeals(user.id),
+    loadTrackRecord(user.id),
+    loadThesis(user.id),
+    requestsByDeal(user.id)
+      .then((byDeal) => Object.fromEntries(byDeal))
+      .catch(() => ({})),
+  ]);
   const items: SavedDealItem[] = saved.map((row) => ({
     id: row.id,
     kind: row.kind,
@@ -112,13 +136,21 @@ export default async function AccountPage() {
             </div>
           </section>
 
+          <section aria-labelledby="account-buy-box">
+            <SectionHeading id="account-buy-box">What you buy</SectionHeading>
+            <p className="mt-1.5 text-sm text-ink-soft">Nobody asked you to fill this in. It&rsquo;s read from the calls you make.</p>
+            <div className="mt-6">
+              <BuyBoxCard box={thesis.box} pursued={record.analyses.filter((row) => row.verdict === "pursue").length} deals={thesis.deals} />
+            </div>
+          </section>
+
           <section aria-labelledby="account-analyses">
             <SectionHeading id="account-analyses">Your analyses</SectionHeading>
             <p className="mt-1.5 text-sm text-ink-soft">
               Your latest numbers on each deal. Open one to pick it back up.
             </p>
             <div className="mt-6">
-              <AnalysesList analyses={record.analyses} />
+              <AnalysesList analyses={record.analyses} stages={stages} />
             </div>
           </section>
 

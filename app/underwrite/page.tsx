@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { JsonLd } from "@/components/JsonLd";
 import { UnderwriteAnything } from "@/components/underwrite/UnderwriteAnything";
 import { getLearnedDefaults } from "@/lib/analyses/learn";
+import { askRealistConfigured } from "@/lib/ai/askRealist";
 import { memoWriterConfigured } from "@/lib/ai/dealMemoWriter";
 import { breadcrumbNode, jsonLdDocument } from "@/lib/seo/jsonld";
 
@@ -42,7 +43,7 @@ export default async function UnderwritePage() {
       </section>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <Suspense fallback={<div className="mx-auto h-80 max-w-2xl rounded-lg border border-hairline bg-surface" aria-hidden="true" />}>
-          <UnderwriteAnything learned={learned} aiAvailable={memoWriterConfigured()} />
+          <UnderwriteAnything learned={learned} aiAvailable={memoWriterConfigured()} askAvailable={askRealistConfigured()} />
         </Suspense>
       </div>
       <section className="border-t border-hairline bg-surface">

@@ -90,6 +90,21 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
 - **Community numbers** (`lib/analyses/community.ts`): medians on a deal appear only once
   3+ people have underwritten it; the leaderboard ranks members by quality-weighted unique
   deals; names are "First L."; off-market addresses are never shown to other people.
+- **The thesis** (`lib/analyses/thesis.ts`, `buyBox.ts`): a member's buy box is learned from
+  their pursue/watch/pass calls (≥3 pursued) — markets, price band, unit count, the cap rate
+  that turns a no into a yes. Medians and quartiles only: the person can always see why a
+  deal was suggested. It drives "listings that fit", tells the CRM (`buy_box`, agent voice)
+  and informs Ask Realist. Each market's decision line (the cap rate its members pursue at
+  and pass at) is learned by the same nightly job, under the same ≥5-proven-members rule.
+- **The desk review** is the product's spine: underwrite → your call → ONE showing → offer
+  (`DeskReviewRail`). A showing/offer/financing request carries a brief built ON THE SERVER
+  from the member's saved analysis (`lib/leads/brief.ts`) — their read, their concerns, what
+  to verify in person, their buy box, and OUR numbers (a form's numbers are never trusted).
+- **Ask Realist** (`lib/ai/askRealist.ts`): Claude with tools that run this site's engine
+  (re-underwrite a scenario, solve an offer price, read the market and the member's box).
+  It never does arithmetic: an answer containing a number that is in neither the deal nor a
+  tool result is rejected. Members only. Remarks and market context are gathered on the
+  server, never accepted from the browser.
 - **The deal memo** (`lib/underwriting/dealMemo.ts`): rules-based, computed in the browser,
   every sentence derived from the engine. `lib/ai/dealMemoWriter.ts` may re-narrate it with
   Claude and is rejected if it states a number not in the payload.
