@@ -165,6 +165,7 @@ const PitchDeck = lazy(() => import("@/pages/PitchDeck"));
 const UnderwritingShare = lazy(() => import("@/pages/UnderwritingShare"));
 const AgentResultView = lazy(() => import("@/pages/AgentResultView"));
 const Developers = lazy(() => import("@/pages/Developers"));
+const OAuthConsent = lazy(() => import("@/pages/OAuthConsent"));
 const AccountApiKeys = lazy(() => import("@/pages/AccountApiKeys"));
 const ThankYouVancouver = lazy(() => import("@/pages/ThankYouVancouver"));
 const EdmontonEvent = lazy(() => import("@/pages/EdmontonEvent"));
@@ -297,6 +298,7 @@ function Router() {
       <Route path="/underwriting/:token" component={UnderwritingShare} />
       <Route path="/v/:token" component={AgentResultView} />
       <Route path="/developers" component={Developers} />
+      <Route path="/oauth/consent" component={OAuthConsent} />
       <Route path="/account/api-keys" component={AccountApiKeys} />
       <Route path="/account/notifications" component={NotificationPreferences} />
       <Route path="/insights/market-report" component={MarketReport} />

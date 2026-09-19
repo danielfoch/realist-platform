@@ -81,6 +81,7 @@ const EXCLUDED_PREFIXES = [
   "/embed",
   "/underwriting/",
   "/v/",
+  "/oauth/",
   "/analyses/",
   "/masterclass",
   "/course",

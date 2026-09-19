@@ -888,6 +888,9 @@ export async function registerRoutes(
   registerAgentV1Routes(app);
   const { registerMcpRoutes } = await import("./agent/mcpServer");
   registerMcpRoutes(app);
+  // OAuth 2.1 authorization server for /mcp, so connector UIs sign in instead of pasting a key.
+  const { registerOAuthRoutes } = await import("./agent/oauth/routes");
+  registerOAuthRoutes(app);
 
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.

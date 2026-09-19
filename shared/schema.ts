@@ -4520,6 +4520,73 @@ export type AgentResultView = typeof agentResultViews.$inferSelect;
 export type InsertAgentResultView = typeof agentResultViews.$inferInsert;
 
 // ============================================================================
+// OAUTH 2.1 — authorization server for the hosted MCP endpoint (/mcp), so users
+// of claude.ai, ChatGPT and other connector UIs sign in instead of pasting an
+// API key. Dynamic client registration, PKCE, rotating refresh tokens.
+// Secrets, codes and tokens are stored as SHA-256 hashes only. Also created
+// idempotently at boot (server/agent/oauth/store.ts).
+// ============================================================================
+export const oauthClients = pgTable("oauth_clients", {
+  clientId: varchar("client_id").primaryKey(),
+  clientSecretHash: text("client_secret_hash"),
+  clientName: text("client_name"),
+  redirectUris: text("redirect_uris").array().notNull(),
+  // The registered RFC 7591 metadata, minus the secret.
+  metadata: jsonb("metadata").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** An /authorize request waiting on the user's consent. */
+export const oauthAuthorizationRequests = pgTable("oauth_authorization_requests", {
+  id: varchar("id").primaryKey(),
+  clientId: varchar("client_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  scopes: text("scopes").array().notNull(),
+  state: text("state"),
+  resource: text("resource"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const oauthAuthorizationCodes = pgTable("oauth_authorization_codes", {
+  codeHash: text("code_hash").primaryKey(),
+  clientId: varchar("client_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  redirectUri: text("redirect_uri").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  scopes: text("scopes").array().notNull(),
+  resource: text("resource"),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+});
+
+/** One row per (user, client) connection — what "Connected apps" lists and revokes. */
+export const oauthGrants = pgTable("oauth_grants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  clientId: varchar("client_id").notNull(),
+  scopes: text("scopes").array().notNull(),
+  resource: text("resource"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  index("oauth_grants_user_idx").on(table.userId, table.createdAt),
+]);
+
+export const oauthTokens = pgTable("oauth_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  kind: text("kind").notNull(), // "access" | "refresh"
+  grantId: varchar("grant_id").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("oauth_tokens_grant_idx").on(table.grantId),
+]);
+
+// ============================================================================
 // DEAL DESK LOOP — deals, opportunities, email triggers
 // ============================================================================
 

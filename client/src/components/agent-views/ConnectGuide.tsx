@@ -72,21 +72,29 @@ export function ConnectGuide({ apiKey }: { apiKey?: string | null }) {
 
       <TabsContent value="claude-app" className="space-y-4 mt-4">
         <Note>
-          The Claude apps (claude.ai, desktop, mobile) and ChatGPT add remote MCP servers as <strong>custom connectors</strong>, and their
-          connector forms take a URL but no custom header. Use your personal connector URL — the key rides in the path:
+          The Claude apps (claude.ai, desktop, mobile) and ChatGPT add remote MCP servers as <strong>custom connectors</strong>.
+          No key needed — paste the server URL, then sign in to Realist and approve when the app sends you here:
         </Note>
-        <CodeBlock testId="connector-url" code={`${REALIST_MCP_URL}/u/${key}`} />
+        <CodeBlock testId="connector-url" code={REALIST_MCP_URL} />
         <Note>
-          <strong>Claude:</strong> Settings → Connectors → Add custom connector → paste the URL.{" "}
-          <strong>ChatGPT:</strong> Settings → Connectors → enable developer mode → add an MCP server with authentication set to none.
+          <strong>Claude:</strong> Settings → Connectors → Add custom connector → paste the URL → Connect.{" "}
+          <strong>ChatGPT:</strong> Settings → Connectors → enable developer mode → add an MCP server with OAuth authentication.
+          You choose what the app may do, and can disconnect it any time from your API keys page.
         </Note>
-        <div className="flex gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm leading-6">
-          <ShieldAlert className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
-          <p className="text-muted-foreground">
-            That URL contains your key, so treat it like a password: don't post it or screenshot it. If it leaks, revoke the key on the
-            API keys page and the URL stops working immediately.
-          </p>
-        </div>
+        <details className="rounded-lg border p-4 text-sm">
+          <summary className="cursor-pointer font-medium">My app can't do OAuth or send headers</summary>
+          <div className="mt-3 space-y-3">
+            <Note>Use a personal connector URL instead — the API key rides in the path, with authentication set to none:</Note>
+            <CodeBlock testId="connector-secret-url" code={`${REALIST_MCP_URL}/u/${key}`} />
+            <div className="flex gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 leading-6">
+              <ShieldAlert className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
+              <p className="text-muted-foreground">
+                That URL contains your key, so treat it like a password: don't post it or screenshot it. If it leaks, revoke the key on the
+                API keys page and the URL stops working immediately.
+              </p>
+            </div>
+          </div>
+        </details>
       </TabsContent>
 
       <TabsContent value="codex" className="space-y-4 mt-4">

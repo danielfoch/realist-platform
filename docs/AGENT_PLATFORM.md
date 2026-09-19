@@ -1,6 +1,6 @@
 # Realist Agent Platform — bring your own AI, get a hosted result
 
-**Shipped:** 2026-09-18 · **Branch:** `feat/agent-platform-hosted-views` · **User-facing docs:** `/developers`
+**Built:** 2026-09-18 · **Branches:** `feat/agent-platform-hosted-views` (PR #189), `feat/mcp-oauth` · **User-facing docs:** `/developers`
 
 People use their own harness — Claude (Code, desktop, claude.ai), Codex, Cursor, Grok, ChatGPT, or plain
 HTTP — to call Realist's tools. The agent gets structured JSON. The human gets a link to a page on
@@ -14,8 +14,8 @@ This implements Tracks B3, C1–C3 (hosted MCP pulled forward) and part of B2 fr
 
 | Surface | URL | Auth | For |
 |---|---|---|---|
-| Hosted MCP (Streamable HTTP) | `POST https://realist.ca/mcp` | `Authorization: Bearer realist_live_…` | Claude Code, Codex, Cursor, VS Code, Grok / OpenAI / Claude APIs |
-| Hosted MCP, key in path | `POST https://realist.ca/mcp/u/<key>` | the URL is the secret | connector forms with no header field (claude.ai, Claude Desktop, ChatGPT) |
+| Hosted MCP (Streamable HTTP) | `POST https://realist.ca/mcp` | API key **or** OAuth access token (bearer) | Claude Code, Codex, Cursor, VS Code, Grok / OpenAI / Claude APIs; claude.ai, Claude Desktop and ChatGPT connectors via OAuth sign-in |
+| Hosted MCP, key in path | `POST https://realist.ca/mcp/u/<key>` | the URL is the secret | fallback for clients that can neither send headers nor do OAuth |
 | REST | `POST https://realist.ca/api/v1/tools/{name}` | bearer | any function-calling harness, curl |
 | Discovery | `GET /api/v1`, `/api/v1/tools`, `/api/v1/openapi.json` | none | catalogs, OpenAPI 3.1 for GPT actions / toolkits |
 | Legacy REST | `/api/agent/*` | bearer | unchanged paths; now thin wrappers over the registry |
@@ -56,6 +56,50 @@ server/agent/tools.ts        ← THE tool catalog: name, model-facing descriptio
 
 Pre-registry names (`estimate_rent`, `underwrite_multiplex`, `submit_to_deal_desk`) are still accepted by
 `tools/call` as aliases.
+
+## OAuth 2.1 sign-in for connectors (`server/agent/oauth/`)
+
+Connector UIs (claude.ai, Claude Desktop, ChatGPT) add a server by URL and cannot send a custom header.
+With OAuth the user pastes `https://realist.ca/mcp`, signs in to Realist, approves, and is connected — no
+key, no secret URL.
+
+```
+POST /mcp (no token) → 401 + WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource/mcp"
+  → GET /.well-known/oauth-protected-resource/mcp     (RFC 9728: who protects /mcp)
+  → GET /.well-known/oauth-authorization-server       (RFC 8414: where to send the user)
+  → POST /oauth/register                              (RFC 7591 dynamic client registration)
+  → GET  /oauth/authorize  (PKCE S256, resource=…/mcp) → request parked → 302 /oauth/consent?request=<id>
+  → React consent page: sign in if needed → approve / deny → back to the client with ?code=…&state=…
+  → POST /oauth/token → access token (realist_oat_…, 1 h) + rotating refresh token (realist_ort_…, 60 d)
+```
+
+- **The protocol plumbing is the MCP SDK's own handlers** (request validation, PKCE check, exact
+  redirect-URI matching with loopback-port relaxation, OAuth error formatting, rate limiting), mounted under
+  `/oauth/*` so they cannot collide with site routes. `provider.ts` holds what is ours: what a grant means,
+  token lifetimes, and the consent hand-off. `store.ts` follows the `viewStore.ts` pattern (tables declared
+  in `shared/schema.ts` **and** created idempotently; in-memory store for tests).
+- **Nothing secret is stored in the clear**: client secrets, authorization codes and tokens are SHA-256
+  hashes. The SDK compares client secrets in plaintext, so `verifyClientSecret` checks the hash ahead of the
+  SDK's token/revoke handlers.
+- **Consent is a client route** (`/oauth/consent`) because the sign-in flow returns with a client-side
+  navigation. It is served with `X-Frame-Options: DENY` + `frame-ancestors 'none'`; approve/deny/disconnect
+  are session-authenticated, same-origin-checked POSTs (the session cookie is already `SameSite=Lax`).
+- **Registration is open to anyone, so client metadata is hostile input.** The consent page shows where the
+  user will be sent back to — the one thing an impostor cannot fake — recognises the well-known connector
+  hosts, and warns on anything else. `client_uri` is only ever rendered as an http(s) link.
+- **Scopes** grantable by consent: `read`, `underwrite`, `deal:submit`, `community:write` (never
+  `partner:referrals`). The two "acts for you" scopes are checkboxes; public posting starts unticked. A client
+  that asks for nothing gets `read underwrite`.
+- **Hardening**: single-use codes (5 min) — a replayed code revokes the grant; refresh tokens rotate, and
+  reuse of a spent one revokes the grant unless it arrives within 60 s (a client retrying a dropped
+  response); tokens are audience-bound to `…/mcp` (RFC 8707) and only accepted there — REST stays on API
+  keys; one grant per (user, client), so reconnecting updates scopes instead of stacking rows.
+- **Account page**: "Connected apps" lists grants with scopes, last use and 30-day call counts, and
+  disconnects them (revoking every token). OAuth calls are rate-limited and metered per connection as
+  `api_key_id = "oauth:<grantId>"`, so they show up in the existing usage summary.
+- SDK per-IP rate limits are raised: a connector backend fronts all of its users from a few addresses.
+- Verified with the **official MCP client SDK's OAuth flow** given only the server URL, against both
+  `npm run dev` and `dist/index.cjs`.
 
 ## Hosted views
 
@@ -144,8 +188,10 @@ registry-backed legacy routes.
 
 ## Not done yet (in priority order)
 
-1. **OAuth 2.1 for the hosted MCP server** (dynamic client registration) so claude.ai / ChatGPT users
-   connect with a sign-in instead of a secret URL, and so Realist can be listed in connector directories.
+1. **Test the OAuth flow from the real claude.ai and ChatGPT connector UIs** once deployed (it is verified
+   against the MCP SDK's client, which those products build on), then apply for their connector directories.
+   Optional next: Client ID Metadata Documents (the newer alternative to dynamic registration), and pruning
+   of registered-but-never-used clients.
 2. **Publish `@realist/mcp@0.2.0`** to npm (the bridge is built and verified locally; publishing is a
    human step).
 3. **MCP Apps / inline UI**: the view pages are already self-contained; an `?embed=1` variant could be
