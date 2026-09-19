@@ -60,6 +60,7 @@ const COLUMNS: FooterColumn[] = [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/about/contact" },
       { label: "Premium", href: "/premium" },
+      { label: "Developers & API", href: "/developers" },
     ],
   },
 ];
@@ -79,6 +80,7 @@ const EXCLUDED_PREFIXES = [
   "/admin",
   "/embed",
   "/underwriting/",
+  "/v/",
   "/analyses/",
   "/masterclass",
   "/course",

@@ -1,21 +1,23 @@
 # @realist/mcp
 
-**Model Context Protocol server + CLI for [Realist.ca](https://realist.ca)** — underwrite Canadian real estate deals, search the CREA MLS feed, and submit deals to the Realist community feed from Claude Desktop, the Codex CLI, Cursor, Continue, or any MCP-compatible AI agent.
+**stdio bridge + CLI for the [Realist.ca](https://realist.ca) agent platform** — search Canadian MLS® deals, underwrite properties, estimate rents, model Toronto multiplexes and pull market data from any MCP-compatible AI agent.
 
-## What you get
+> **You probably don't need this package.** Realist runs a hosted MCP server: point your harness at
+> `https://realist.ca/mcp` with an API key and there is nothing to install. See
+> [realist.ca/developers](https://realist.ca/developers) for copy-paste setup for Claude Code, the Claude and
+> ChatGPT apps, Codex, Cursor, VS Code, and the Grok / OpenAI / Claude APIs.
+>
+> Use this package when your MCP client can only launch **local stdio servers**, or when you want the `realist` CLI.
 
-8 tools your AI assistant can call on your behalf:
+## How it works
 
-| Tool | Purpose |
-|---|---|
-| `realist_underwrite_listing` | Underwrite a Canadian MLS# (cap rate, cash flow, DSCR, cash-on-cash) |
-| `realist_underwrite_custom` | Underwrite a custom address with your own price + assumptions |
-| `realist_find_deals` | Natural-language deal search ("4-plex in Hamilton under $900k") |
-| `realist_list_my_analyses` | List your saved underwritings |
-| `realist_get_analysis` | Fetch a specific underwriting |
-| `realist_submit_for_review` | Post an underwriting to the community feed for upvotes & comments |
-| `realist_get_market_report` | City-level market snapshot |
-| `realist_get_mortgage_rates` | Current Canadian mortgage rates |
+The bridge ships no tool definitions of its own. On startup it reads the live catalog from
+`GET /api/v1/tools` (filtered to what your key's scopes allow) and forwards every call to
+`POST /api/v1/tools/:name`. When Realist adds or changes a tool, you get it without upgrading.
+
+Tools that produce something worth seeing return a `view.url` — an interactive page on realist.ca (an
+editable pro forma spreadsheet with an Excel download, a multiplex model, a chart report). The bridge puts
+that link at the top of the tool result so your agent shows it to you.
 
 ## Setup
 
@@ -23,12 +25,9 @@
 
 Sign in at [realist.ca](https://realist.ca), then go to **[Account → API Keys](https://realist.ca/account/api-keys)** and create one. Copy it immediately — it's shown only once.
 
-### 2a. Use with Claude Desktop
+### 2a. Use as a local MCP server
 
-Edit your config file:
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+Any client that launches stdio servers works. Claude Desktop (`claude_desktop_config.json`), Cursor (`mcp.json`) and friends all take this shape:
 
 ```json
 {
@@ -36,31 +35,19 @@ Edit your config file:
     "realist": {
       "command": "npx",
       "args": ["-y", "@realist/mcp"],
-      "env": {
-        "REALIST_API_KEY": "realist_live_..."
-      }
+      "env": { "REALIST_API_KEY": "realist_live_..." }
     }
   }
 }
 ```
 
-Restart Claude Desktop. Try:
+Then try:
 
-> *Underwrite MLS X12345678 as a buy-and-hold with 25% down.*
-> *Find me triplexes in Calgary with positive cash flow.*
-> *Show me my last 5 underwritings.*
-> *Submit my analysis of MLS X12345678 to the community feed.*
+> *Underwrite 123 Main St, Hamilton at $750k with $4,200 rent and give me the spreadsheet.*
+> *Find 4-plexes in Hamilton under $900k and underwrite the best one.*
+> *What if I put 25% down at 4.9%?*
 
-### 2b. Use with Codex CLI / Cursor / Continue
-
-Any MCP-compatible client works. Codex CLI:
-
-```bash
-codex mcp add realist -- npx -y @realist/mcp
-codex mcp env set realist REALIST_API_KEY realist_live_...
-```
-
-### 2c. Use as a CLI
+### 2b. Use as a CLI
 
 ```bash
 npm install -g @realist/mcp
@@ -71,7 +58,6 @@ realist underwrite X12345678 --strategy buyHold --down 25
 realist analyze "123 Main St, Hamilton ON" 750000 --rent 4200 --units 3
 realist find "4-plex in Hamilton under 900k"
 realist list --limit 10
-realist submit X12345678 --analysis abc-123 --title "Strong cash flow"
 realist rates
 realist market Toronto
 ```
@@ -87,17 +73,20 @@ Or save the key once in `~/.realist/config.json`:
 | Var | Default | Purpose |
 |---|---|---|
 | `REALIST_API_KEY` | (required) | Your API key |
-| `REALIST_BASE_URL` | `https://realist.ca` | Override for self-hosted / staging |
+| `REALIST_BASE_URL` | `https://realist.ca` | Override for staging / local development |
 
 ## Development
 
 ```bash
 cd mcp-realist
 npm install
-npm run dev      # run MCP server in stdio mode
+npm run dev      # run the stdio bridge
 npm run cli -- whoami
 npm run build    # compile to dist/
 ```
+
+The tool registry lives in the main app at `server/agent/tools.ts`; architecture notes are in
+`docs/AGENT_PLATFORM.md`.
 
 ## Publishing
 
@@ -107,7 +96,7 @@ npm publish --access public
 ```
 
 The package binary names are:
-- `realist-mcp` — entry point Claude/Codex spawn over stdio
+- `realist-mcp` — entry point MCP clients spawn over stdio
 - `realist` — CLI
 
 ## Security notes
@@ -115,7 +104,7 @@ The package binary names are:
 - Keys are returned **once** at creation time and stored only as SHA-256 hashes server-side
 - Revoke any key from `realist.ca/account/api-keys` — no app restart required
 - All requests carry `Authorization: Bearer <key>`; never share the key in screenshots, logs, or commit history
-- Rate limits, scopes, and per-key quotas are enforced server-side
+- Rate limits (60/min, 2,000/day per key), scopes and usage metering are enforced server-side
 
 ## License
 

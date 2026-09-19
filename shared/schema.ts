@@ -4454,6 +4454,36 @@ export type ApiUsageEvent = typeof apiUsageEvents.$inferSelect;
 export type InsertApiUsageEvent = typeof apiUsageEvents.$inferInsert;
 
 // ============================================================================
+// AGENT RESULT VIEWS — hosted visual results for agent/API tool calls.
+// Each row backs one /v/:token page (interactive pro forma, deal list, market
+// report …). The token is an unguessable capability: anyone holding the link
+// can open the view, nobody can enumerate them. `document` is an
+// AgentViewDocument (shared/agentViews.ts). Also created idempotently at boot
+// (server/index.ts ensureAppTables) so deploys never depend on db:push.
+// ============================================================================
+export const agentResultViews = pgTable("agent_result_views", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  kind: text("kind").notNull(),
+  title: text("title").notNull(),
+  document: jsonb("document").notNull(),
+  userId: varchar("user_id").notNull(),
+  apiKeyId: varchar("api_key_id"),
+  analysisId: varchar("analysis_id"),
+  tool: text("tool"),
+  channel: text("channel"),
+  viewCount: integer("view_count").notNull().default(0),
+  lastViewedAt: timestamp("last_viewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("agent_result_views_user_created_idx").on(table.userId, table.createdAt),
+  index("agent_result_views_analysis_idx").on(table.analysisId),
+]);
+
+export type AgentResultView = typeof agentResultViews.$inferSelect;
+export type InsertAgentResultView = typeof agentResultViews.$inferInsert;
+
+// ============================================================================
 // DEAL DESK LOOP — deals, opportunities, email triggers
 // ============================================================================
 

@@ -1,6 +1,7 @@
 # Realist Distribution Architecture — Mobile, MCP, and the Shared API Layer
 
 **Date:** 2026-07-01
+**Status update (2026-09-18):** Tracks B3 and C1–C3 (hosted MCP pulled forward), the engine half of B2, and hosted result views are built — see `docs/AGENT_PLATFORM.md`. The audit table below describes the July baseline.
 **Scope:** How Realist intelligence (underwriting, multiplex feasibility, rent/value estimation, market intel, saved reports) gets distributed through iOS/Android, an MCP server for realtor/investor AI agents, and a public API — without forking the engine.
 **Grounding:** Based on a full audit of this repo (server ~88 files, client 263 files, `shared/` 49 modules, `mcp-realist/`, `mobile/`).
 

@@ -70,6 +70,14 @@ Both agents can modify `db/schema.ts` or migration files. When adding columns or
 - Authentication is required on the server for submissions and votes. All submissions require host approval. Public feeds never expose account identifiers or rejected/pending questions. Votes are absolute, idempotent PUT requests. Admins can pause, reject, answer, feature, and extend the rejection dictionary.
 - Cherry-pick integration changes onto the current Replit branch to preserve other unpublished work.
 
+## Agent platform: hosted MCP, /api/v1, hosted result views (2026-09-18, Claude)
+- Built in an isolated worktree on `feat/agent-platform-hosted-views` from origin/main @ c0104ce. Architecture + operating notes: `docs/AGENT_PLATFORM.md`. User-facing docs: `/developers`.
+- ONE tool registry (`server/agent/tools.ts`, 14 tools) served over three transports: legacy `/api/agent/*` (`server/agentApi.ts`, now thin wrappers — paths and response keys unchanged), `/api/v1` + OpenAPI (`server/agent/v1Routes.ts`, `openapi.ts`), and a hosted stateless MCP endpoint at `/mcp` and `/mcp/u/:key` (`server/agent/mcpServer.ts`, official SDK). Add or change tools in the registry only. `mcp-realist/` is now a stdio bridge that reads `/api/v1/tools` at runtime.
+- New table `agent_result_views` (id, token unique, kind, title, document jsonb, user_id, api_key_id, analysis_id, tool, channel, view_count, last_viewed_at, created_at; indexes on (user_id, created_at) and (analysis_id)). Declared in `shared/schema.ts` AND created idempotently by `server/agent/viewStore.ts` — no `db:push` needed to deploy. Backs the public `/v/:token` pages (`client/src/pages/AgentResultView.tsx`, `client/src/components/agent-views/*`); the token is the only credential, pages are noindex.
+- The buy & hold engine moved from `client/src/lib/calculations.ts` to `shared/buyHoldAnalysis.ts` (the client file re-exports it). Agent underwriting (`server/agent/underwriting.ts`) now runs that engine with web-analyzer defaults. BEHAVIOUR CHANGE: `expenseRatio` is ALL-IN — the old path added property tax + insurance on top of it and understated NOI, so numbers from `/api/agent/underwrite/*` and Ask Realist's `underwrite_property` are higher (correct) now.
+- Integration points touched: `server/routes.ts` (registers v1 + MCP after the agent routes), `server/services/usage.ts` (function-level limiter/meter for MCP), `server/seoMeta.ts` + `shared/routeMeta.ts` + `server/sitemap.ts` (routes `/v/:token` noindex, `/developers`), `client/src/App.tsx`, `SiteFooter.tsx`, `AccountApiKeys.tsx`, `Premium.tsx`, `server/index.ts` (`reusePort` Linux-only so the server boots on macOS).
+- New root deps: `@modelcontextprotocol/sdk`, `zod-to-json-schema` (both stay esbuild externals). New env (optional): `PUBLIC_BASE_URL`.
+
 ## How to Break Deadlocks
 
 If both agents need the same file:

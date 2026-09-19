@@ -3,7 +3,7 @@
  */
 
 const DEFAULT_BASE_URL = "https://realist.ca";
-const USER_AGENT = "@realist/mcp/0.1.0";
+const USER_AGENT = "@realist/mcp/0.2.0";
 
 export class RealistApiError extends Error {
   constructor(
@@ -14,6 +14,19 @@ export class RealistApiError extends Error {
     super(message);
     this.name = "RealistApiError";
   }
+}
+
+/** One entry of GET /api/v1/tools — the server-side tool registry, as published. */
+export interface RealistToolDescriptor {
+  name: string;
+  title: string;
+  description: string;
+  /** API key scope the tool requires. */
+  scope: string;
+  readOnly: boolean;
+  /** JSON Schema (draft-07) for the tool's arguments. */
+  inputSchema: Record<string, unknown>;
+  endpoint: string;
 }
 
 export interface RealistClientOptions {
@@ -58,7 +71,21 @@ export class RealistClient {
   }
 
   me() {
-    return this.request<{ ok: boolean; user: { id: string; email?: string } }>("GET", "/api/agent/me");
+    return this.request<{ ok: boolean; user: { id: string; email?: string }; scopes?: string[] }>("GET", "/api/agent/me");
+  }
+
+  /** The live tool catalog (no tool definitions are baked into this package). */
+  listTools() {
+    return this.request<{ count: number; tools: RealistToolDescriptor[] }>("GET", "/api/v1/tools");
+  }
+
+  /** Run any tool from the catalog by name. */
+  callTool(name: string, args: Record<string, unknown> = {}) {
+    return this.request<{ ok: true; tool: string; result: Record<string, any> }>(
+      "POST",
+      `/api/v1/tools/${encodeURIComponent(name)}`,
+      args,
+    );
   }
 
   underwriteListing(input: {
