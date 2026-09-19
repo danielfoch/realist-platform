@@ -93,6 +93,10 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
 - **The deal memo** (`lib/underwriting/dealMemo.ts`): rules-based, computed in the browser,
   every sentence derived from the engine. `lib/ai/dealMemoWriter.ts` may re-narrate it with
   Claude and is rejected if it states a number not in the payload.
+- **Email to members** is a commercial electronic message (CASL): consented members only,
+  a postal address, and an unsubscribe that works without signing in. Links are never acted
+  on by a GET (scanners pre-fetch) — see `/login/confirm` and `/unsubscribe`. The weekly
+  digest (`lib/digest/*`) is off unless `WEEKLY_DIGEST_ENABLED=1`.
 - **The cash-back figure** lives in `lib/offer.ts` only (`NEXT_PUBLIC_CASHBACK_PERCENT`).
 - **Leads** (`lib/leads/*`): every form is `components/leads/LeadForm.tsx` posting to
   `/api/leads`; the server calls `captureLead()` — never insert a lead or call the CRM

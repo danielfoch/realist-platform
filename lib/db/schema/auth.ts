@@ -38,6 +38,8 @@ export const users = pgTable(
     role: text("role").$type<"user" | "admin">().default("user").notNull(),
     /** The member's own power-team checklist: role key → "have" | "need". */
     powerTeam: jsonb("power_team").$type<Record<string, "have" | "need">>(),
+    /** When the weekly digest last went to this member — the cron's guard against double sends. */
+    lastDigestAt: timestamp("last_digest_at"),
     /** Appear as "First L." on the leaderboard and have a public track-record page. */
     showOnLeaderboard: boolean("show_on_leaderboard").default(true).notNull(),
     emailVerifiedAt: timestamp("email_verified_at"),

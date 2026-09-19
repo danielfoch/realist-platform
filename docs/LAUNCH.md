@@ -79,8 +79,18 @@ DNS at GoDaddy: `CNAME new → cname.vercel-dns.com`. Then, from this repo:
 npx vercel --prod
 ```
 
+## 8. The Monday note (optional, off by default)
+
+`/api/cron/digest` emails each consenting member who has underwritten a deal: where they
+finished last week, the one thing that keeps their streak or earns their next badge, last
+week's top five, and the next meetup in their city. It sends **nothing** until all of these
+are set: `WEEKLY_DIGEST_ENABLED=1`, `RESEND_API_KEY`, and `EMAIL_POSTAL_ADDRESS` (CASL needs a
+mailing address in every commercial email). Unsubscribe is one press, works without signing
+in, and is honoured by mail providers' own unsubscribe button.
+
 ## Crons (vercel.json)
 
 `/api/cron/leads` every 10 min (outbox retries) · `/api/cron/learn` nightly (market defaults) ·
+`/api/cron/digest` Mondays 8:30 ET ·
 podcast Tue/Fri · distress scan twice daily · distress report monthly. All require
 `CRON_SECRET` (already set).
