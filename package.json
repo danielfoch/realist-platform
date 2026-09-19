@@ -14,7 +14,8 @@
     "sync:rents": "tsx scripts/sync-rents.ts",
     "migrate:users": "tsx scripts/migrate-users.ts",
     "preflight": "tsx scripts/preflight.ts",
-    "setup:keys": "tsx scripts/setup-keys.ts"
+    "setup:keys": "tsx scripts/setup-keys.ts",
+    "setup:crawl": "tsx scripts/setup-crawl.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.121.0",

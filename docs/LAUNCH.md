@@ -28,6 +28,23 @@ ids. Enter skips anything; it ends by offering to deploy. `-- --dry-run` tests w
 `-- --redo` asks again for keys already set. Steps 2, 3 and 5 below are the long way of doing
 the same thing in the Vercel dashboard.
 
+### …and one more for the listings crawl
+
+Yield-sorted browse, buy-box matches, market aggregates and the Monday note's listings all read
+the nightly crawl's snapshots. The crawl is too long for a serverless function, so it runs on
+GitHub Actions — and GitHub only schedules workflows found on the **default branch**. Merge
+[the "Lean nightly data sync" pull request](https://github.com/danielfoch/realist-platform/pull/195)
+(one workflow file; it checks out `lean`), then:
+
+```bash
+npm run setup:crawl
+```
+
+You paste the CREA pair once more (tested first — and it counts the feed's listings, because a
+"Member Website Feed" authenticates fine and carries only your own office's listings; the site
+needs the **National Shared Pool**, the feed the Replit app uses). The database URL is read from
+Vercel. All three go to GitHub as repository secrets over stdin, and the first crawl starts.
+
 ## 1. A database (nothing persists without it)
 
 **Done** — resource `realist-lean-db`, connected to Production and Preview. For the record, it

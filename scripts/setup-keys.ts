@@ -10,64 +10,13 @@
  * Press Enter at any prompt to skip it.
  */
 import { spawn, spawnSync } from "node:child_process";
-import readline from "node:readline";
 import { checkAnthropic, checkGhl, checkResend, type CheckResult } from "../lib/preflight/checks";
-import { KEY_GROUPS, checkDdfCredentials, parseEnvNames, shapeWarning, type KeySpec } from "../lib/preflight/keys";
+import { KEY_GROUPS, NATIONAL_POOL_FLOOR, checkDdfCredentials, parseEnvNames, shapeWarning, type KeySpec } from "../lib/preflight/keys";
+import { ask } from "../lib/preflight/prompt";
 
 const DRY = process.argv.includes("--dry-run");
 const REDO = process.argv.includes("--redo");
 const saved: string[] = [];
-
-const CTRL_C = 3;
-const BACKSPACE = 8;
-const DELETE = 127;
-const ENTER = [10, 13];
-const ERASE = `${String.fromCharCode(BACKSPACE)} ${String.fromCharCode(BACKSPACE)}`;
-
-let piped: AsyncIterator<string> | null = null;
-
-/** One line from the person. Hidden input never reaches the screen or the scrollback. */
-async function ask(question: string, hidden = false): Promise<string> {
-  process.stdout.write(question);
-  if (!process.stdin.isTTY) {
-    piped ??= readline.createInterface({ input: process.stdin })[Symbol.asyncIterator]();
-    const next = await piped.next();
-    process.stdout.write("\n");
-    return next.done ? "" : next.value.trim();
-  }
-  return new Promise((resolve) => {
-    const stdin = process.stdin;
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    let value = "";
-    const onData = (chunk: string) => {
-      for (const ch of chunk) {
-        const code = ch.charCodeAt(0);
-        if (code === CTRL_C) {
-          stdin.setRawMode(false);
-          process.stdout.write("\n");
-          process.exit(130);
-        }
-        if (ENTER.includes(code)) {
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.off("data", onData);
-          process.stdout.write(hidden && value ? `  (${value.length} characters, hidden)\n` : "\n");
-          return resolve(value.trim());
-        }
-        if (code === DELETE || code === BACKSPACE) {
-          if (value && !hidden) process.stdout.write(ERASE);
-          value = value.slice(0, -1);
-        } else if (code >= 32) {
-          value += ch;
-          if (!hidden) process.stdout.write(ch);
-        }
-      }
-    };
-    stdin.on("data", onData);
-  });
-}
 
 async function save(spec: Pick<KeySpec, "name" | "secret">, value: string): Promise<boolean> {
   if (DRY) {
@@ -115,8 +64,10 @@ async function proves(title: string, values: Record<string, string>): Promise<bo
   }
   if (title.startsWith("Live MLS")) {
     const result = await checkDdfCredentials(values.CREA_DDF_USERNAME ?? "", values.CREA_DDF_PASSWORD ?? "");
-    console.log(`    ${result.ok ? "✓" : "✗"} ${result.detail}`);
-    return result.ok;
+    const officeFeed = result.ok && result.listings !== undefined && result.listings < NATIONAL_POOL_FLOOR;
+    console.log(`    ${!result.ok ? "✗" : officeFeed ? "!" : "✓"} ${result.detail}`);
+    // An office's own feed authenticates fine and leaves the site empty: saving it has to be a decision, not a default.
+    return result.ok && (!officeFeed || /^y/i.test(await ask("    Save this feed anyway? [y/N] ")));
   }
   return true;
 }

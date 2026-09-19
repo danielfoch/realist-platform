@@ -93,8 +93,16 @@ export function shapeWarning(spec: KeySpec, value: string): string | null {
   return null;
 }
 
-/** CREA hands out a token for valid credentials and nothing else: a read-only proof they work. */
-export async function checkDdfCredentials(username: string, password: string, fetcher: typeof fetch = fetch): Promise<{ ok: boolean; detail: string }> {
+/** Below this many active listings a feed is an office's or an agent's own, not the national pool. */
+export const NATIONAL_POOL_FLOOR = 20_000;
+
+/**
+ * CREA hands out a token for valid credentials and nothing else: a read-only proof they work.
+ * Then one more read — how many listings the feed carries — because a "Member Website Feed"
+ * authenticates perfectly and contains only the member's own office's listings. The site
+ * needs the National Shared Pool.
+ */
+export async function checkDdfCredentials(username: string, password: string, fetcher: typeof fetch = fetch): Promise<{ ok: boolean; detail: string; listings?: number }> {
   try {
     const response = await fetcher("https://identity.crea.ca/connect/token", {
       method: "POST",
@@ -102,7 +110,18 @@ export async function checkDdfCredentials(username: string, password: string, fe
       body: new URLSearchParams({ grant_type: "client_credentials", client_id: username, client_secret: password, scope: "DDFApi_Read" }).toString(),
       signal: AbortSignal.timeout(15_000),
     });
-    return response.ok ? { ok: true, detail: "CREA accepted the credentials." } : { ok: false, detail: `CREA answered HTTP ${response.status} — the pair is wrong or the feed isn't active.` };
+    if (!response.ok) return { ok: false, detail: `CREA answered HTTP ${response.status} — the pair is wrong, or the feed isn't saved and active yet.` };
+    const token = ((await response.json().catch(() => ({}))) as { access_token?: string }).access_token;
+    if (!token) return { ok: true, detail: "CREA accepted the credentials." };
+
+    const count = await fetcher("https://ddfapi.realtor.ca/odata/v1/Property?$top=1&$count=true&$select=ListingKey", {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(20_000),
+    }).then(async (result) => (result.ok ? Number(((await result.json()) as Record<string, unknown>)["@odata.count"]) : NaN)).catch(() => NaN);
+    if (!Number.isFinite(count)) return { ok: true, detail: "CREA accepted the credentials (couldn't count the feed's listings just now)." };
+    return count >= NATIONAL_POOL_FLOOR
+      ? { ok: true, listings: count, detail: `CREA accepted the credentials — the feed carries ${count.toLocaleString("en-CA")} listings (the national pool).` }
+      : { ok: true, listings: count, detail: `CREA accepted the credentials, but this feed carries only ${count.toLocaleString("en-CA")} listings — that's an office or agent feed ("Member Website Feed"), and the listings pages would be nearly empty. Use a "National Shared Pool" feed — the pair the Replit app uses is one.` };
   } catch (error) {
     return { ok: false, detail: `Couldn't reach CREA: ${(error as Error).message}` };
   }

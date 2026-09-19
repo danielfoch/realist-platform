@@ -23,9 +23,20 @@ describe("connecting the keys", () => {
     for (const name of ["GHL_API_KEY", "RESEND_API_KEY", "CREA_DDF_PASSWORD", "ANTHROPIC_API_KEY", "GOOGLE_CLIENT_SECRET", "KEYPR_REALIST_SECRET"]) expect(spec(name).secret).toBe(true);
   });
 
-  it("proves CREA credentials with a token request and nothing else", async () => {
+  it("proves CREA credentials with a token request — read-only", async () => {
     const good = await checkDdfCredentials("user", "pass", (async () => new Response("{}", { status: 200 })) as unknown as typeof fetch);
     const bad = await checkDdfCredentials("user", "nope", (async () => new Response("{}", { status: 400 })) as unknown as typeof fetch);
     expect([good.ok, bad.ok]).toEqual([true, false]);
+  });
+
+  it("tells the national pool from an office's own feed, which authenticates just as well", async () => {
+    const feed = (count: number) =>
+      (async (url: string) => (String(url).includes("/connect/token") ? new Response(JSON.stringify({ access_token: "t" }), { status: 200 }) : new Response(JSON.stringify({ "@odata.count": count, value: [] }), { status: 200 }))) as unknown as typeof fetch;
+    const national = await checkDdfCredentials("user", "pass", feed(163_412));
+    expect(national).toMatchObject({ ok: true, listings: 163_412 });
+    expect(national.detail).toContain("national pool");
+    const office = await checkDdfCredentials("user", "pass", feed(37));
+    expect(office.ok).toBe(true);
+    expect(office.detail).toContain("Member Website Feed");
   });
 });
