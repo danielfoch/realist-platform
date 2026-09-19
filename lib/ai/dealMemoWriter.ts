@@ -7,6 +7,7 @@
  * unchanged. Without ANTHROPIC_API_KEY the deterministic memo IS the memo.
  */
 
+import { modelFor } from "@/lib/ai/models";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { findLeakedNumbers } from "@/lib/multiplex/reportWriter";
@@ -79,7 +80,7 @@ export async function writeDealMemo(request: MemoRequest): Promise<{ memo: DealM
     try {
       client ??= new Anthropic();
       const response = await client.messages.create({
-        model: "claude-sonnet-5",
+        model: modelFor("memo"),
         max_tokens: 3000,
         system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         messages,

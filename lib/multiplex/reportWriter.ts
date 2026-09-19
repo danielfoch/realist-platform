@@ -9,6 +9,7 @@
  * to templates when ANTHROPIC_API_KEY is not configured.
  */
 
+import { modelFor } from "@/lib/ai/models";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
@@ -224,7 +225,7 @@ export async function writeMultiplexReport(input: ReportInput): Promise<{ report
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const response = await getClient().messages.create({
-        model: "claude-sonnet-5",
+        model: modelFor("report"),
         max_tokens: 8000,
         thinking: { type: "adaptive" },
         // Below the model's cacheable-prefix minimum today; the marker is

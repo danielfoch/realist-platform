@@ -15,6 +15,7 @@
  * tells someone to buy.
  */
 
+import { modelFor } from "@/lib/ai/models";
 import Anthropic from "@anthropic-ai/sdk";
 import { allowedNumbers, findLeakedNumbers } from "@/lib/multiplex/reportWriter";
 import { templateMemo, type MemoDeal } from "@/lib/underwriting/dealMemo";
@@ -52,7 +53,6 @@ export interface MessagesClient {
   messages: { create(body: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> };
 }
 
-const MODEL = "claude-sonnet-5";
 const MAX_TOOL_ROUNDS = 5;
 
 export function askRealistConfigured(): boolean {
@@ -239,7 +239,7 @@ export async function askRealist(
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS + 1; round += 1) {
     const response = await client.messages.create({
-      model: MODEL,
+      model: modelFor("ask"),
       max_tokens: 1200,
       system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       tools: TOOLS,

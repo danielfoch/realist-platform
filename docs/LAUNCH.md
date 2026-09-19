@@ -107,6 +107,7 @@ After it, run the learning job once: `GET /api/cron/learn` with the cron bearer 
 |---|---|
 | `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD` | the live MLS® feed (also add to GitHub Actions secrets for the nightly sync) |
 | `ANTHROPIC_API_KEY` | AI-written deal memos and multiplex reports. Without it both fall back to the rules-based versions, which are complete on their own |
+| `AI_MODEL_MEMO`, `AI_MODEL_ASK`, `AI_MODEL_REPORT`, `AI_MODEL` | *(optional)* which model each paid feature uses. Defaults: memo on Haiku 4.5 (about a third the price; it re-narrates a memo the rules engine already wrote), Ask Realist and the multiplex report on Sonnet. Measured size of a call: memo ≈ 2k tokens in / 0.8k out; an Ask Realist question ≈ 8k in / 0.9k out across its tool rounds; a multiplex report ≈ 7k in / 2k out |
 | `AI_DAILY_BUDGET` | *(optional, default 2000)* the most model calls the whole site makes in a day, so a bad night costs a known amount. Members get 60 a day (15 per 15 min); an account that hasn't confirmed its email gets 3. `0` turns the paid AI off |
 
 ## 6. Before launch
