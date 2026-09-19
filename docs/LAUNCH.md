@@ -67,27 +67,43 @@ After it, run the learning job once: `GET /api/cron/learn` with the cron bearer 
 | `ANTHROPIC_API_KEY` | AI-written deal memos and multiplex reports. Without it both fall back to the rules-based versions, which are complete on their own |
 | `AI_DAILY_BUDGET` | *(optional, default 2000)* the most model calls the whole site makes in a day, so a bad night costs a known amount. Members get 60 a day (15 per 15 min); an account that hasn't confirmed its email gets 3. `0` turns the paid AI off |
 
-## 6. Decisions only you can make before launch
+## 6. Before launch
 
-- **Who is the brokerage of record?** The site currently names three parties for the same
-  thing: "Valery Real Estate" (/team), "partner brokerages, including Konfidis"
-  (/work-with-us) and "Keypr, its cashback partner" (the consent box). A buyer should read one
-  name. Tell us which, and it becomes one constant.
 - **Legal review** of `/privacy` and `/terms`. They were rewritten to describe what the product
   actually does (public profiles, the leaderboard, learning from aggregates, the CRM, Keypr,
-  referral fees, AI processing). Accurate to the code; not yet seen by a lawyer.
-- **The homepage** (your PR #191/#193) promises things the app doesn't do yet — "AI-assisted
-  tenant support, maintenance, leasing", "compare cash flow and cap rates" — and its PropCare
-  link points at a realist.ca URL that will 404 once this app takes over the domain.
-- The cash-back figure:
-
-## 6b. The cash-back figure
-
-`NEXT_PUBLIC_CASHBACK_PERCENT` — the site says **50%** (the original brief). The Keypr copy
-approved on Sept 15 says buyers keep **80%** of the buyer-agent commission. Whatever the partner
-actually pays is what the site must say; it is one variable, read everywhere.
+  referral fees, AI processing). Accurate to the code; not yet seen by a lawyer. This is the one
+  item nobody but you can close.
+- **The cash-back offer is settled, not open.** It now says exactly what the live realist.ca has
+  said since your Sept 14 Keypr merge (`shared/keypr.ts` in the v1 app): an **Ontario** offer,
+  **80%** of the buyer's agent commission paid at closing, delivered by **Keypr**'s RECO-licensed
+  REALTORS®, "nothing owed unless you buy", with the same estimate note. Outside Ontario the site
+  promises an introduction and no figure. One file states all of it: `lib/offer.ts`
+  (`NEXT_PUBLIC_CASHBACK_PERCENT` overrides the number). The stale "50% / Konfidis" wording from
+  the August brief is gone.
+- **Who is named where.** Two names, two roles, as on the live site: **Keypr** = the cash-back
+  brokerage for Ontario purchases (only ever sent a lead the person ticked the box for);
+  **Valery Real Estate Inc.** = the brokerage that works realtor requests near Toronto and receives
+  referral fees on introductions. Both are disclosed on `/work-with-us`, `/team`, `/privacy`.
+- **The homepage** no longer promises what the product doesn't do: AI tenant support,
+  maintenance and leasing are attributed to PropCare (your partner, whose product it is) and link
+  to propcare.ca; listing pages now show the lot, so "screen lot dimensions" is true.
 
 ## 7. Go live
+
+First, ask the site what it's still missing. This is read-only, never prints a key, and checks
+the real thing each time — the database schema, a GHL contact lookup with your token, the
+pipeline and stage ids, that `realist.ca` is *verified* in Resend, the Anthropic key:
+
+```bash
+npx vercel env pull .env.prod --environment=production
+```
+
+```bash
+npm run preflight -- --env .env.prod
+```
+
+It ends in one line: **Ready to deploy**, or the list of what launch still depends on, each with
+the fix. (`.env.prod` holds your production secrets — it is gitignored; delete it afterwards.)
 
 DNS at GoDaddy: `CNAME new → cname.vercel-dns.com`. Then, from this repo:
 

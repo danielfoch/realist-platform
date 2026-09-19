@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "sync:ddf": "tsx scripts/sync-ddf.ts",
     "sync:rents": "tsx scripts/sync-rents.ts",
-    "migrate:users": "tsx scripts/migrate-users.ts"
+    "migrate:users": "tsx scripts/migrate-users.ts",
+    "preflight": "tsx scripts/preflight.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.121.0",

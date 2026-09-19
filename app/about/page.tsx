@@ -9,7 +9,7 @@ import {
   PODCAST_SPOTIFY_URL,
   PODCAST_YOUTUBE_URL,
 } from "@/lib/brand";
-import { CASHBACK_LABEL } from "@/lib/offer";
+import { CASHBACK_LABEL, CASHBACK_PARTNER, CASHBACK_PROVINCE } from "@/lib/offer";
 
 export const metadata: Metadata = {
   title: "About — the podcast behind the platform",
@@ -211,11 +211,11 @@ export default function AboutPage() {
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-signal">The offer</p>
           <h3 className="font-display mt-2 text-xl font-semibold">
-            Get {CASHBACK_LABEL} of our commission back
+            Keep {CASHBACK_LABEL} of the commission
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Buy a property you found on Realist with our partner team and half
-            our commission comes back to you at closing.
+            Underwrite it here, see it once, and buy it in {CASHBACK_PROVINCE.name} through {CASHBACK_PARTNER.name}, our
+            cash-back partner: {CASHBACK_LABEL} of the buyer&rsquo;s agent commission is yours at closing.
           </p>
           <span className="mt-4 inline-block text-sm font-semibold text-brand group-hover:text-brand-deep">
             How it works →

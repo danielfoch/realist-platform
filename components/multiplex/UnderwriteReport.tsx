@@ -696,8 +696,8 @@ export function UnderwriteReport({ payload }: { payload: UnderwritePayload }) {
           <div>
             <h3 className="font-display text-xl font-semibold">Want to actually build this?</h3>
             <p className="mt-1 max-w-xl text-sm text-ink-soft">
-              Buy the site with our partner team and get {CASHBACK_LABEL} of our commission back at
-              closing — plus an intro to the lenders and builders who do these projects.
+              Buy the site through our cash-back partner and keep {CASHBACK_LABEL} of the buyer&rsquo;s agent
+              commission at closing — plus an intro to the lenders and builders who do these projects.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-3">

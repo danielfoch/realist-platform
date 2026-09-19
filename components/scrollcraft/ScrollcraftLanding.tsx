@@ -214,8 +214,8 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Stay with Realist beyond completion. Plan your asset’s long-term performance with property management partners, AI-assisted tenant support, maintenance, leasing, and reporting.",
-    tags: ["Asset strategy", "Property management", "AI-assisted operations"],
+      "Stay with Realist beyond completion. Build your management team through our network — property managers who know small multifamily, and PropCare, our property technology partner, whose AI handles tenant communication, maintenance and leasing.",
+    tags: ["Property managers", "AI operations by PropCare", "Your power team"],
     cta: "Build your management team",
     href: "/team?roles=property_manager#request",
     note: "Real people and specialist partners. Working alongside you.",
@@ -895,7 +895,7 @@ const TOOL_GROUPS = [
       {
         name: "AI property management",
         note: "Meet PropCare, our property technology partner.",
-        href: "https://realist.ca/community/events/partners/propcare",
+        href: "https://www.propcare.ca/",
       },
     ],
   },

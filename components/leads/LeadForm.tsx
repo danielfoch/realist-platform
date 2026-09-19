@@ -4,6 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { useViewer } from "@/components/auth/useViewer";
 import { checkboxClass, inputClass, labelClass, primaryButtonClass } from "@/components/auth/shared";
 import { KEYPR_CONSENT_TEXT } from "@/lib/leads/consentText";
+import { CASHBACK_ESTIMATE_NOTE, CASHBACK_OFFER_TEXT } from "@/lib/offer";
 import { POWER_TEAM_ROLES } from "@/lib/team/roles";
 
 /**
@@ -373,10 +374,15 @@ export function LeadForm({
       )}
       <div className="space-y-2 sm:col-span-2">
         {showPartnerBox && (
-          <label className="flex items-start gap-2 text-xs leading-relaxed text-ink-soft">
-            <input type="checkbox" name="consentPartner" className={checkboxClass} />
-            {KEYPR_CONSENT_TEXT}
-          </label>
+          <div className="rounded-md border border-hairline bg-brand-wash/50 p-3">
+            {/* The reason to tick the box, in the partner's approved words — then the box. */}
+            <p className="text-xs font-medium leading-relaxed text-ink">{CASHBACK_OFFER_TEXT}</p>
+            <label className="mt-2 flex items-start gap-2 text-xs leading-relaxed text-ink-soft">
+              <input type="checkbox" name="consentPartner" className={checkboxClass} />
+              {KEYPR_CONSENT_TEXT}
+            </label>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-faint">{CASHBACK_ESTIMATE_NOTE}</p>
+          </div>
         )}
         <label className="flex items-start gap-2 text-xs leading-relaxed text-ink-faint">
           <input type="checkbox" name="consentMarketing" className={checkboxClass} />

@@ -62,6 +62,8 @@ interface ListingView {
   beds: number | null;
   baths: number | null;
   sqft: number | null;
+  /** The lot as the listing states it — what a multiplex or garden-suite buyer screens on first. */
+  lot: string | null;
   propertyType: string | null;
   yearBuilt: string | null;
   taxAnnual: number | null;
@@ -106,6 +108,7 @@ async function viewFromLive(raw: DdfListing): Promise<ListingView> {
     beds: normalized.details.numBedrooms ?? null,
     baths: normalized.details.numBathrooms ?? null,
     sqft: toNum(normalized.details.sqft),
+    lot: lotLine(normalized),
     propertyType: normalized.details.propertyType ?? null,
     yearBuilt: normalized.details.yearBuilt ?? null,
     taxAnnual: normalized.taxes?.annualAmount ?? null,
@@ -141,6 +144,7 @@ function viewFromSnapshot(record: ListingSeoRecord): ListingView {
     beds: record.bedrooms,
     baths: record.bathroomsFull,
     sqft: record.squareFootage,
+    lot: null,
     propertyType: record.structureType || record.propertyType,
     yearBuilt: null,
     taxAnnual: toNum(record.taxAnnual),
@@ -219,6 +223,14 @@ export async function generateMetadata({
       ? { images: [{ url: listing.photos[0] }] }
       : undefined,
   };
+}
+
+/** Dimensions as the listing gives them ("33 x 120 FT"), else the area with its unit. Never a guess. */
+function lotLine(listing: { lotDimensions?: string; lotArea?: number; lotAreaUnit?: string }): string | null {
+  const dimensions = listing.lotDimensions?.trim();
+  if (dimensions && /\d/.test(dimensions)) return dimensions.slice(0, 60);
+  if (listing.lotArea && listing.lotArea > 0) return `${fmtNum(listing.lotArea)} ${listing.lotAreaUnit?.trim().toLowerCase() || ""}`.trim();
+  return null;
 }
 
 function FactRow({ label, value }: { label: string; value: string | null }) {
@@ -457,6 +469,7 @@ export default async function ListingDetailPage({
                   <FactRow label="Bathrooms" value={listing.baths != null ? fmtNum(listing.baths) : null} />
                   <FactRow label="Units" value={listing.units != null ? fmtNum(listing.units) : null} />
                   <FactRow label="Size" value={listing.sqft ? `${fmtNum(listing.sqft)} sf` : null} />
+                  <FactRow label="Lot" value={listing.lot} />
                   <FactRow label="Year built" value={listing.yearBuilt} />
                   <FactRow label="Parking" value={listing.parking != null ? fmtNum(listing.parking) : null} />
                   <FactRow label="Taxes" value={listing.taxAnnual != null ? `${fmtMoney(listing.taxAnnual)}/yr` : null} />
