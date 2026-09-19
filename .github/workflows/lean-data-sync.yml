@@ -1,0 +1,50 @@
+name: Lean nightly data sync
+
+# The national DDF listings crawl and the lease-rent ingestion for the lean app
+# (branch `lean`, deployed on Vercel). They take longer than a serverless budget,
+# so they run here. This file has to live on the DEFAULT branch: GitHub only
+# schedules — and only lets you manually dispatch — workflows it finds there.
+# The job itself checks out `lean` and runs that branch's scripts.
+#
+# Needs three repository secrets (Settings → Secrets and variables → Actions),
+# set by `npm run setup:crawl` on the lean branch:
+#   DATABASE_URL        the lean app's production database (unpooled URL)
+#   CREA_DDF_USERNAME   the same DDF pair the app uses
+#   CREA_DDF_PASSWORD
+on:
+  schedule:
+    # 06:20 UTC ≈ 01:20–02:20 Toronto — after the day's listing churn settles.
+    - cron: "20 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: lean-data-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CREA_DDF_USERNAME: ${{ secrets.CREA_DDF_USERNAME }}
+      CREA_DDF_PASSWORD: ${{ secrets.CREA_DDF_PASSWORD }}
+    steps:
+      - name: Stop early, and say why, when the secrets aren't set yet
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$CREA_DDF_USERNAME" ] || [ -z "$CREA_DDF_PASSWORD" ]; then
+            echo "::error::Missing repository secrets. On the lean branch run: npm run setup:crawl"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          ref: lean
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: DDF listings crawl (snapshots + yield history)
+        run: npx tsx scripts/sync-ddf.ts
+      - name: Lease listings → rent database
+        run: npx tsx scripts/sync-rents.ts
