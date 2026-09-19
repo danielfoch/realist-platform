@@ -65,7 +65,21 @@ After it, run the learning job once: `GET /api/cron/learn` with the cron bearer 
 | `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD` | the live MLS® feed (also add to GitHub Actions secrets for the nightly sync) |
 | `ANTHROPIC_API_KEY` | AI-written deal memos and multiplex reports. Without it both fall back to the rules-based versions, which are complete on their own |
 
-## 6. One business decision before launch
+## 6. Decisions only you can make before launch
+
+- **Who is the brokerage of record?** The site currently names three parties for the same
+  thing: "Valery Real Estate" (/team), "partner brokerages, including Konfidis"
+  (/work-with-us) and "Keypr, its cashback partner" (the consent box). A buyer should read one
+  name. Tell us which, and it becomes one constant.
+- **Legal review** of `/privacy` and `/terms`. They were rewritten to describe what the product
+  actually does (public profiles, the leaderboard, learning from aggregates, the CRM, Keypr,
+  referral fees, AI processing). Accurate to the code; not yet seen by a lawyer.
+- **The homepage** (your PR #191/#193) promises things the app doesn't do yet — "AI-assisted
+  tenant support, maintenance, leasing", "compare cash flow and cap rates" — and its PropCare
+  link points at a realist.ca URL that will 404 once this app takes over the domain.
+- The cash-back figure:
+
+## 6b. The cash-back figure
 
 `NEXT_PUBLIC_CASHBACK_PERCENT` — the site says **50%** (the original brief). The Keypr copy
 approved on Sept 15 says buyers keep **80%** of the buyer-agent commission. Whatever the partner
