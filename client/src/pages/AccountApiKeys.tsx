@@ -7,8 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Copy, Key, Trash2, Terminal, AlertTriangle } from "lucide-react";
+import { Copy, Key, Trash2, Terminal, AlertTriangle, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { ConnectGuide } from "@/components/agent-views/ConnectGuide";
+
+type KeyUsage = { apiKeyId: string; calls: number; errors: number; rateLimited: number; lastCallAt: string | null };
+type AgentViewRow = { token: string; kind: string; title: string; tool: string | null; viewCount: number; createdAt: string; url: string };
 
 type ApiKeyRow = {
   id: string;
@@ -27,6 +32,9 @@ export default function AccountApiKeys() {
   const { data, isLoading } = useQuery<{ keys: ApiKeyRow[] }>({
     queryKey: ["/api/api-keys"],
   });
+  const { data: usage } = useQuery<{ days: number; byKey: KeyUsage[] }>({ queryKey: ["/api/api-keys/usage"] });
+  const { data: agentViews } = useQuery<{ views: AgentViewRow[] }>({ queryKey: ["/api/api-keys/views"] });
+  const usageByKey = new Map((usage?.byKey || []).map((row) => [row.apiKeyId, row]));
 
   const createMutation = useMutation({
     mutationFn: async (keyName: string) => {
@@ -59,29 +67,6 @@ export default function AccountApiKeys() {
     toast({ title: "Copied to clipboard" });
   };
 
-  function PromptBlock({ text, label, testId }: { text: string; label?: string; testId: string }) {
-    return (
-      <div>
-        {label && <p className="text-sm font-medium mb-2">{label}</p>}
-        <div className="relative bg-muted rounded-md">
-          <pre className="p-4 pr-14 overflow-x-auto text-xs whitespace-pre-wrap" data-testid={`code-${testId}`}>
-            {text}
-          </pre>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="absolute top-2 right-2"
-            onClick={() => copyToClipboard(text)}
-            data-testid={`button-copy-${testId}`}
-          >
-            <Copy className="w-4 h-4 mr-1" /> Copy
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const activeKeys = (data?.keys || []).filter((k) => !k.revokedAt);
   const revokedKeys = (data?.keys || []).filter((k) => k.revokedAt);
 
@@ -98,69 +83,19 @@ export default function AccountApiKeys() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Terminal className="w-5 h-5" /> Connect Claude or Codex in 30 seconds</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Terminal className="w-5 h-5" /> Connect your AI agent</CardTitle>
           <CardDescription>
-            Mint a key below, then copy one of the prompts and paste it into Claude or Codex CLI. The agent will handle the install for you.
+            Nothing to install: point your harness at the hosted Realist MCP server (or the REST API) with a key from this page.
+            {newlyCreated ? " Your new key is already filled in below." : " Create a key and these snippets fill in with it."}{" "}
+            <Link href="/developers" className="underline underline-offset-2">Full developer guide</Link>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <PromptBlock
-            label="Codex CLI — paste this prompt"
-            testId="prompt-codex"
-            text={`Install the Realist MCP plugin so I can underwrite Canadian real estate deals from this terminal.
-
-1. Run: codex mcp add realist -- npx -y @realist/mcp
-2. Run: codex mcp env set realist REALIST_API_KEY <PASTE_YOUR_KEY_HERE>
-3. Verify with: codex mcp call realist realist_whoami
-
-Once it's working, list the 8 tools the realist server exposes and tell me how to underwrite an MLS listing.`}
-          />
-
-          <PromptBlock
-            label="Claude Code / Cursor — paste this prompt"
-            testId="prompt-claude-code"
-            text={`Add the Realist MCP server to my agent so I can underwrite Canadian real estate deals.
-
-1. Install globally: npm install -g @realist/mcp
-2. Add this MCP server entry to my agent config:
-
-{
-  "mcpServers": {
-    "realist": {
-      "command": "npx",
-      "args": ["-y", "@realist/mcp"],
-      "env": { "REALIST_API_KEY": "<PASTE_YOUR_KEY_HERE>" }
-    }
-  }
-}
-
-3. Restart the agent, call the realist_underwrite_listing tool with MLS X12345678, and summarise the cap rate, monthly cash flow, and DSCR.`}
-          />
-
-          <div>
-            <p className="text-sm font-medium mb-2">Claude Desktop — manual config (one-time)</p>
-            <p className="text-xs text-muted-foreground mb-2">
-              Open <code className="text-xs">~/Library/Application Support/Claude/claude_desktop_config.json</code> on macOS
-              (or <code className="text-xs">%APPDATA%\Claude\claude_desktop_config.json</code> on Windows), paste this, then restart Claude Desktop.
-            </p>
-            <PromptBlock
-              testId="prompt-claude-desktop"
-              text={`{
-  "mcpServers": {
-    "realist": {
-      "command": "npx",
-      "args": ["-y", "@realist/mcp"],
-      "env": { "REALIST_API_KEY": "<PASTE_YOUR_KEY_HERE>" }
-    }
-  }
-}`}
-            />
-          </div>
-
+          <ConnectGuide apiKey={newlyCreated?.key} />
           <p className="text-sm text-muted-foreground">
             Once connected you can ask: <em>"Underwrite MLS X12345678 as a buy-and-hold"</em>,
             {" "}<em>"Find 4-plex deals in Hamilton under $900k"</em>, or
-            {" "}<em>"Submit my last analysis to the Realist community feed."</em>
+            {" "}<em>"What if I put 25% down at 4.9%?"</em> — each answer comes with a link to the interactive version.
           </p>
         </CardContent>
       </Card>
@@ -243,6 +178,12 @@ Once it's working, list the 8 tools the realist server exposes and tell me how t
                     <p className="text-xs text-muted-foreground">
                       Created {new Date(k.createdAt).toLocaleDateString()} ·
                       {" "}{k.lastUsedAt ? `Last used ${new Date(k.lastUsedAt).toLocaleString()}` : "Never used"}
+                      {usageByKey.get(k.id) && (
+                        <span data-testid={`text-key-usage-${k.id}`}>
+                          {" "}· {usageByKey.get(k.id)!.calls.toLocaleString()} calls in the last {usage?.days ?? 30} days
+                          {usageByKey.get(k.id)!.rateLimited > 0 ? ` (${usageByKey.get(k.id)!.rateLimited} rate-limited)` : ""}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <Button
@@ -271,6 +212,35 @@ Once it's working, list the 8 tools the realist server exposes and tell me how t
           )}
         </CardContent>
       </Card>
+
+      {(agentViews?.views.length ?? 0) > 0 && (
+        <Card data-testid="card-agent-results">
+          <CardHeader>
+            <CardTitle>Recent agent results</CardTitle>
+            <CardDescription>Interactive pages your agents created for you. Anyone with a link can open it.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {agentViews!.views.map((view) => (
+              <a
+                key={view.token}
+                href={view.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 border rounded-md p-3 hover:bg-muted/50"
+                data-testid={`row-agent-view-${view.token}`}
+              >
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{view.title}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(view.createdAt).toLocaleString()} · {view.tool || view.kind} · opened {view.viewCount}×
+                  </p>
+                </div>
+                <ExternalLink className="w-4 h-4 shrink-0 text-muted-foreground" />
+              </a>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

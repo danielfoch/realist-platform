@@ -6,6 +6,13 @@
  *   Authorization: Bearer realist_live_<token>
  * header. Keys are minted by users at /account/api-keys and stored as
  * SHA-256 hashes.
+ *
+ * Legacy underwrite / find-deals / rent / analyses routes are thin wrappers
+ * over the shared registry (server/agent/tools.ts), which is also what the
+ * hosted MCP endpoint (/mcp) and the versioned REST API (/api/v1) serve.
+ *
+ * Specialist spine routes (jobs, forms, listing extract, Realist CRM) live
+ * here as well — they share bearer auth + scopes from @shared/agentSpine.
  */
 import type { Express, Request, Response, NextFunction } from "express";
 import crypto from "crypto";
@@ -13,18 +20,14 @@ import { eq, and, isNull, desc } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { storage } from "./storage";
-import { apiKeys, analyses, propertyAnalyses, users } from "@shared/schema";
-import { calculateInvestmentMetrics } from "@shared/investmentMetrics";
+import { apiKeys } from "@shared/schema";
 import {
-  AGENT_API_SCOPES,
   AGENT_API_SCOPE_SET,
-  DEFAULT_AGENT_API_SCOPES,
   createAgentJobRequestSchema,
-  scopesForJobType,
   crmUpdateInputSchema,
+  scopesForJobType,
   underwriteCustomInputSchema,
   underwriteListingInputSchema,
-  type AgentApiScope,
 } from "@shared/agentSpine";
 import { AGENT_API_OPENAPI } from "@shared/agentOpenApi";
 import {
@@ -48,14 +51,16 @@ import {
 } from "./agentCrm";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
-import { getRentEstimate } from "./rentIntelligence";
-import { executeMultiplexUnderwriter, underwriteRequestSchema } from "./multiplexUnderwriter";
-import { dealDeskSubmitSchema, submitDealDesk } from "./routes/dealDesk";
 import {
-  REFERRAL_OUTCOME_ACTIONS,
-  getSafeReferralOutcomeForAgent,
-  updateReferralOutcomeForAgent,
-} from "./referralOutcomes";
+  AGENT_API_SCOPES,
+  DEFAULT_AGENT_API_SCOPES,
+  AgentToolError,
+  type AgentApiScope,
+  type AgentChannel,
+  type AgentContext,
+} from "./agent/context";
+import { getAgentTool, invokeAgentTool } from "./agent/tools";
+import { fallbackMonthlyRent, resolveBuyHoldInputs, runAgentUnderwriting } from "./agent/underwriting";
 import {
   AgentJobError,
   approveAgentJob,
@@ -67,10 +72,10 @@ import {
   serializeAgentJob,
 } from "./agentJobs";
 
+export { AGENT_API_SCOPES, DEFAULT_AGENT_API_SCOPES, type AgentApiScope };
+
 // ---------- key helpers ----------
 const KEY_PREFIX = "realist_live_";
-export { AGENT_API_SCOPES, DEFAULT_AGENT_API_SCOPES };
-export type { AgentApiScope };
 const STRUCTURED_USAGE_POLICY_VERSION = "agent-usage-structured-v1";
 
 function hashKey(rawKey: string): string {
@@ -129,11 +134,13 @@ declare global {
 
 export async function bearerAuth(req: Request, res: Response, next: NextFunction) {
   try {
-    const header = req.headers.authorization || "";
-    if (!header.startsWith("Bearer ")) {
+    const header = String(req.headers.authorization || "").trim();
+    // Harnesses disagree on who adds the scheme: some send the bare key, some
+    // "bearer" in lowercase, a few double it up. Accept all of them.
+    const token = header.replace(/^(?:bearer\s+)+/i, "").trim();
+    if (!token) {
       return res.status(401).json({ error: "missing_bearer_token", message: "Authorization: Bearer <token> required" });
     }
-    const token = header.slice("Bearer ".length).trim();
     if (!token.startsWith(KEY_PREFIX)) {
       return res.status(401).json({ error: "invalid_token_format" });
     }
@@ -155,10 +162,32 @@ export async function bearerAuth(req: Request, res: Response, next: NextFunction
   }
 }
 
+function listingCurrencyFields(input: { currency?: string; fxToCad?: number; price: number }) {
+  const currency = input.currency?.toUpperCase() || "CAD";
+  const fxToCad = input.fxToCad ?? null;
+  const priceCad = (() => {
+    if (typeof input.fxToCad === "number" && Number.isFinite(input.fxToCad)) {
+      return Math.round(input.price * input.fxToCad);
+    }
+    return currency === "CAD" ? Math.round(input.price) : null;
+  })();
+  const warnings: string[] = [];
+  if (currency !== "CAD" && input.fxToCad == null) {
+    warnings.push("Metrics are in listing currency. Pass fxToCad to add a CAD companion price; FX is never invented.");
+  }
+  return { currency, fxToCad, priceCad, warnings };
+}
+
 // ---------- underwriting math ----------
-// Uses the shared `calculateInvestmentMetrics` engine (same one the main app
-// analyzer relies on) so MCP/CLI underwriting is the single source of truth
-// for cap rate, NOI, monthly cash flow, DSCR, and cash-on-cash return.
+/**
+ * Synchronous underwrite for callers that already hold the numbers (the
+ * on-site Ask Realist chat). Runs the same buy & hold engine as the agent
+ * tools and the web analyzer; rent falls back to a rough per-bedroom figure
+ * when omitted. `expenseRatio` is the ALL-IN operating expense ratio.
+ *
+ * Currency is native to the listing. FX is never invented — pass fxToCad
+ * for a CAD companion price.
+ */
 export function underwriteSimple(input: {
   price: number;
   monthlyRent?: number;
@@ -176,120 +205,26 @@ export function underwriteSimple(input: {
 }) {
   const price = Number(input.price);
   const units = input.units && input.units > 0 ? input.units : 1;
-  const beds = input.beds || 2;
-
-  // Estimate rent if not supplied (very rough fallback by bed count × units).
-  let monthlyRent = input.monthlyRent || 0;
-  let rentSource: "provided" | "estimated" = "provided";
-  if (!monthlyRent) {
-    const baseFallback: Record<number, number> = { 0: 1200, 1: 1500, 2: 1800, 3: 2200, 4: 2600, 5: 3000 };
-    monthlyRent = (baseFallback[beds] || 1800) * units;
-    rentSource = "estimated";
-  }
-
-  // The shared engine takes maintenance + management as separate %.
-  // To honour callers passing a single `expenseRatio`, we put the whole
-  // ratio under `maintenancePercent` and zero out management — the engine
-  // sums them for the final operating-expense figure.
-  const expenseRatio = input.expenseRatio ?? 35;
-  const metrics = calculateInvestmentMetrics(price, {
-    monthlyRent,
-    unitCount: units,
-    vacancyPercent: input.vacancyRate ?? 5,
-    maintenancePercent: expenseRatio,
-    managementPercent: 0,
-    annualPropertyTax: input.annualPropertyTax ?? null,
-    downPaymentPercent: input.downPaymentPercent ?? 20,
-    interestRate: input.interestRate ?? 5.5,
-    amortizationYears: 25,
-    rentSource,
+  const rent = input.monthlyRent && input.monthlyRent > 0
+    ? { monthlyRent: input.monthlyRent, source: "provided" as const }
+    : { monthlyRent: fallbackMonthlyRent(input.beds, units), source: "fallback_table" as const };
+  const { inputs, notes } = resolveBuyHoldInputs({ price, units, rent }, {
+    downPaymentPercent: input.downPaymentPercent,
+    interestRate: input.interestRate,
+    vacancyRate: input.vacancyRate,
+    expenseRatio: input.expenseRatio,
+    annualPropertyTax: input.annualPropertyTax,
   });
-
-  const downPayment = price * ((input.downPaymentPercent ?? 20) / 100);
-  const mortgageAmount = price - downPayment;
-  // Monthly mortgage payment via amortizing PMT (same formula the engine uses
-  // internally for DSCR — recomputed here so we can return it to the caller).
-  const monthlyRate = ((input.interestRate ?? 5.5) / 100) / 12;
-  const months = 25 * 12;
-  const monthlyMortgage = mortgageAmount <= 0
-    ? 0
-    : monthlyRate <= 0
-      ? mortgageAmount / months
-      : mortgageAmount * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-
+  const underwriting = runAgentUnderwriting(inputs, { units, rent, notes }).underwriting;
+  const currency = listingCurrencyFields({ currency: input.currency, fxToCad: input.fxToCad, price });
   return {
-    price,
-    monthlyRent: Math.round(monthlyRent),
-    rentSource,
-    units,
-    annualRent: metrics.annualGrossRent != null ? Math.round(metrics.annualGrossRent) : 0,
-    noi: metrics.noi != null ? Math.round(metrics.noi) : 0,
-    capRate: metrics.capRate ?? 0,
-    downPayment: Math.round(downPayment),
-    mortgageAmount: Math.round(mortgageAmount),
-    monthlyMortgage: Math.round(monthlyMortgage),
-    monthlyCashFlow: metrics.monthlyCashFlow != null ? Math.round(metrics.monthlyCashFlow) : 0,
-    annualCashFlow: metrics.monthlyCashFlow != null ? Math.round(metrics.monthlyCashFlow * 12) : 0,
-    cashOnCash: metrics.cashOnCashReturn ?? 0,
-    dscr: metrics.dscr,
-    assumptions: {
-      downPaymentPercent: input.downPaymentPercent ?? 20,
-      interestRate: input.interestRate ?? 5.5,
-      vacancyRate: input.vacancyRate ?? 5,
-      expenseRatio,
-      amortizationYears: 25,
-    },
-    calculationVersion: metrics.calculationVersion,
-    warnings: [
-      ...(metrics.calculationWarnings || []),
-      ...(input.currency && input.currency.toUpperCase() !== "CAD" && input.fxToCad == null
-        ? ["Metrics are in listing currency. Pass fxToCad to add a CAD companion price; FX is never invented."]
-        : []),
-    ],
-    currency: input.currency?.toUpperCase() || "CAD",
-    fxToCad: input.fxToCad ?? null,
-    priceCad: (() => {
-      const currency = input.currency?.toUpperCase() || "CAD";
-      if (typeof input.fxToCad === "number" && Number.isFinite(input.fxToCad)) {
-        return Math.round(price * input.fxToCad);
-      }
-      return currency === "CAD" ? Math.round(price) : null;
-    })(),
+    ...underwriting,
+    warnings: [...(underwriting.warnings || []), ...currency.warnings],
+    currency: currency.currency,
+    fxToCad: currency.fxToCad,
+    priceCad: currency.priceCad,
   };
 }
-
-// ---------- request schemas ----------
-// Shared spine schemas — same contract as /api/agent/underwrite/* and job inputs.
-const underwriteListingSchema = underwriteListingInputSchema;
-const underwriteCustomSchema = underwriteCustomInputSchema;
-
-const submitForReviewSchema = z.object({
-  analysisId: z.string().min(1).optional(),
-  mlsNumber: z.string().min(1),
-  title: z.string().max(180).optional(),
-  summary: z.string().max(2000).optional(),
-  notes: z.string().max(20000).optional(),
-  visibility: z.enum(["public", "private"]).default("public"),
-  metrics: z.record(z.any()).optional(),
-  assumptions: z.record(z.any()).optional(),
-  city: z.string().optional(),
-  province: z.string().optional(),
-  propertyType: z.string().optional(),
-  market: z.string().optional(),
-});
-
-const estimateRentSchema = z.object({
-  bedrooms: z.union([z.number().int().nonnegative(), z.string().min(1)]),
-  city: z.string().optional().nullable(),
-  province: z.string().optional().nullable(),
-  lat: z.number().min(-90).max(90).optional().nullable(),
-  lng: z.number().min(-180).max(180).optional().nullable(),
-  units: z.number().int().min(1).max(100).optional(),
-  listingKey: z.string().optional().nullable(),
-  analysisId: z.string().optional().nullable(),
-}).refine((value) => Boolean(value.city) || (value.lat != null && value.lng != null), {
-  message: "Provide city or lat/lng",
-});
 
 export class AgentCapabilityError extends Error {
   constructor(
@@ -303,9 +238,9 @@ export class AgentCapabilityError extends Error {
   }
 }
 
-/** Shared listing underwrite used by POST /underwrite/listing and underwrite.listing jobs. */
+/** Shared listing underwrite used by underwrite.listing jobs (CREA DDF CA). */
 export async function executeListingUnderwrite(
-  input: z.infer<typeof underwriteListingSchema>,
+  input: z.infer<typeof underwriteListingInputSchema>,
   userId: string,
 ) {
   const { isDdfConfigured, searchDdfByMlsNumber, normalizeDdfListing } = await import("./creaDdf");
@@ -381,9 +316,9 @@ export async function executeListingUnderwrite(
   };
 }
 
-/** Shared custom underwrite used by POST /underwrite/custom and underwrite.custom jobs. */
+/** Shared custom underwrite used by underwrite.custom jobs. */
 export async function executeCustomUnderwrite(
-  input: z.infer<typeof underwriteCustomSchema>,
+  input: z.infer<typeof underwriteCustomInputSchema>,
   userId: string,
   options: { persist?: "required" | "optional" } = {},
 ) {
@@ -433,12 +368,12 @@ export async function executeCustomUnderwrite(
 }
 
 registerSpecialistExecutor("underwrite.custom", async (input, ctx) => {
-  const parsed = underwriteCustomSchema.parse(input);
+  const parsed = underwriteCustomInputSchema.parse(input);
   return executeCustomUnderwrite(parsed, ctx.userId, { persist: "optional" });
 });
 
 registerSpecialistExecutor("underwrite.listing", async (input, ctx) => {
-  const parsed = underwriteListingSchema.parse(input);
+  const parsed = underwriteListingInputSchema.parse(input);
   try {
     return await executeListingUnderwrite(parsed, ctx.userId);
   } catch (err: any) {
@@ -567,6 +502,19 @@ export function registerApiKeyManagementRoutes(app: Express) {
     }
   });
 
+  /** The signed-in user's hosted agent results (/v/:token pages), newest first. */
+  app.get("/api/api-keys/views", isAuthenticated, async (req: any, res) => {
+    try {
+      const { getAgentViewStore } = await import("./agent/viewStore");
+      const { viewUrlForToken } = await import("./agent/viewDocuments");
+      const views = await getAgentViewStore().listForUser(req.session.userId, 20);
+      res.json({ views: views.map((view) => ({ ...view, url: viewUrlForToken(view.token) })) });
+    } catch (err) {
+      console.error("[api-keys] views list error:", err);
+      res.status(500).json({ error: "Failed to load agent results" });
+    }
+  });
+
   app.delete("/api/api-keys/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.userId;
@@ -584,349 +532,55 @@ export function registerApiKeyManagementRoutes(app: Express) {
 }
 
 // ---------- agent endpoints (bearer-authenticated) ----------
-export function registerAgentRoutes(app: Express) {
-  // Every /api/agent/* request: authenticate the key, enforce per-key rate
-  // limits, and record a usage event (including 429s and errors).
-  app.use("/api/agent", bearerAuth, agentRateLimit, usageMeter);
 
-  /** Verify the key works and return the owning user. */
-  app.get("/api/agent/me", requireScope("read"), async (req, res) => {
-    try {
-      const [user] = await db.select({
-        id: users.id,
-        email: users.email,
-        firstName: users.firstName,
-        lastName: users.lastName,
-      }).from(users).where(eq(users.id, req.agentUserId!)).limit(1);
-      res.json({
-        ok: true,
-        user: user || { id: req.agentUserId },
-        keyId: req.agentKeyId,
-        scopes: req.agentScopes,
-      });
-    } catch (err) {
-      console.error("[agent] me error:", err);
-      res.status(500).json({ error: "Failed to fetch user" });
-    }
-  });
+/** Build the per-call context the tool registry expects from an authenticated request. */
+export function agentContextFromRequest(req: Request, channel: AgentChannel): AgentContext {
+  return {
+    userId: req.agentUserId!,
+    keyId: req.agentKeyId!,
+    scopes: req.agentScopes ?? [],
+    channel,
+    req,
+  };
+}
 
-  /** Underwrite a CREA-listed property by MLS number. */
-  app.post("/api/agent/underwrite/listing", requireScope("underwrite"), async (req, res) => {
-    try {
-      const parsed = underwriteListingSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const data = await executeListingUnderwrite(parsed.data, req.agentUserId!);
-      res.json(data);
-    } catch (err: any) {
-      if (err instanceof AgentCapabilityError) {
-        return res.status(err.status).json({ error: err.code, message: err.message, ...err.extra });
-      }
-      console.error("[agent] underwrite listing error:", err);
-      res.status(500).json({ error: "underwrite_failed", message: err?.message });
-    }
-  });
+/** Map a tool failure onto the HTTP response — shared by /api/agent and /api/v1. */
+export function sendAgentToolError(res: Response, err: unknown, toolName: string): void {
+  if (err instanceof AgentToolError) {
+    res.status(err.status).json(err.toBody());
+    return;
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  console.error(`[agent] ${toolName} failed:`, err);
+  res.status(500).json({ error: "tool_failed", tool: toolName, message });
+}
 
-  /** Underwrite a custom address with caller-provided price + assumptions. */
-  app.post("/api/agent/underwrite/custom", requireScope("underwrite"), async (req, res) => {
-    try {
-      const parsed = underwriteCustomSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const input = parsed.data;
-      const data = await executeCustomUnderwrite(input, req.agentUserId!);
-      res.json(data);
-    } catch (err: any) {
-      console.error("[agent] underwrite custom error:", err);
-      res.status(500).json({ error: "underwrite_failed", message: err?.message });
-    }
-  });
+type InputFromRequest = (req: Request) => unknown;
+const fromBody: InputFromRequest = (req) => req.body ?? {};
 
-  /** Natural-language deal search over CREA DDF. Internally proxies /api/find-deals logic. */
-  app.post("/api/agent/find-deals", requireScope("read"), async (req, res) => {
-    try {
-      const query = (req.body?.query || "").toString().trim();
-      if (!query) return res.status(400).json({ error: "query_required" });
-      const limit = Math.min(Math.max(parseInt(req.body?.limit) || 10, 1), 25);
+/**
+ * The published /api/agent/* surface. Each entry maps a legacy route onto a
+ * registry tool; the response body is the tool result, unchanged.
+ */
+const LEGACY_ROUTES: Array<{ method: "get" | "post"; path: string; tool: string; input: InputFromRequest }> = [
+  { method: "get", path: "/me", tool: "realist_whoami", input: () => ({}) },
+  { method: "post", path: "/underwrite/listing", tool: "realist_underwrite_listing", input: fromBody },
+  { method: "post", path: "/underwrite/custom", tool: "realist_underwrite_custom", input: fromBody },
+  { method: "post", path: "/find-deals", tool: "realist_find_deals", input: (req) => ({ ...(req.body ?? {}), limit: parseInt(String(req.body?.limit)) || undefined }) },
+  { method: "post", path: "/estimate-rent", tool: "realist_estimate_rent", input: fromBody },
+  { method: "post", path: "/underwrite-multiplex", tool: "realist_underwrite_multiplex", input: fromBody },
+  { method: "post", path: "/deal-desk-submit", tool: "realist_submit_to_deal_desk", input: fromBody },
+  // Query strings are untyped: an unparseable ?limit= falls back to the default, as it always has.
+  { method: "get", path: "/analyses", tool: "realist_list_my_analyses", input: (req) => ({ limit: parseInt(String(req.query.limit)) || undefined }) },
+  { method: "get", path: "/analyses/:id", tool: "realist_get_analysis", input: (req) => ({ id: req.params.id }) },
+  { method: "post", path: "/community/submit", tool: "realist_submit_for_review", input: fromBody },
+  { method: "get", path: "/mortgage-rates", tool: "realist_get_mortgage_rates", input: () => ({}) },
+  { method: "get", path: "/market-report", tool: "realist_get_market_report", input: (req) => ({ city: typeof req.query.city === "string" && req.query.city.trim() ? req.query.city : undefined }) },
+  { method: "get", path: "/referrals/:outcomeId", tool: "realist_get_referral", input: (req) => ({ outcomeId: req.params.outcomeId }) },
+  { method: "post", path: "/referrals/:outcomeId", tool: "realist_update_referral", input: (req) => ({ ...(req.body ?? {}), outcomeId: req.params.outcomeId }) },
+];
 
-      const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
-        || `http://127.0.0.1:${process.env.PORT || 5000}`;
-      const upstream = await fetch(`${baseUrl}/api/find-deals`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query,
-          demandSource: "agent_api",
-          demandChannel: "api",
-          demandApiKeyId: req.agentKeyId,
-          demandUserId: req.agentUserId,
-        }),
-      });
-      if (!upstream.ok) {
-        const text = await upstream.text();
-        return res.status(upstream.status).json({ error: "find_deals_failed", upstream: text.slice(0, 200) });
-      }
-      const data: any = await upstream.json();
-      const slim = (data.listings || []).slice(0, limit).map((l: any) => ({
-        mlsNumber: l.mlsNumber,
-        address: l.address,
-        listPrice: l.price,
-        capRate: l.cap_rate,
-        cashOnCash: l.cash_on_cash,
-        dealScore: l.deal_score,
-        explanation: l.explanation,
-        daysOnMarket: l.daysOnMarket,
-        units: l.numberOfUnitsTotal,
-        url: `https://realist.ca/deal-analyzer?mls=${l.mlsNumber}`,
-      }));
-      res.json({
-        query,
-        filters: data.filters_applied,
-        total: data.total,
-        listings: slim,
-      });
-    } catch (err: any) {
-      console.error("[agent] find-deals error:", err);
-      res.status(500).json({ error: "find_deals_failed", message: err?.message });
-    }
-  });
-
-  /** Rent estimate from the same prediction-ledger-backed engine as /api/intelligence/rent-estimate. */
-  app.post("/api/agent/estimate-rent", requireScope("underwrite"), async (req, res) => {
-    try {
-      const parsed = estimateRentSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const input = parsed.data;
-      const estimate = await getRentEstimate({
-        bedrooms: input.bedrooms,
-        city: input.city ?? null,
-        province: input.province ?? null,
-        lat: input.lat ?? null,
-        lng: input.lng ?? null,
-        units: input.units,
-        subjectType: input.listingKey ? "listing" : input.analysisId ? "analysis" : "adhoc",
-        subjectId: input.listingKey ?? input.analysisId ?? null,
-        userId: req.agentUserId ?? null,
-      });
-      res.json({ success: true, estimate, reason: estimate ? null : "no_data_for_market" });
-    } catch (err: any) {
-      console.error("[agent] estimate rent error:", err);
-      res.status(500).json({ error: "estimate_rent_failed", message: err?.message });
-    }
-  });
-
-  /** Multiplex underwriter for AI agents. Same engine as /api/multiplex-underwriter, metered under bearer auth. */
-  app.post("/api/agent/underwrite-multiplex", requireScope("underwrite"), async (req, res) => {
-    try {
-      const parsed = underwriteRequestSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const result = await executeMultiplexUnderwriter(parsed.data, {
-        userId: req.agentUserId ?? null,
-        sessionId: null,
-      });
-      res.json(result);
-    } catch (err: any) {
-      console.error("[agent] underwrite multiplex error:", err);
-      res.status(500).json({ error: "underwrite_multiplex_failed", message: err?.message });
-    }
-  });
-
-  /** Submit a deal to Deal Desk from an authorized agent workflow. */
-  app.post("/api/agent/deal-desk-submit", requireScope("deal:submit"), async (req, res) => {
-    try {
-      const parsed = dealDeskSubmitSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const result = await submitDealDesk(parsed.data, {
-        req,
-        userId: req.agentUserId ?? null,
-        sessionId: null,
-        source: "agent_api",
-        sourcePage: "/api/agent/deal-desk-submit",
-      });
-      res.json(result);
-    } catch (err: any) {
-      console.error("[agent] deal desk submit error:", err);
-      res.status(500).json({ error: "deal_desk_submit_failed", message: err?.message });
-    }
-  });
-
-  /** List the calling user's saved underwritings. */
-  app.get("/api/agent/analyses", requireScope("read"), async (req, res) => {
-    try {
-      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 25, 1), 100);
-      const rows = await storage.getAnalysesByUser(req.agentUserId!);
-      const slim = rows.slice(0, limit).map((a: any) => ({
-        id: a.id,
-        createdAt: a.createdAt,
-        strategyType: a.strategyType,
-        countryMode: a.countryMode,
-        address: a.address,
-        city: a.city,
-        province: a.province,
-        mlsNumber: (a.inputsJson as any)?.mlsNumber || null,
-        purchasePrice: (a.inputsJson as any)?.purchasePrice || null,
-        capRate: (a.resultsJson as any)?.capRate ?? null,
-        monthlyCashFlow: (a.resultsJson as any)?.monthlyCashFlow ?? null,
-        cashOnCash: (a.resultsJson as any)?.cashOnCash ?? null,
-        url: `https://realist.ca/deal-analyzer?analysisId=${a.id}`,
-      }));
-      res.json({ count: slim.length, totalAvailable: rows.length, analyses: slim });
-    } catch (err: any) {
-      console.error("[agent] list analyses error:", err);
-      res.status(500).json({ error: "list_failed", message: err?.message });
-    }
-  });
-
-  /** Fetch a single analysis the caller owns. */
-  app.get("/api/agent/analyses/:id", requireScope("read"), async (req, res) => {
-    try {
-      const analysis = await storage.getAnalysis(req.params.id);
-      if (!analysis) return res.status(404).json({ error: "not_found" });
-      if (analysis.userId !== req.agentUserId) return res.status(403).json({ error: "forbidden" });
-      res.json({
-        id: analysis.id,
-        createdAt: analysis.createdAt,
-        strategyType: analysis.strategyType,
-        countryMode: analysis.countryMode,
-        address: analysis.address,
-        city: analysis.city,
-        province: analysis.province,
-        inputs: analysis.inputsJson,
-        results: analysis.resultsJson,
-        url: `https://realist.ca/deal-analyzer?analysisId=${analysis.id}`,
-      });
-    } catch (err: any) {
-      console.error("[agent] get analysis error:", err);
-      res.status(500).json({ error: "fetch_failed", message: err?.message });
-    }
-  });
-
-  /** Submit an underwriting to the community feed for upvotes / comments. */
-  app.post("/api/agent/community/submit", requireScope("community:write"), async (req, res) => {
-    try {
-      const parsed = submitForReviewSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-      const input = parsed.data;
-
-      // If the caller passed an analysisId, hydrate metrics/assumptions from it.
-      let metrics: Record<string, any> = input.metrics || {};
-      let assumptions: Record<string, any> = input.assumptions || {};
-      let city = input.city || null;
-      let province = input.province || null;
-      if (input.analysisId) {
-        const existing = await storage.getAnalysis(input.analysisId);
-        if (!existing || existing.userId !== req.agentUserId) {
-          return res.status(404).json({ error: "analysis_not_found_or_forbidden" });
-        }
-        metrics = { ...(existing.resultsJson as any || {}), ...metrics };
-        assumptions = { ...(existing.inputsJson as any || {}), ...assumptions };
-        city = city || existing.city;
-        province = province || existing.province;
-      }
-
-      const [created] = await db.insert(propertyAnalyses).values({
-        userId: req.agentUserId!,
-        listingMlsNumber: input.mlsNumber,
-        title: input.title || null,
-        summary: input.summary || null,
-        userNotes: input.notes || null,
-        visibility: input.visibility,
-        assumptions: assumptions as any,
-        calculatedMetrics: metrics as any,
-        city,
-        province,
-        propertyType: input.propertyType || null,
-        market: input.market || null,
-        sourceContext: { source: "agent_api", apiKeyId: req.agentKeyId },
-      } as any).returning();
-
-      res.json({
-        id: created.id,
-        listingMlsNumber: created.listingMlsNumber,
-        visibility: created.visibility,
-        url: `https://realist.ca/listing-intelligence?mls=${input.mlsNumber}`,
-      });
-    } catch (err: any) {
-      console.error("[agent] community submit error:", err);
-      res.status(500).json({ error: "submit_failed", message: err?.message });
-    }
-  });
-
-  /** Mortgage rates (no auth required at the source, but we keep it under the bearer for usage tracking). */
-  app.get("/api/agent/mortgage-rates", requireScope("read"), async (_req, res) => {
-    try {
-      const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
-        || `http://127.0.0.1:${process.env.PORT || 5000}`;
-      const upstream = await fetch(`${baseUrl}/api/mortgage-rates`);
-      if (!upstream.ok) return res.status(upstream.status).json({ error: "rates_unavailable" });
-      const data = await upstream.json();
-      res.json(data);
-    } catch (err: any) {
-      console.error("[agent] mortgage rates error:", err);
-      res.status(500).json({ error: "rates_failed", message: err?.message });
-    }
-  });
-
-  /** City-level market report. */
-  app.get("/api/agent/market-report", requireScope("read"), async (req, res) => {
-    try {
-      const city = (req.query.city as string || "").trim();
-      const baseUrl = process.env.AGENT_INTERNAL_BASE_URL
-        || `http://127.0.0.1:${process.env.PORT || 5000}`;
-      const upstream = await fetch(`${baseUrl}/api/market-report/all`);
-      if (!upstream.ok) return res.status(upstream.status).json({ error: "report_unavailable" });
-      const data: any = await upstream.json();
-      if (!city) return res.json({ cities: data });
-      const arr: any[] = Array.isArray(data) ? data : (data?.reports || data?.cities || []);
-      const match = arr.find((r: any) =>
-        (r.city || r.cityName || "").toLowerCase() === city.toLowerCase()
-      );
-      if (!match) return res.status(404).json({ error: "city_not_found", city });
-      res.json(match);
-    } catch (err: any) {
-      console.error("[agent] market report error:", err);
-      res.status(500).json({ error: "report_failed", message: err?.message });
-    }
-  });
-
-  /** Partner-owned referral outcome surface. This is the first A2A scope. */
-  app.get("/api/agent/referrals/:outcomeId", requireScope("partner:referrals"), async (req, res) => {
-    try {
-      const result = await getSafeReferralOutcomeForAgent(req.params.outcomeId, req.agentUserId!);
-      if (!result) return res.status(404).json({ error: "referral_not_found" });
-      res.json(result);
-    } catch (err: any) {
-      console.error("[agent] referral get error:", err);
-      res.status(500).json({ error: "referral_fetch_failed", message: err?.message });
-    }
-  });
-
-  app.post("/api/agent/referrals/:outcomeId", requireScope("partner:referrals"), async (req, res) => {
-    try {
-      const parsed = z.object({
-        action: z.enum(REFERRAL_OUTCOME_ACTIONS).optional(),
-        closePrice: z.coerce.number().finite().nonnegative().optional(),
-        gci: z.coerce.number().finite().positive().optional(),
-        financingIntent: z.boolean().optional(),
-        buyingIntent: z.boolean().optional(),
-        lostReason: z.string().trim().min(1).max(500).optional(),
-        notes: z.string().trim().max(2000).optional(),
-        reportedBy: z.string().trim().max(160).optional(),
-        partnerWritebackAt: z.coerce.date().optional(),
-      }).strict().safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
-
-      const result = await updateReferralOutcomeForAgent(req.params.outcomeId, req.agentUserId!, parsed.data);
-      if (!result) return res.status(404).json({ error: "referral_not_found" });
-      res.json(result);
-    } catch (err: any) {
-      const status = err?.name === "ReferralOutcomeValidationError" ? 400 : 500;
-      console.error("[agent] referral update error:", err?.message || err);
-      res.status(status).json({
-        error: status === 400 ? "invalid_referral_update" : "referral_update_failed",
-        message: err?.message,
-      });
-    }
-  });
-
+function registerSpecialistRoutes(app: Express) {
   /** OpenAPI 3 document for the Agent API + jobs spine. */
   app.get("/api/agent/openapi.json", requireScope("read"), (_req, res) => {
     res.json(AGENT_API_OPENAPI);
@@ -1245,4 +899,24 @@ export function registerAgentRoutes(app: Express) {
       jobErrorResponse(res, err);
     }
   });
+}
+
+export function registerAgentRoutes(app: Express) {
+  // Every /api/agent/* request: authenticate the key, enforce per-key rate
+  // limits, and record a usage event (including 429s and errors).
+  app.use("/api/agent", bearerAuth, agentRateLimit, usageMeter);
+
+  for (const route of LEGACY_ROUTES) {
+    const tool = getAgentTool(route.tool);
+    if (!tool) throw new Error(`[agent] legacy route ${route.path} points at unknown tool ${route.tool}`);
+    app[route.method](`/api/agent${route.path}`, async (req, res) => {
+      try {
+        res.json(await invokeAgentTool(agentContextFromRequest(req, "rest"), tool, route.input(req)));
+      } catch (err) {
+        sendAgentToolError(res, err, tool.name);
+      }
+    });
+  }
+
+  registerSpecialistRoutes(app);
 }

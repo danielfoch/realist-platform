@@ -882,6 +882,12 @@ export async function registerRoutes(
   const { registerAgentRoutes, registerApiKeyManagementRoutes } = await import("./agentApi");
   registerApiKeyManagementRoutes(app);
   registerAgentRoutes(app);
+  // Same tool registry, two more transports: versioned REST + OpenAPI (and the
+  // hosted /v/:token view data), and the hosted MCP endpoint at /mcp.
+  const { registerAgentV1Routes } = await import("./agent/v1Routes");
+  registerAgentV1Routes(app);
+  const { registerMcpRoutes } = await import("./agent/mcpServer");
+  registerMcpRoutes(app);
 
   // ─── Event Tracking ───────────────────────────────────────────────────────
   // Lightweight behavioral event capture for AI training data pipeline.

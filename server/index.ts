@@ -699,7 +699,9 @@ async function ensureAppTables() {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
+      // SO_REUSEPORT is Linux-only in Node: on macOS listen() throws ENOTSUP,
+      // which made the server unbootable for local development.
+      reusePort: process.platform === "linux",
     },
     () => {
       log(`serving on port ${port}`);

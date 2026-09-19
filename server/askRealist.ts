@@ -109,7 +109,7 @@ const TOOLS: Anthropic.Tool[] = [
         downPaymentPercent: { type: "number", description: "Default 20" },
         interestRate: { type: "number", description: "Default 5.5" },
         vacancyRate: { type: "number", description: "Percent, default 5" },
-        expenseRatio: { type: "number", description: "Operating expenses as % of rent, default 35" },
+        expenseRatio: { type: "number", description: "ALL-IN operating expenses as % of rent (tax, insurance, maintenance, management, reserves). Omit to use line-item estimates." },
       },
       required: ["price"],
     },
