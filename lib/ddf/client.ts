@@ -150,8 +150,12 @@ async function ddfRateLimitedFetch(url: string, init: RequestInit): Promise<Resp
 
 const rejectedSelectFields = new Set<string>();
 const rejectedFilterProperties = new Set<string>();
-/** How a city is matched. Degrades when CREA refuses a function: prefix → contains → exact. */
-let cityMatch: "prefix" | "contains" | "exact" = "prefix";
+/**
+ * How a city is matched. CREA refuses startswith() (verified on the live feed, Sept 2026) and
+ * accepts contains(), so that is where we start; it degrades to exact names if that ever changes.
+ */
+const DEFAULT_CITY_MATCH = "contains" as const;
+let cityMatch: "prefix" | "contains" | "exact" = DEFAULT_CITY_MATCH;
 const MAX_SCHEMA_RETRIES = 8;
 
 /** What the feed has forced us to give up, for the people running the site. Nothing secret. */
@@ -163,7 +167,23 @@ export function ddfAdaptations(): { droppedFields: string[]; droppedFilters: str
 export function forgetDdfSchemaRejections(): void {
   rejectedSelectFields.clear();
   rejectedFilterProperties.clear();
+  cityMatch = DEFAULT_CITY_MATCH;
+}
+
+/** For tests: start from the most capable mode, as if CREA's behaviour were unknown. */
+export function assumeDdfCityPrefixSupport(): void {
   cityMatch = "prefix";
+}
+
+/**
+ * contains() over-matches: "London" also finds "New London". Keep the city asked for, its
+ * "City (Community)" form (already folded into City), and its compass districts — the London
+ * board publishes "London East", "London South" as cities.
+ */
+export function isSameCity(listed: string | undefined, wanted: string): boolean {
+  const city = (listed ?? "").trim().toLowerCase();
+  const target = wanted.trim().toLowerCase();
+  return city === target || new RegExp(`^${target.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (east|west|north|south|central)$`).test(city);
 }
 
 /** Record what a 400 says CREA no longer accepts. True when it taught us something new. */
@@ -532,8 +552,8 @@ export async function searchDdfListings(params: {
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
   if (params.city && cityMatch === "contains") {
-    const wanted = params.city.trim().toLowerCase();
-    listings = listings.filter((listing) => (listing.City ?? "").toLowerCase() === wanted);
+    const wanted = params.city;
+    listings = listings.filter((listing) => isSameCity(listing.City, wanted));
   }
   // When CREA won't filter on status for us, do it here: a listing that states a different status is dropped.
   const wantedStatus = (params.standardStatus || "Active").toLowerCase();

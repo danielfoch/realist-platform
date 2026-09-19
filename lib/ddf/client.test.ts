@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { adaptDdfUrl, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, learnFromDdfError, searchDdfListings } from "./client";
+import { adaptDdfUrl, assumeDdfCityPrefixSupport, attachOfficeNames, cityFilter, coerceDdfListing, forgetDdfOffices, forgetDdfSchemaRejections, isSameCity, learnFromDdfError, searchDdfListings } from "./client";
 
 describe("searchDdfListings", () => {
   afterEach(() => {
@@ -256,14 +256,15 @@ describe("adapting to CREA's schema", () => {
         const query = new URL(target).searchParams;
         if (query.get("$select")?.split(",").includes("Stories")) return new Response(SELECT_GONE.replace("LotFrontage", "Stories"), { status: 400 });
         if (query.get("$filter")?.includes("StandardStatus")) return new Response(FILTER_GONE, { status: 400 });
-        return new Response(JSON.stringify({ "@odata.count": 2, value: [{ ListingKey: "1", StandardStatus: "Active", ListPrice: 1 }, { ListingKey: "2", StandardStatus: "Pending", ListPrice: 2 }] }), { status: 200 });
+        return new Response(JSON.stringify({ "@odata.count": 2, value: [{ ListingKey: "1", City: "Toronto (Regent Park)", StandardStatus: "Active", ListPrice: 1 }, { ListingKey: "2", City: "Toronto", StandardStatus: "Pending", ListPrice: 2 }, { ListingKey: "3", City: "East Toronto Junction", StandardStatus: "Active", ListPrice: 3 }] }), { status: 200 });
       }),
     );
     const result = await searchDdfListings({ city: "Toronto", top: 2 });
     expect(calls).toHaveLength(3); // rejected, rejected, accepted
-    expect(result.listings.map((listing) => listing.ListingKey)).toEqual(["1"]); // status filtered here, since CREA won't
+    // Status is filtered here, since CREA won't; and contains() matches are narrowed to the city that was asked for.
+    expect(result.listings.map((listing) => listing.ListingKey)).toEqual(["1"]);
     calls.length = 0;
-    await searchDdfListings({ city: "Hamilton", top: 2 });
+    await searchDdfListings({ city: "Toronto", top: 2 });
     expect(calls).toHaveLength(1); // remembered: the next search is right first time
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
@@ -298,7 +299,16 @@ describe("cities, as the Toronto-area board publishes them", () => {
     expect(coerceDdfListing({ City: "Ottawa" })).toEqual({ City: "Ottawa" });
   });
 
-  it("falls back to exact names if CREA ever refuses startswith()", () => {
+  it("keeps the city that was asked for, not everything that contains its name", () => {
+    expect(isSameCity("London", "London")).toBe(true);
+    expect(isSameCity("London East", "London")).toBe(true);
+    expect(isSameCity("New London", "London")).toBe(false);
+    expect(isSameCity("Hamilton Township", "Hamilton")).toBe(false);
+    expect(isSameCity("St. John's", "st. john's")).toBe(true);
+  });
+
+  it("degrades prefix → contains → exact as CREA refuses each", () => {
+    assumeDdfCityPrefixSupport();
     const url = `https://ddfapi.realtor.ca/odata/v1/Property?${new URLSearchParams({ $filter: `${cityFilter("Toronto")} and ListPrice ge 500000` })}`;
     expect(learnFromDdfError(JSON.stringify({ error: { details: "Unknown function 'startswith'.", message: "invalid query" } }))).toBe(true);
     expect(new URL(adaptDdfUrl(url)).searchParams.get("$filter")).toBe("contains(City,'Toronto') and ListPrice ge 500000");
