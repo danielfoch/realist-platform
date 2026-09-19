@@ -324,6 +324,11 @@ export function coerceDdfListing<T extends object>(raw: T): T {
     else if (typeof value === "number" || typeof value === "boolean") listing[field] = String(value);
     else listing[field] = "";
   }
+  // "T2P1P8" → "T2P 1P8": how a Canadian postal code is written, and what the FSA lookup expects.
+  if (typeof listing.PostalCode === "string") {
+    const postal = listing.PostalCode.replace(/\s+/g, "").toUpperCase();
+    if (/^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(postal)) listing.PostalCode = `${postal.slice(0, 3)} ${postal.slice(3)}`;
+  }
   // Some boards (Calgary's, for one) put the whole BUILDING's unit count on a single condo: a $340K
   // one-bedroom "with 483 units". Multiply a rent by that and the card shows an 1,884% yield. A count
   // is only believed when it could describe what is actually for sale.

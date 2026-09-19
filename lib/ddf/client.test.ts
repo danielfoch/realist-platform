@@ -293,6 +293,12 @@ describe("cities, as the Toronto-area board publishes them", () => {
     expect(cityFilter("St. John's")).toBe("(City eq 'St. John''s' or startswith(City,'St. John''s ('))");
   });
 
+  it("writes a postal code the way Canadians do", () => {
+    expect(coerceDdfListing({ PostalCode: "t2p1p8" })).toEqual({ PostalCode: "T2P 1P8" });
+    expect(coerceDdfListing({ PostalCode: "M5V 0A1" })).toEqual({ PostalCode: "M5V 0A1" });
+    expect(coerceDdfListing({ PostalCode: "90210" })).toEqual({ PostalCode: "90210" });
+  });
+
   it("files the community under the community, so everything keyed by city still says Toronto", () => {
     expect(coerceDdfListing({ City: "Toronto (Regent Park)" })).toEqual({ City: "Toronto", CityRegion: "Regent Park" });
     expect(coerceDdfListing({ City: "Woodstock (Woodstock - North)", CityRegion: "Already set" })).toEqual({ City: "Woodstock", CityRegion: "Already set" });
