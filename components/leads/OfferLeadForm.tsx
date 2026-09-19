@@ -63,8 +63,15 @@ export function OfferLeadForm() {
   };
   const hasNumbers = Object.values(numbers).some((value) => value != null);
 
+  const subject = property?.address ?? (property?.mlsNumber ? `MLS® ${property.mlsNumber}` : null);
+  const heading =
+    want === "showing" ? (subject ? `Book one showing of ${subject}` : "Book a showing")
+    : want === "financing" ? (subject ? `Talk financing on ${subject}` : "Talk to a mortgage broker")
+    : subject ? `Make an offer on ${subject}` : null;
+
   return (
     <div>
+      {heading && <h3 className="font-display mb-3 text-xl font-semibold leading-snug tracking-tight">{heading}</h3>}
       {property && (
         <p className="mb-4 rounded-[3px] border border-hairline bg-paper px-3 py-2 text-xs leading-relaxed text-ink-soft">
           About <span className="font-medium text-ink">{property.address ?? `MLS® ${property.mlsNumber}`}</span>
@@ -75,7 +82,9 @@ export function OfferLeadForm() {
       <LeadForm
         key={want}
         kind={want}
-        ask={want === "financing" ? ["name", "phone", "city", "province", "timeline", "message"] : ["name", "phone", "city", "interest", "timeline", "message"]}
+        // With the deal attached we already know where and what: ask for the person, a number to call, and when.
+        ask={property ? ["name", "phone", "timeline", "message"] : want === "financing" ? ["name", "phone", "city", "province", "timeline", "message"] : ["name", "phone", "city", "interest", "timeline", "message"]}
+        requirePhone
         property={property}
         context={hasNumbers ? { numbers } : undefined}
         defaultCity={params.get("city")}

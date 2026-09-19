@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { recordConsent } from "@/lib/auth/consent";
+import { announceUnsubscribe } from "@/lib/leads/member";
 import { getCurrentUser, toViewer } from "@/lib/auth/current";
 import { UNAVAILABLE, fail, readJson } from "@/lib/auth/http";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
@@ -50,6 +51,7 @@ export async function PATCH(request: Request) {
     }
     if (consentMarketing !== undefined && consentMarketing !== user.consentMarketing) {
       await recordConsent(user.id, consentMarketing, "account_settings");
+      if (!consentMarketing) await announceUnsubscribe(user);
     }
     // Stepping off the board (or changing the name on it) takes effect now, not when a cache expires.
     if (PUBLIC_FIELDS.some((field) => profile[field] !== undefined && profile[field] !== user[field])) {

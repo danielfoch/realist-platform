@@ -38,7 +38,11 @@ export function fsaOf(postalCode: string | null | undefined): string | null {
 
 /** "Dana Tester" → "Dana T." — how a member appears to other people. */
 export function publicName(name: string | null | undefined): string {
-  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  // A display name is a name: letters, spaces, hyphens, apostrophes. Anything that looks like a link,
+  // a handle or an advertisement never reaches the board, a profile or the weekly email.
+  const cleaned = (name ?? "").normalize("NFC").trim();
+  if (!/^[\p{L}][\p{L}\p{M}' -]{0,60}$/u.test(cleaned)) return "Realist member";
+  const parts = cleaned.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "Realist member";
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;

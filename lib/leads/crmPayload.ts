@@ -18,6 +18,8 @@ const KIND_TAGS: Record<LeadKind, string[]> = {
   power_team: ["power_team_request"],
   underwriting_help: ["underwriting_help"],
   pro_application: ["expert_application"],
+  team_gap: ["power_team_gap"],
+  unsubscribe: ["unsubscribed"],
   first_underwrite: ["deal-analyzed"],
   active_underwriter: ["deal-analyzed", "active-underwriter"],
 };
@@ -33,6 +35,8 @@ export const KIND_LABELS: Record<LeadKind, string> = {
   power_team: "Power team intro",
   underwriting_help: "Underwriting help",
   pro_application: "Professional application",
+  team_gap: "Power team gap",
+  unsubscribe: "Unsubscribed",
   first_underwrite: "First underwrite",
   active_underwriter: "Active underwriter",
 };
@@ -102,6 +106,8 @@ function money(value: unknown): string | null {
 /** Plain-text lines describing the lead — the CRM note and the email body share them. */
 export function leadSummaryLines(lead: Lead): string[] {
   const lines: string[] = [`${KIND_LABELS[lead.kind]} via realist.ca`];
+  const typed = [lead.name, lead.phone].filter(Boolean).join(" · ");
+  if (typed) lines.push(`Submitted as: ${typed}`);
   const property = lead.property;
   if (property?.address || property?.mlsNumber) {
     const price = money(property.price);

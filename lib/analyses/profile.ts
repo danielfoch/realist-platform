@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { badgeFor, getActorStats, type ActorStats } from "./community";
@@ -101,17 +101,10 @@ export function toPublicAnalysis(row: {
     verdict: (row.verdict && CALLS.includes(row.verdict) ? row.verdict : null) as DealCall | null,
     at: row.at,
   };
-  // Anything that isn't positively a listing is handled as off-market.
-  if (row.source !== "listing") {
-    return { ...shared, label: city ? `Off-market · ${city}` : "Off-market", href: null, offMarket: true };
-  }
-  const mls = row.mlsNumber?.trim() || null;
-  return {
-    ...shared,
-    label: streetLine(row.address) ?? (mls ? `MLS® ${mls}` : city ? `Listing · ${city}` : "Listing"),
-    href: mls ? `/listings/${encodeURIComponent(mls)}` : null,
-    offMarket: false,
-  };
+  // A stranger sees the market and the numbers — never WHICH property. An address next to a
+  // "Pursue" call tells every other investor in town what this person is about to offer on.
+  const kind = row.source === "listing" ? "Listing" : row.source === "multiplex" ? "Multiplex site" : "Off-market";
+  return { ...shared, label: city ? `${kind} · ${city}` : kind, href: null, offMarket: row.source !== "listing" };
 }
 
 /** Where a deal count sits on the badge ladder, as a bar can draw it. */
@@ -135,7 +128,8 @@ export async function getPublicProfile(userId: string, now: Date = new Date()): 
   const [member] = await db
     .select({ id: users.id, name: users.name, city: users.city, createdAt: users.createdAt })
     .from(users)
-    .where(and(eq(users.id, id), eq(users.showOnLeaderboard, true)))
+    // Same rule as the board: a proven inbox, or an account from the previous site.
+    .where(and(eq(users.id, id), eq(users.showOnLeaderboard, true), or(isNotNull(users.emailVerifiedAt), isNotNull(users.legacy))))
     .limit(1);
   if (!member) return null;
 
@@ -162,10 +156,10 @@ export async function getPublicProfile(userId: string, now: Date = new Date()): 
       ORDER BY deals DESC, 1 ASC
       LIMIT 8
     `),
-    // An off-market address is never selected, so nothing downstream can leak it.
+    // No address and no MLS number is ever selected, so nothing downstream can leak one.
     db.execute(sql`
-      SELECT source, mls_number, city, province, cap_rate, verdict,
-        CASE WHEN source = 'listing' THEN address END AS address,
+      SELECT source, NULL::text AS mls_number, city, province, cap_rate, verdict,
+        NULL::text AS address,
         extract(epoch FROM updated_at)::bigint AS at_epoch
       FROM deal_analyses
       WHERE actor_key = ${actorKey} AND eligible AND is_public

@@ -80,7 +80,9 @@ describe("analysisQuality", () => {
   it("counts plausible, complete work — and rewards depth", () => {
     const inputs = houseDefaults(facts);
     const result = underwrite(inputs);
-    expect(analysisQuality(result, [])).toEqual({ score: 0.82, eligible: true });
+    // A call on untouched numbers is a glance; working the deal is what scores.
+    expect(analysisQuality(result, [])).toEqual({ score: 0.25, eligible: true });
+    expect(analysisQuality(result, ["monthlyRent"])).toEqual({ score: 0.7, eligible: true });
     expect(analysisQuality(result, ["monthlyRent", "vacancyPercent", "interestRate"])).toEqual({ score: 1, eligible: true });
   });
 

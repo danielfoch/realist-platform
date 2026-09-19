@@ -278,9 +278,10 @@ export default async function LeaderboardPage(props: PageProps<"/community/leade
             <div>
               <h3 className="text-sm font-semibold text-ink">Careful beats careless.</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-                A deal is worth <span className="tnum font-medium text-ink">{points.untouched}</span> points if you leave our starting numbers
-                alone, <span className="tnum font-medium text-ink">{points.light}</span> once you change one or two, and{" "}
-                <span className="tnum font-medium text-ink">{points.worked}</span> when you work three or more. Your score is the total.
+                Making your call on our starting numbers is worth <span className="tnum font-medium text-ink">{points.untouched}</span> points.
+                Change one or two of them and it&rsquo;s <span className="tnum font-medium text-ink">{points.light}</span>; work three or more
+                and it&rsquo;s <span className="tnum font-medium text-ink">{points.worked}</span>. Your score is the total — so one deal you
+                really underwrote beats four you glanced at.
               </p>
             </div>
             <div>

@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { learnedAssumptions } from "@/lib/db/schema";
 import { provinceCode } from "@/lib/leads/routing";
+import { PROVEN_MEMBER } from "./community";
 import {
   LEARNABLE_BOUNDS,
   LEARNABLE_FIELDS,
@@ -63,7 +64,8 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
         SELECT ${k1} AS k1, ${k2} AS k2, a.actor_key, a.edited, a.inputs,
           coalesce(a.learned_applied, '[]'::jsonb) AS kept, a.source, a.rent_source, a.rent_estimate
         FROM deal_analyses a
-        WHERE a.eligible AND a.user_id IS NOT NULL AND a.updated_at > (now() AT TIME ZONE 'utc') - ${WINDOW} ${present}
+        JOIN users u ON u.id = a.user_id
+        WHERE a.eligible AND ${PROVEN_MEMBER} AND a.updated_at > (now() AT TIME ZONE 'utc') - ${WINDOW} ${present}
       ),
       engaged AS (
         -- everyone who worked a deal in this market, whatever they changed

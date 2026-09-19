@@ -5,6 +5,7 @@ import { recordConsent } from "@/lib/auth/consent";
 import { KEYPR_CONSENT_VERSION } from "./consentText";
 import { qualifiesForKeypr } from "./keypr";
 import { toE164 } from "./phone";
+import { wantsReceipt } from "./receipt";
 import { leadIntent, leadRouting, provinceCode } from "./routing";
 
 /**
@@ -84,6 +85,7 @@ export async function captureLead(input: LeadInput): Promise<{ lead: Lead; dupli
 
   const destinations: LeadDestination[] = ["ghl", "team_email"];
   if (qualifiesForKeypr(lead)) destinations.push("keypr");
+  if (wantsReceipt(lead.kind)) destinations.push("receipt");
   await db.insert(leadDeliveries).values(destinations.map((destination) => ({ leadId: lead.id, destination })));
 
   if (lead.consentMarketing && lead.userId) {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { memoWriterConfigured, writeDealMemo } from "@/lib/ai/dealMemoWriter";
+import { getCurrentUser } from "@/lib/auth/current";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
 import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { getListingSeoByMls } from "@/lib/ddf/listingSeo";
@@ -31,6 +32,8 @@ const schema = z.object({
 export async function POST(request: Request) {
   if (!isSameOrigin(request)) return crossOriginResponse();
   if (!memoWriterConfigured()) return Response.json({ ok: false, error: "AI memos aren't switched on yet." }, { status: 503 });
+  // The rules-based memo is free to everyone and needs no request. The written-up one costs money per call.
+  if (!(await getCurrentUser())) return Response.json({ ok: false, error: "Create a free account for the AI write-up." }, { status: 401 });
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   const inputs = parsed.success ? clampInputs(parsed.data.inputs) : null;

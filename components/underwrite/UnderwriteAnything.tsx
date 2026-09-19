@@ -29,7 +29,9 @@ function numberFrom(value: string | null): number {
   return isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-export function UnderwriteAnything({ learned, aiAvailable = false }: { learned: LearnedDefaults; aiAvailable?: boolean }) {
+export function UnderwriteAnything({ learned: national, aiAvailable = false }: { learned: LearnedDefaults; aiAvailable?: boolean }) {
+  // Starts from what the whole country has taught; a market's own values replace it once we know the market.
+  const [learned, setLearned] = useState<LearnedDefaults>(national);
   const params = useSearchParams();
   const fromLink: Basics = {
     address: params.get("address")?.slice(0, 300) ?? "",
@@ -58,6 +60,18 @@ export function UnderwriteAnything({ learned, aiAvailable = false }: { learned: 
     if (!(next.price >= 1000)) return setError("Add the price you'd pay.");
     if (!(next.rent > 0)) return setError("Add the rent you expect, all units combined. A rough number is fine — you can change it.");
     setError(null);
+    if (next.province) {
+      // Fetched BEFORE the underwriter opens: changing its defaults afterwards would wipe the person's edits.
+      const query = new URLSearchParams({ province: next.province, ...(next.city ? { city: next.city } : {}) });
+      fetch(`/api/analyses/defaults?${query}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body: { learned?: LearnedDefaults } | null) => {
+          if (body?.learned) setLearned(body.learned);
+        })
+        .catch(() => {})
+        .finally(() => setBasics(next));
+      return;
+    }
     setBasics(next);
   }
 
@@ -130,7 +144,7 @@ export function UnderwriteAnything({ learned, aiAvailable = false }: { learned: 
       <Underwriter
         key={`${fullAddress}|${basics.price}|${basics.rent}|${basics.units}`}
         deal={{ source: "manual", address: fullAddress, city: basics.city || null, province: basics.province || null }}
-        defaults={houseDefaults({ price: basics.price, monthlyRent: basics.rent, units: basics.units }, learned)}
+        defaults={houseDefaults({ price: basics.price, monthlyRent: basics.rent, units: basics.units, province: basics.province || null, city: basics.city || null }, learned)}
         learned={learned}
         taxFromListing={false}
         aiAvailable={aiAvailable}

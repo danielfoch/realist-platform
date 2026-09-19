@@ -6,7 +6,8 @@ import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { toViewer } from "@/lib/auth/current";
 import { recordConsent } from "@/lib/auth/consent";
 import { createUser, findUserByEmail } from "@/lib/auth/users";
-import { announceNewMember } from "@/lib/leads/member";
+import { publicOrigin, sendMagicLink } from "@/lib/auth/magicLink";
+import { emailConfigured } from "@/lib/email";
 
 const schema = z.object({
   email: z.email().max(254),
@@ -24,7 +25,9 @@ export async function POST(request: Request) {
   if (problem) return fail(400, problem);
 
   const ipKey = `signup-ip:${clientIp(request)}`;
-  if (await isThrottled(ipKey)) return fail(429, "Too many attempts. Try again in a few minutes.");
+  // Successes are counted too (generously — a meetup room shares one address): accounts are not free to mint.
+  const okKey = `signup-ok-ip:${clientIp(request)}`;
+  if ((await isThrottled(ipKey)) || (await isThrottled(okKey, new Date(), 40))) return fail(429, "Too many attempts. Try again in a few minutes.");
 
   try {
     if (await findUserByEmail(parsed.data.email)) {
@@ -40,7 +43,22 @@ export async function POST(request: Request) {
     });
     if (parsed.data.consentMarketing) await recordConsent(user.id, true, "signup");
     await beginSession(user.id, request);
-    await announceNewMember(user, "password", request);
+    await recordFailure(okKey);
+    // A password proves nothing about an inbox. Until they open this link the account works,
+    // but it isn't announced to the CRM and doesn't count on the board or in anyone's medians.
+    if (emailConfigured()) {
+      await sendMagicLink({
+        email: user.email,
+        next: "/account",
+        origin: publicOrigin(request),
+        message: {
+          subject: "Confirm your email for Realist",
+          intro: "One tap confirms this is your inbox — that's what puts your deals on the leaderboard and lets you sign in without a password.",
+          button: "Confirm my email",
+          ttlMs: 3 * 86_400_000,
+        },
+      }).catch((error) => console.error("[auth/signup] confirmation email:", (error as Error).message));
+    }
     return Response.json({ ok: true, user: toViewer(user) });
   } catch (error) {
     console.error("[auth/signup]", (error as Error).message);

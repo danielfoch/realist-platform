@@ -41,7 +41,7 @@ describe("rentSourceLabel", () => {
     expect(rentSourceLabel("city_comps")).toBe("Rent comps");
     expect(rentSourceLabel("city_aggregate")).toBe("City median");
     expect(rentSourceLabel("cmhc_city")).toBe("CMHC average");
-    expect(rentSourceLabel("snapshot")).toBe("Recent snapshot");
+    expect(rentSourceLabel("snapshot")).toBe("Our estimate");
     expect(rentSourceLabel("default")).toBe("Estimate");
   });
 });

@@ -255,7 +255,9 @@ export default async function ListingDetailPage({
             monthlyRent: uw?.estimatedRent ?? null,
             annualPropertyTax: listing.taxAnnual,
             monthlyCondoFees: uw?.condoFeesMonthly ?? null,
-            rentIsEstimate: rentIsEstimate,
+            rentIsEstimate,
+            province: listing.province,
+            city: listing.city,
           },
           learned,
         )

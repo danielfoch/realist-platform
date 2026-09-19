@@ -6,7 +6,7 @@
  * held to the same numbers.
  */
 
-import { solveOfferPrice, underwrite, type UnderwriterInputs } from "./underwriter";
+import { coverageContext, solveOfferPrice, underwrite, type UnderwriterInputs } from "./underwriter";
 
 export interface MemoDeal {
   address?: string | null;
@@ -46,7 +46,8 @@ export interface DealMemo {
   sensitivities: Sensitivities;
 }
 
-const money = (value: number) => `${value < 0 ? "-" : ""}$${Math.abs(Math.round(value)).toLocaleString("en-CA")}`;
+// A true minus sign, the same one the rest of the interface uses.
+const money = (value: number) => `${value < 0 ? "−" : ""}$${Math.abs(Math.round(value)).toLocaleString("en-CA")}`;
 
 function breakEvenRent(inputs: UnderwriterInputs): number | null {
   if (!(inputs.price > 0)) return null;
@@ -94,14 +95,21 @@ export function templateMemo(deal: MemoDeal, inputs: UnderwriterInputs): DealMem
   const watch: string[] = [];
 
   if (cashFlow >= 0) working.push(`It carries itself: ${money(cashFlow)} a month after the mortgage and every operating cost you entered.`);
-  if (dscr >= 1.2) working.push(`Debt coverage of ${dscr.toFixed(2)} clears the 1.20 most lenders want on a rental — financing should be a conversation, not a fight.`);
-  if ((result.capRate ?? 0) >= 5.5) working.push(`A ${result.capRate?.toFixed(1)}% cap rate is above what most Canadian small rentals trade at.`);
+  const lender = coverageContext(inputs.units);
+  if (dscr >= 1.2) working.push(`Rent covers the mortgage ${dscr.toFixed(2)} times over, which ${lender.comfortable}.`);
+  // Leverage, stated from the person's own numbers rather than a claim about "the market".
+  if (result.capRate != null && result.capRate > inputs.interestRate) {
+    working.push(`The cap rate (${result.capRate.toFixed(1)}%) is above your mortgage rate (${inputs.interestRate}%): every borrowed dollar earns more than it costs.`);
+  }
   if (deal.rentSourceLabel === "Actual rent" && !deal.rentEdited) working.push("The rent is the seller's reported actual rent, not an estimate — the income side is on firmer ground than most listings.");
   if (what.cashFlowRatePlus1 != null && what.cashFlowRatePlus1 >= 0) working.push(`It survives a rate shock: a full point higher at renewal still leaves ${money(what.cashFlowRatePlus1)} a month.`);
   if (what.irrNoAppreciation != null && what.irrNoAppreciation >= 6) working.push(`Even with zero appreciation the IRR is ${what.irrNoAppreciation.toFixed(1)}% — the return doesn't depend on the market going up.`);
 
   if (cashFlow < 0) watch.push(`Negative carry: you would add ${money(Math.abs(cashFlow))} every month. That's a bet on appreciation or on raising the rent — name which one.`);
-  if (dscr > 0 && dscr < 1.2) watch.push(`Debt coverage of ${dscr.toFixed(2)} is under 1.20. Expect a lender to ask for more down, or to size the loan to the rent rather than the price.`);
+  if (dscr > 0 && dscr < 1.2) watch.push(`Coverage of ${dscr.toFixed(2)} ${lender.thin}.`);
+  if (result.capRate != null && result.capRate < inputs.interestRate) {
+    watch.push(`The cap rate (${result.capRate.toFixed(1)}%) is below your mortgage rate (${inputs.interestRate}%): borrowing costs more than the property earns, so the return has to come from appreciation or higher rents.`);
+  }
   if (what.cashFlowRatePlus1 != null && cashFlow >= 0 && what.cashFlowRatePlus1 < 0) watch.push(`One point higher at renewal turns it negative (${money(what.cashFlowRatePlus1)} a month). Pick your term with that in mind.`);
   if (what.cashFlowRentMinus10 != null && what.cashFlowRentMinus10 < 0 && cashFlow >= 0) watch.push(`If rents come in 10% under, cash flow goes to ${money(what.cashFlowRentMinus10)} a month. The rent number is the one to be sure of.`);
   if (deal.rentSourceLabel && deal.rentSourceLabel !== "Actual rent" && !deal.rentEdited) watch.push(`The rent is an estimate (${deal.rentSourceLabel.toLowerCase()}), not this building's rent roll. Everything downstream depends on it.`);
@@ -122,8 +130,8 @@ export function templateMemo(deal: MemoDeal, inputs: UnderwriterInputs): DealMem
     breakEven == null
       ? "No price in range makes this rent cover the mortgage — it's a rent or a financing problem, not a price problem."
       : breakEven >= inputs.price
-        ? `The price above already breaks even${lenderReady != null && lenderReady < inputs.price ? `; to clear a lender's 1.20 coverage you'd need ${money(lenderReady)}` : ""}.`
-        : `Break-even is ${money(breakEven)}${lenderReady != null ? `, and ${money(lenderReady)} clears a lender's 1.20 coverage` : ""}. Open below the number you need, with financing and inspection conditions.`;
+        ? `The price above already breaks even${lenderReady != null && lenderReady < inputs.price ? `; for 1.20 coverage${lender.commercial ? ", which a commercial lender sizes to," : ""} you'd need ${money(lenderReady)}` : ""}.`
+        : `Break-even is ${money(breakEven)}${lenderReady != null ? `, and ${money(lenderReady)} gets you to 1.20 coverage` : ""}. Open below the number you need, with financing and inspection conditions.`;
 
   const headline =
     cashFlow >= 0 && dscr >= 1.2 ? "This one pencils." : cashFlow >= 0 ? "It works, with no margin for error." : breakEven != null ? "It works at a lower price." : "The rent doesn't support this one.";

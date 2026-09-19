@@ -54,6 +54,8 @@ export const dealAnalyses = pgTable(
     irr: real("irr"),
     /** Offer price the person solved for, when they used the solver. */
     offerPrice: real("offer_price"),
+    /** Which question the offer price answers ("breakeven", "dscr", "coc") — only like is compared with like. */
+    offerTarget: text("offer_target"),
     quality: real("quality").notNull(),
     eligible: boolean("eligible").notNull(),
     /** The person's own call on the deal. */

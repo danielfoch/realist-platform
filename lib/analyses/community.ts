@@ -9,6 +9,15 @@ import { publicName } from "./dealKey";
  * as "the community". Only members count: anonymous sessions are free to mint.
  */
 
+/**
+ * Who counts as a member anywhere numbers are public or learned from: someone
+ * who has proven an inbox (an emailed link, or Google), or who came over from
+ * the previous site. A password sign-up proves nothing — accounts would be free
+ * to mint, and with them a place on the board, a listing's "community" median,
+ * a market's learned defaults. Expects the users table aliased as `u`.
+ */
+export const PROVEN_MEMBER = sql`(u.email_verified_at IS NOT NULL OR u.legacy IS NOT NULL)`;
+
 /** Below this many people, a deal shows a count but no medians. */
 export const CONSENSUS_FLOOR = 3;
 
@@ -25,22 +34,26 @@ const num = (value: unknown): number | null => (value == null ? null : Number(va
 export async function getDealConsensus(dealKey: string): Promise<DealConsensus> {
   const result = await getDb().execute(sql`
     SELECT count(*)::int AS analysts,
-      percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_rent) AS rent,
-      percentile_cont(0.5) WITHIN GROUP (ORDER BY cap_rate) AS cap,
-      percentile_cont(0.5) WITHIN GROUP (ORDER BY monthly_cash_flow) AS cash_flow,
-      percentile_cont(0.5) WITHIN GROUP (ORDER BY offer_price) FILTER (WHERE offer_price IS NOT NULL) AS offer,
-      count(*) FILTER (WHERE verdict = 'pursue')::int AS pursue,
-      count(*) FILTER (WHERE verdict = 'watch')::int AS watch,
-      count(*) FILTER (WHERE verdict = 'pass')::int AS pass
-    FROM deal_analyses
-    WHERE deal_key = ${dealKey} AND eligible AND is_public AND user_id IS NOT NULL
+      count(*) FILTER (WHERE jsonb_array_length(a.edited) > 0)::int AS worked,
+      -- A rent nobody changed is OUR estimate; calling it the community's would be an echo.
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY a.monthly_rent) FILTER (WHERE jsonb_exists(a.edited, 'monthlyRent')) AS rent,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY a.cap_rate) FILTER (WHERE jsonb_array_length(a.edited) > 0) AS cap,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY a.monthly_cash_flow) FILTER (WHERE jsonb_array_length(a.edited) > 0) AS cash_flow,
+      -- Only break-even offers are comparable with each other.
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY a.offer_price) FILTER (WHERE a.offer_price IS NOT NULL AND a.offer_target = 'breakeven') AS offer,
+      count(*) FILTER (WHERE a.verdict = 'pursue')::int AS pursue,
+      count(*) FILTER (WHERE a.verdict = 'watch')::int AS watch,
+      count(*) FILTER (WHERE a.verdict = 'pass')::int AS pass
+    FROM deal_analyses a
+    JOIN users u ON u.id = a.user_id
+    WHERE a.deal_key = ${dealKey} AND a.eligible AND a.is_public AND ${PROVEN_MEMBER}
   `);
   const row = (result.rows[0] ?? {}) as Row;
   const analysts = Number(row.analysts ?? 0);
   return {
     analysts,
     medians:
-      analysts >= CONSENSUS_FLOOR
+      Number(row.worked ?? 0) >= CONSENSUS_FLOOR
         ? { monthlyRent: num(row.rent), capRate: num(row.cap), monthlyCashFlow: num(row.cash_flow), offerPrice: num(row.offer) }
         : null,
     verdicts: { pursue: Number(row.pursue ?? 0), watch: Number(row.watch ?? 0), pass: Number(row.pass ?? 0) },
@@ -131,7 +144,7 @@ export async function getLeaderboard(period: LeaderboardPeriod, options: { city?
       count(DISTINCT lower(a.city))::int AS markets
     FROM deal_analyses a
     JOIN users u ON u.id = a.user_id
-    WHERE a.eligible AND u.show_on_leaderboard ${since} ${inCity}
+    WHERE a.eligible AND u.show_on_leaderboard AND ${PROVEN_MEMBER} ${since} ${inCity}
     GROUP BY u.id, u.name, u.city
     ORDER BY score DESC, deals DESC, min(a.created_at) ASC
     LIMIT ${options.limit ?? 25}
@@ -163,7 +176,7 @@ export async function getRanks(userId: string): Promise<Record<LeaderboardPeriod
       SELECT p.period, a.user_id, sum(a.quality) AS score, count(*) AS deals, min(a.created_at) AS first_at
       FROM periods p
       JOIN deal_analyses a ON a.created_at >= p.since AND a.eligible
-      JOIN users u ON u.id = a.user_id AND u.show_on_leaderboard
+      JOIN users u ON u.id = a.user_id AND u.show_on_leaderboard AND ${PROVEN_MEMBER}
       GROUP BY p.period, a.user_id
     ),
     ranked AS (

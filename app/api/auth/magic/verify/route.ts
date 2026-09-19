@@ -1,11 +1,9 @@
-import { eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
-import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
 import { beginSession } from "@/lib/auth/http";
 import { consumeMagicLink } from "@/lib/auth/magicLink";
 import { crossOriginResponse, isSameOrigin, safeNextPath } from "@/lib/auth/origin";
-import { createUser, findUserByEmail } from "@/lib/auth/users";
+import { getCurrentUser } from "@/lib/auth/current";
+import { confirmEmailOwnership, createUser, findUserByEmail } from "@/lib/auth/users";
 import { announceNewMember } from "@/lib/leads/member";
 
 export const dynamic = "force-dynamic";
@@ -34,8 +32,11 @@ export async function POST(request: NextRequest) {
     if (!user) {
       user = await createUser({ email, emailVerified: true });
       await announceNewMember(user, "magic_link", request);
-    } else if (!user.emailVerifiedAt) {
-      await getDb().update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, user.id));
+    } else {
+      const current = await getCurrentUser();
+      const { firstVerification } = await confirmEmailOwnership(user, { sameBrowserIsSignedInAs: current?.id ?? null });
+      // A password sign-up only becomes a member — and a CRM contact — once the inbox is proven.
+      if (firstVerification) await announceNewMember(user, "magic_link", request);
     }
     await beginSession(user.id, request, "magic_link");
     return to(next);

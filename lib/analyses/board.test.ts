@@ -54,7 +54,7 @@ describe("cityLabel", () => {
 describe("scoringPoints", () => {
   it("quotes what the scoring function actually awards, and careful beats careless", () => {
     const points = scoringPoints();
-    expect(points).toEqual({ untouched: 8.2, light: 9.1, worked: 10 });
+    expect(points).toEqual({ untouched: 2.5, light: 7, worked: 10 });
     expect(points.worked).toBeGreaterThan(points.light);
     expect(points.light).toBeGreaterThan(points.untouched);
   });

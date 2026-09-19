@@ -166,13 +166,18 @@ describe("retry schedule", () => {
 });
 
 describe("GoHighLevel delivery", () => {
-  function stubApi(handler: (url: string, body: Record<string, unknown>) => { status: number; json?: unknown }) {
-    const calls: Array<{ url: string; body: Record<string, unknown>; headers: Record<string, string> }> = [];
+  /** `existing` = the contact id the duplicate lookup should report, if any. */
+  function stubApi(handler: (url: string, body: Record<string, unknown>) => { status: number; json?: unknown }, existing: string | null = null) {
+    const calls: Array<{ url: string; method: string; body: Record<string, unknown>; headers: Record<string, string> }> = [];
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string, init: RequestInit) => {
-        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
-        calls.push({ url, body, headers: init.headers as Record<string, string> });
+        const body = (init.body ? JSON.parse(String(init.body)) : {}) as Record<string, unknown>;
+        calls.push({ url, method: String(init.method), body, headers: init.headers as Record<string, string> });
+        if (url.includes("/contacts/search/duplicate")) {
+          const found = handler(url, body);
+          return new Response(JSON.stringify({ contact: existing ? { id: existing } : null }), { status: found.status >= 400 ? found.status : 200 });
+        }
         const { status, json } = handler(url, body);
         return new Response(JSON.stringify(json ?? {}), { status });
       }),
@@ -191,15 +196,40 @@ describe("GoHighLevel delivery", () => {
 
     const result = await deliverToGhl(lead(), {});
     expect(result).toMatchObject({ outcome: "sent", externalId: "c-9", progress: { contactId: "c-9", tagged: true, noted: true } });
-    expect(calls.map((call) => call.url.replace("https://services.leadconnectorhq.com", ""))).toEqual([
-      "/contacts/upsert",
-      "/contacts/c-9/tags",
-      "/contacts/c-9/notes",
+    expect(calls.map((call) => `${call.method} ${call.url.replace("https://services.leadconnectorhq.com", "").split("?")[0]}`)).toEqual([
+      "GET /contacts/search/duplicate",
+      "POST /contacts/upsert",
+      "POST /contacts/c-9/tags",
+      "POST /contacts/c-9/notes",
     ]);
+    const upsert = calls[1];
     // Upsert replaces tags — sending any here would wipe what the team tagged by hand.
-    expect(calls[0].body).not.toHaveProperty("tags");
-    expect(calls[0].body).toMatchObject({ locationId: "loc-1", email: "dana@example.com", source: "realist.ca" });
-    expect(calls[0].headers).toMatchObject({ Authorization: "Bearer pit-test", Version: "2021-07-28" });
+    expect(upsert.body).not.toHaveProperty("tags");
+    expect(upsert.body).toMatchObject({ locationId: "loc-1", email: "dana@example.com", source: "realist.ca" });
+    expect(upsert.headers).toMatchObject({ Authorization: "Bearer pit-test", Version: "2021-07-28" });
+  });
+
+  it("never overwrites a contact that already exists — a web form proves nothing about who typed it", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    const calls = stubApi(() => ({ status: 201 }), "c-existing");
+    const result = await deliverToGhl(lead({ name: "Mallory Imposter", phone: "+19995550000" }), {});
+    expect(result).toMatchObject({ outcome: "sent", externalId: "c-existing", progress: { existing: true } });
+    expect(calls.some((call) => call.url.endsWith("/contacts/upsert"))).toBe(false);
+    // What was typed still reaches a human — in the note, where it can't silently replace the real details.
+    const note = calls.find((call) => call.url.endsWith("/notes"))!;
+    expect(String(note.body.body)).toContain("Submitted as: Mallory Imposter · +19995550000");
+  });
+
+  it("passes an unsubscribe on: tagged, and email do-not-disturb set", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    const calls = stubApi(() => ({ status: 200 }), "c-7");
+    await deliverToGhl(lead({ kind: "unsubscribe", intent: "general" }), {});
+    expect(calls.find((call) => call.url.endsWith("/tags"))!.body.tags).toContain("unsubscribed");
+    const dnd = calls.find((call) => call.method === "PUT")!;
+    expect(dnd.url).toMatch(/\/contacts\/c-7$/);
+    expect(dnd.body).toMatchObject({ dndSettings: { Email: { status: "active" } } });
   });
 
   it("resumes after a partial failure without repeating finished steps", async () => {
@@ -236,5 +266,18 @@ describe("GoHighLevel delivery", () => {
     expect(result).toMatchObject({ outcome: "sent", progress: { webhooked: true } });
     expect(calls).toHaveLength(1);
     expect(calls[0].body).toMatchObject({ formTag: "realist-user", leadSource: "realist_signup" });
+  });
+});
+
+describe("the receipt a person gets", () => {
+  it("says what we received and what happens next, by name", async () => {
+    const { receiptContent, wantsReceipt } = await import("./receipt");
+    const content = receiptContent(lead({ kind: "showing" }));
+    expect(content.subject).toBe("We've got your request about 12 Main St, Toronto");
+    expect(content.lines).toEqual(["Dana,", "We've got your showing request about 12 Main St, Toronto.", "Someone on our team will reply within a business day to line up the showing."]);
+    expect(receiptContent(lead({ kind: "power_team", property: null, name: null })).subject).toBe("We've got your request — power team intro");
+    // Behavioural signals and plain sign-ups are not requests; nobody gets a receipt for them.
+    for (const kind of ["signup", "first_underwrite", "active_underwriter", "team_gap", "unsubscribe"] as const) expect(wantsReceipt(kind)).toBe(false);
+    expect(wantsReceipt("offer")).toBe(true);
   });
 });

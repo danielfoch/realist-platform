@@ -17,6 +17,8 @@ export const LEAD_KINDS = [
   "power_team", // wants an introduction to a professional
   "underwriting_help", // wants a human to pressure-test their numbers
   "pro_application", // a professional who wants to work with Realist investors
+  "team_gap", // behavioural: marked people they still need on their power-team checklist (CRM only)
+  "unsubscribe", // turned Realist email off — so the CRM stops mailing them too (CRM only)
   "first_underwrite", // behavioural: a member's first logged analysis (CRM only, no email)
   "active_underwriter", // behavioural: crossed an analysis threshold (no form)
 ] as const;
@@ -66,7 +68,7 @@ export const leads = pgTable(
   ],
 );
 
-export const LEAD_DESTINATIONS = ["ghl", "team_email", "keypr"] as const;
+export const LEAD_DESTINATIONS = ["ghl", "team_email", "keypr", "receipt"] as const;
 export type LeadDestination = (typeof LEAD_DESTINATIONS)[number];
 export type LeadDeliveryStatus = "pending" | "sent" | "failed" | "skipped";
 

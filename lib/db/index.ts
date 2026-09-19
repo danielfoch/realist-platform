@@ -42,3 +42,8 @@ export function getDb(): Db {
   if (!cached) cached = createDb();
   return cached;
 }
+
+/** Tests only: run the real queries against an in-process Postgres (lib/test/db.ts). */
+export function setDbForTests(db: Db | null): void {
+  cached = db;
+}

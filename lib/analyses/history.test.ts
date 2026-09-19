@@ -58,3 +58,19 @@ describe("reopenHref for a multiplex underwrite", () => {
     expect(reopenHref({ ...lot, source: "multiplex", reportToken: null })).toBe("/multiplex");
   });
 });
+
+describe("publicName", () => {
+  it("shows a person as First L.", async () => {
+    const { publicName } = await import("./dealKey");
+    expect(publicName("Dana Marie Tester")).toBe("Dana T.");
+    expect(publicName("Jean-Luc O'Brien")).toBe("Jean-Luc O.");
+    expect(publicName("Zoë")).toBe("Zoë");
+  });
+
+  it("never turns the board into an advertisement", async () => {
+    const { publicName } = await import("./dealKey");
+    for (const hostile of ["scam-site.com", "BuyCrypto4U", "@handle", "<b>Dana</b>", "http://x.co", "Dana 💰", "", null]) {
+      expect(publicName(hostile), String(hostile)).toBe("Realist member");
+    }
+  });
+});

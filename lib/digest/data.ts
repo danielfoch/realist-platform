@@ -1,6 +1,7 @@
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { users, type User } from "@/lib/db/schema";
+import { PROVEN_MEMBER } from "@/lib/analyses/community";
 import { publicName } from "@/lib/analyses/dealKey";
 
 /** The week that just ended, as a board. Computed once per cron run and shared by every email. */
@@ -16,7 +17,7 @@ export async function getLastWeekBoard(limit = 1000): Promise<LastWeekRow[]> {
   const result = await getDb().execute(sql`
     SELECT u.id AS user_id, u.name, u.city, count(*)::int AS deals, round(sum(a.quality) * 10)::int AS score
     FROM deal_analyses a JOIN users u ON u.id = a.user_id
-    WHERE a.eligible AND u.show_on_leaderboard
+    WHERE a.eligible AND u.show_on_leaderboard AND ${PROVEN_MEMBER}
       AND a.created_at >= date_trunc('week', now() AT TIME ZONE 'utc') - interval '7 days'
       AND a.created_at < date_trunc('week', now() AT TIME ZONE 'utc')
     GROUP BY u.id, u.name, u.city
@@ -44,6 +45,8 @@ export async function digestRecipients(limit: number): Promise<User[]> {
     .where(
       and(
         eq(users.consentMarketing, true),
+        // CASL: consent only means something from the person who owns the inbox.
+        or(isNotNull(users.emailVerifiedAt), isNotNull(users.legacy)),
         or(isNull(users.lastDigestAt), lt(users.lastDigestAt, sixDaysAgo)),
         sql`EXISTS (SELECT 1 FROM deal_analyses a WHERE a.user_id = ${users.id} AND a.eligible)`,
       ),

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { leadDeliveries, leads, type Lead, type LeadDestination } from "@/lib/db/schema";
 import { deliverToGhl } from "./ghl";
 import { deliverToKeypr } from "./keypr";
+import { deliverReceipt } from "./receipt";
 import { deliverToTeam } from "./teamEmail";
 
 /**
@@ -35,6 +36,7 @@ const DELIVERERS: Record<LeadDestination, (lead: Lead, progress: Record<string, 
   ghl: deliverToGhl,
   team_email: (lead) => deliverToTeam(lead),
   keypr: (lead) => deliverToKeypr(lead),
+  receipt: (lead) => deliverReceipt(lead),
 };
 
 interface ClaimedRow {

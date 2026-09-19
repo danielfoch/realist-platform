@@ -1,8 +1,12 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current";
-import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
+import { crossOriginResponse, isSameOrigin, safeNextPath } from "@/lib/auth/origin";
 import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
+import { and, eq, gt, sql } from "drizzle-orm";
+import { getDb } from "@/lib/db";
+import { leads } from "@/lib/db/schema";
+import { emailConfigured } from "@/lib/email";
 import { captureLead } from "@/lib/leads/capture";
 import { deliverDue } from "@/lib/leads/outbox";
 
@@ -14,6 +18,8 @@ import { deliverDue } from "@/lib/leads/outbox";
 
 // "signup" and "active_underwriter" are raised by the server, never by a form.
 const FORM_KINDS = ["event_invites", "meetup_rsvp", "offer", "showing", "financing", "power_team", "underwriting_help", "pro_application"] as const;
+
+const DAILY_LEADS_PER_EMAIL = 8;
 
 const flatValue = z.union([z.string().max(500), z.number(), z.boolean(), z.null(), z.array(z.string().max(80)).max(12)]);
 
@@ -70,15 +76,24 @@ export async function POST(request: Request) {
   }
   await recordFailure(ipKey);
 
-  // A listing URL is only ever one of ours.
-  if (input.property?.url && !input.property.url.startsWith("/")) input.property.url = null;
+  // A listing URL is only ever a path on this site ("//evil.example" and "/\\evil.example" start with a slash too).
+  if (input.property?.url) input.property.url = safeNextPath(input.property.url, "") || null;
 
   try {
+    // One inbox can't be used to flood the team or the CRM, whatever address the requests come from.
+    const [{ count }] = await getDb()
+      .select({ count: sql<number>`count(*)::int` })
+      .from(leads)
+      .where(and(eq(leads.email, input.email.trim().toLowerCase()), gt(leads.createdAt, new Date(Date.now() - 86_400_000))));
+    if (count >= DAILY_LEADS_PER_EMAIL) {
+      return Response.json({ ok: false, error: "We have your requests from today — someone will be in touch. For anything urgent, reply to our email." }, { status: 429 });
+    }
     const user = await getCurrentUser();
     const { lead, duplicate } = await captureLead({ ...input, userId: user?.id ?? null });
     // Deliver once the response is on its way: the person never waits on the CRM.
     if (!duplicate) after(() => deliverDue({ leadId: lead.id }).catch((error) => console.error("[leads] inline delivery:", error)));
-    return Response.json({ ok: true });
+    // Tells the form whether to say "check your inbox".
+    return Response.json({ ok: true, receipt: emailConfigured() });
   } catch (error) {
     console.error("[leads]", (error as Error).message);
     return Response.json(

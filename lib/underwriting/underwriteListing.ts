@@ -60,7 +60,7 @@ export function rentSourceLabel(source: string): string {
     case "cmhc_baseline":
       return "CMHC average";
     case "snapshot":
-      return "Recent snapshot";
+      return "Our estimate";
     default:
       return "Estimate";
   }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/components/multiplex/format";
+import { closingCostsNote } from "@/lib/underwriting/closingCosts";
 import { DealMemoPanel } from "./DealMemoPanel";
 import {
   LEARNABLE_FIELDS,
@@ -210,11 +211,6 @@ const TARGETS: Array<{ key: string; label: string; target: OfferTarget }> = [
     label: "8% cash-on-cash",
     target: { metric: "cash_on_cash", value: 8 },
   },
-  {
-    key: "cap",
-    label: "6% cap rate",
-    target: { metric: "cap_rate", value: 6 },
-  },
 ];
 
 const VERDICTS: Array<{ key: Verdict; label: string }> = [
@@ -282,7 +278,7 @@ function NumberField({
         <input
           id={id}
           type="text"
-          inputMode="decimal"
+          inputMode={spec.field === "annualAppreciationPercent" || spec.field === "annualRentGrowthPercent" ? "text" : "decimal"}
           autoComplete="off"
           value={draft ?? display(value, spec.unit)}
           onFocus={(event) => {
@@ -392,6 +388,36 @@ export function Underwriter({
     status: saved ? "saved" : "idle",
   });
   const [shareNote, setShareNote] = useState<string | null>(null);
+  // On a phone the result sits screens below the inputs. While the person is in the inputs and
+  // can't see it, a slim bar carries the answer along with them.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const [pinResult, setPinResult] = useState(false);
+  useEffect(() => {
+    const root = rootRef.current;
+    const results = resultsRef.current;
+    if (!root || !results || typeof IntersectionObserver === "undefined") return;
+    let inTool = false;
+    let resultsVisible = false;
+    const update = () => setPinResult(inTool && !resultsVisible);
+    const watchTool = new IntersectionObserver(([entry]) => {
+      inTool = entry.isIntersecting;
+      update();
+    });
+    const watchResults = new IntersectionObserver(
+      ([entry]) => {
+        resultsVisible = entry.isIntersecting;
+        update();
+      },
+      { threshold: 0.1 },
+    );
+    watchTool.observe(root);
+    watchResults.observe(results);
+    return () => {
+      watchTool.disconnect();
+      watchResults.disconnect();
+    };
+  }, []);
   // Who is looking, learned after load (pages are cached for everyone).
   const [visitor, setVisitor] = useState<{ signedIn: boolean | null; otherDeals: number }>({ signedIn: null, otherDeals: 0 });
   // Nothing is logged until the person does something — a page view is not an analysis.
@@ -408,6 +434,9 @@ export function Underwriter({
     () => solveOfferPrice(inputs, target.target),
     [inputs, target],
   );
+  const clearsAtPrice = offerPrice != null && offerPrice >= inputs.price;
+  // What the person would actually offer: never more than the price in front of them.
+  const targetOffer = offerPrice == null ? null : Math.min(offerPrice, inputs.price);
 
   const hasDeal = Boolean(
     deal.mlsNumber || (deal.address && deal.address.trim().length >= 5),
@@ -455,6 +484,7 @@ export function Underwriter({
 
   useEffect(() => {
     if (!touched.current || !hasDeal || !(inputs.price > 0)) return;
+    if (edited.size === 0 && !verdict) return;
     const timer = setTimeout(async () => {
       setLog((current) => ({ ...current, status: "saving" }));
       try {
@@ -465,7 +495,8 @@ export function Underwriter({
             ...deal,
             inputs,
             defaults,
-            offerPrice,
+            offerPrice: targetOffer,
+            offerTarget: targetOffer == null ? null : targetKey,
             verdict,
             rentSource: rentSourceLabel ?? null,
             rentEstimate: rentEstimate ?? null,
@@ -590,13 +621,13 @@ export function Underwriter({
   if (result.capRate != null) offerParams.set("cap", String(result.capRate));
   if (result.monthlyCashFlow != null) offerParams.set("cf", String(Math.round(result.monthlyCashFlow)));
   if (result.dscr != null) offerParams.set("dscr", String(result.dscr));
-  if (offerPrice != null) offerParams.set("offer", String(offerPrice));
+  if (targetOffer != null && !clearsAtPrice) offerParams.set("offer", String(targetOffer));
   offerParams.set("down", String(inputs.downPaymentPercent));
   const loginNext = returnPath ?? "/account";
 
   return (
     <>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+      <div ref={rootRef} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         {/* Inputs */}
         <div className="space-y-3">
           {GROUPS.map((group) => (
@@ -627,7 +658,9 @@ export function Underwriter({
                       rentSourceLabel &&
                       !edited.has("monthlyRent")
                         ? rentNote
-                        : learnedNote(spec.field)
+                        : spec.field === "closingCosts" && !edited.has("closingCosts")
+                          ? closingCostsNote(deal.province, deal.city)
+                          : learnedNote(spec.field)
                     }
                     onChange={(value) => change(spec.field, value)}
                     onReset={() => change(spec.field, defaults[spec.field])}
@@ -639,7 +672,7 @@ export function Underwriter({
         </div>
 
         {/* Results */}
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div ref={resultsRef} className="scroll-mt-20 lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-lg border border-hairline bg-surface p-5">
             <p className="tnum text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">
               Cash flow after the mortgage
@@ -725,13 +758,10 @@ export function Underwriter({
                   key={entry.key}
                   type="button"
                   aria-pressed={entry.key === targetKey}
-                  onClick={() => {
-                    touched.current = true;
-                    setTargetKey(entry.key);
-                  }}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  onClick={() => setTargetKey(entry.key)}
+                  className={`min-h-10 rounded-full border px-3.5 text-xs font-medium transition-colors sm:min-h-8 ${
                     entry.key === targetKey
-                      ? "border-accent bg-accent text-white"
+                      ? "border-brand bg-brand text-white"
                       : "border-hairline-strong text-ink-soft hover:text-ink"
                   }`}
                 >
@@ -747,11 +777,11 @@ export function Underwriter({
             ) : (
               <p className="mt-3 text-sm leading-relaxed text-ink-soft">
                 <span className="tnum font-display block text-3xl font-semibold tracking-tight text-ink">
-                  {fmtMoney(offerPrice)}
+                  {fmtMoney(clearsAtPrice ? inputs.price : offerPrice)}
                 </span>
-                {offerDelta != null && offerDelta < -0.5
-                  ? `${Math.abs(offerDelta).toFixed(1)}% under the price above — the most you can pay and still ${target.key === "breakeven" ? "break even" : `hit ${target.label}`}.`
-                  : `This deal already clears ${target.label.toLowerCase()} at the price above.`}
+                {clearsAtPrice
+                  ? `It already ${target.key === "breakeven" ? "breaks even" : `hits ${target.label}`} at this price, with ${fmtMoney(offerPrice - inputs.price)} of room. Offer under it anyway.`
+                  : `${Math.abs(offerDelta ?? 0).toFixed(1)}% under the price above — the most you can pay and still ${target.key === "breakeven" ? "break even" : `hit ${target.label}`}.`}
               </p>
             )}
           </div>
@@ -779,7 +809,7 @@ export function Underwriter({
                         current === entry.key ? null : entry.key,
                       );
                     }}
-                    className={`rounded-[3px] border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                    className={`min-h-10 rounded-[3px] border px-3.5 text-xs font-semibold transition-colors disabled:opacity-50 sm:min-h-8 ${
                       verdict === entry.key
                         ? "border-ink bg-ink text-white"
                         : "border-hairline-strong text-ink-soft hover:border-ink hover:text-ink"
@@ -835,7 +865,7 @@ export function Underwriter({
                   .{" "}
                   {log.signedIn === false ? (
                     <Link
-                      href={`/login?next=${encodeURIComponent(loginNext)}`}
+                      href={`/login?mode=signup&next=${encodeURIComponent(loginNext)}`}
                       className="font-medium text-brand hover:text-brand-deep"
                     >
                       Create a free account to keep it and join the leaderboard
@@ -881,6 +911,29 @@ export function Underwriter({
           </p>
         </div>
       </div>
+      {pinResult && result.assumptionsComplete && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline-strong bg-surface/95 backdrop-blur lg:hidden">
+          <button
+            type="button"
+            onClick={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left"
+          >
+            <span>
+              <span className="tnum block text-[10px] font-medium uppercase tracking-[1.3px] text-ink-faint">Cash flow</span>
+              <span className={`tnum text-lg font-semibold leading-tight ${cashFlow != null && cashFlow < 0 ? "text-bad" : "text-ink"}`}>
+                {cashFlow == null ? "—" : `${cashFlow < 0 ? "−" : "+"}${fmtMoney(Math.abs(cashFlow))}`}
+                <span className="text-xs font-medium text-ink-faint">/mo</span>
+              </span>
+            </span>
+            <span className="tnum text-xs leading-relaxed text-ink-soft">
+              {result.capRate == null ? "—" : `${result.capRate.toFixed(1)}%`} cap
+              <br />
+              {result.dscr == null ? "—" : result.dscr.toFixed(2)} coverage
+            </span>
+            <span className="shrink-0 text-xs font-semibold text-brand">Full result ↓</span>
+          </button>
+        </div>
+      )}
       {result.assumptionsComplete && (
         <DealMemoPanel
           deal={memoDeal}
@@ -888,7 +941,8 @@ export function Underwriter({
           inputs={inputs}
           aiAvailable={aiAvailable}
           locked={visitor.signedIn === false && visitor.otherDeals >= GUEST_FULL_MEMOS}
-          loginHref={`/login?next=${encodeURIComponent(loginNext)}`}
+          loginHref={`/login?mode=signup&next=${encodeURIComponent(loginNext)}`}
+          signedIn={visitor.signedIn === true}
         />
       )}
     </>

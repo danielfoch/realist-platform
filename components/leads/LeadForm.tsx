@@ -71,6 +71,7 @@ export function LeadForm({
   defaultCity,
   defaultRoles,
   partnerConsent = false,
+  requirePhone = false,
   marketingLabel = "Email me about meetups and Realist updates. Unsubscribe any time.",
   messagePlaceholder = "Budget, timeline, the deal you're circling…",
   submitLabel = "Send",
@@ -91,6 +92,8 @@ export function LeadForm({
   defaultRoles?: string[];
   /** Offer the brokerage-partner handoff box (shown for Ontario only). */
   partnerConsent?: boolean;
+  /** For requests where someone has to phone the person back. */
+  requirePhone?: boolean;
   marketingLabel?: string;
   messagePlaceholder?: string;
   submitLabel?: string;
@@ -101,6 +104,7 @@ export function LeadForm({
   const viewer = useViewer();
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [receiptSent, setReceiptSent] = useState(false);
   const [province, setProvince] = useState(defaultProvince ?? "");
   const [roles, setRoles] = useState<string[]>(defaultRoles ?? []);
   // null = untouched, so a member's details show until they type over them.
@@ -165,12 +169,13 @@ export function LeadForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const result = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; receipt?: boolean } | null;
       if (!response.ok || !result?.ok) {
         setError(result?.error ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
+      setReceiptSent(Boolean(result.receipt));
       setStatus("success");
       onSuccess?.();
     } catch {
@@ -183,6 +188,11 @@ export function LeadForm({
     return (
       <div role="status" className="rounded-[3px] border border-hairline bg-paper px-4 py-3 text-sm leading-relaxed text-ink">
         <p className="font-medium">{successMessage}</p>
+        {receiptSent && !viewer && (
+          <p className="mt-1.5 text-ink-soft">
+            Check your inbox: we&rsquo;ve sent a confirmation with a one-tap link to your Realist account, where your numbers are saved.
+          </p>
+        )}
         {successExtra && <div className="mt-2">{successExtra}</div>}
       </div>
     );
@@ -263,8 +273,8 @@ export function LeadForm({
       </label>
       {shows("phone") && (
         <label className={labelClass}>
-          Phone {!partnerConsent && <span className="font-normal text-ink-faint">(optional)</span>}
-          <input name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={40} className={inputClass} />
+          Phone {!requirePhone && <span className="font-normal text-ink-faint">(optional)</span>}
+          <input name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={40} required={requirePhone} className={inputClass} />
         </label>
       )}
       {shows("city") && (

@@ -19,6 +19,7 @@ export function DealMemoPanel({
   aiAvailable,
   locked = false,
   loginHref = "/login",
+  signedIn = false,
 }: {
   deal: MemoDeal;
   mlsNumber?: string | null;
@@ -27,6 +28,7 @@ export function DealMemoPanel({
   /** A guest past their free memos: the verdict stays, the detail asks for an account. */
   locked?: boolean;
   loginHref?: string;
+  signedIn?: boolean;
 }) {
   const rules = useMemo(() => templateMemo(deal, inputs), [deal, inputs]);
   const [narrated, setNarrated] = useState<{ memo: DealMemo; forInputs: string } | null>(null);
@@ -80,7 +82,12 @@ export function DealMemoPanel({
             {memo.headline}
           </h3>
         </div>
-        {aiAvailable && !isNarrated && !locked && (
+        {aiAvailable && !isNarrated && !locked && !signedIn && (
+          <Link href={loginHref} className="rounded-[3px] border border-hairline-strong px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:border-brand hover:text-brand">
+            Join free for the AI write-up
+          </Link>
+        )}
+        {aiAvailable && !isNarrated && !locked && signedIn && (
           <button
             type="button"
             onClick={narrate}

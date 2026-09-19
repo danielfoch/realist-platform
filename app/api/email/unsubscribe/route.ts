@@ -4,6 +4,7 @@ import { recordConsent } from "@/lib/auth/consent";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { verifyUnsubscribeToken } from "@/lib/digest/unsubscribe";
+import { announceUnsubscribe } from "@/lib/leads/member";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,11 @@ export async function POST(request: NextRequest) {
 
   if (!verifyUnsubscribeToken(userId, token)) return done(false);
   try {
-    const [member] = await getDb().select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
-    if (member) await recordConsent(member.id, false, "unsubscribe_link");
+    const [member] = await getDb().select({ id: users.id, email: users.email, name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+    if (member) {
+      await recordConsent(member.id, false, "unsubscribe_link");
+      await announceUnsubscribe(member);
+    }
     return done(true);
   } catch (error) {
     console.error("[unsubscribe]", (error as Error).message);

@@ -54,7 +54,8 @@ export function LoginPanel() {
 
   const viewer = useViewer();
   const [methods, setMethods] = useState({ google: false, emailLink: false });
-  const [mode, setMode] = useState<Mode>("signin");
+  // Links that invite someone to join (?mode=signup) open on the form that lets them.
+  const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -337,7 +338,7 @@ export function LoginPanel() {
 
           <p className="mt-5 border-t border-hairline pt-4 text-xs leading-relaxed text-ink-faint">
             Had an account on the old Realist? Your login came with you.
-            {methods.emailLink && " If you never set a password, use a sign-in link."}
+            {methods.emailLink && " Never set a password, or forgot it? Use “Email me a sign-in link” — no password needed."}
           </p>
         </div>
       </div>

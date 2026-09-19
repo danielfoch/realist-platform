@@ -5,6 +5,7 @@ import { UNAVAILABLE, fail, readJson } from "@/lib/auth/http";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
 import { getDb } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { announceTeamGap } from "@/lib/leads/member";
 import { POWER_TEAM_ROLES } from "@/lib/team/roles";
 
 const schema = z.object({ team: z.record(z.string().max(40), z.enum(["have", "need"])) });
@@ -21,6 +22,10 @@ export async function PUT(request: Request) {
   const team = Object.fromEntries(Object.entries(parsed.data.team).filter(([key]) => known.has(key)));
   try {
     await getDb().update(users).set({ powerTeam: team, updatedAt: new Date() }).where(eq(users.id, user.id));
+    // Only when the list of gaps actually changed — the checklist saves on every tap.
+    const needs = (map: Record<string, string> | null | undefined) => Object.keys(map ?? {}).filter((key) => map?.[key] === "need").sort();
+    const now = needs(team);
+    if (now.join() !== needs(user.powerTeam).join()) await announceTeamGap(user, now);
     return Response.json({ ok: true, team });
   } catch (error) {
     console.error("[account/team]", (error as Error).message);

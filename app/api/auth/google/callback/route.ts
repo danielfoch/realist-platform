@@ -1,12 +1,10 @@
-import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
 import { GOOGLE_STATE_COOKIE, exchangeGoogleCode, googleConfigured } from "@/lib/auth/google";
 import { beginSession } from "@/lib/auth/http";
 import { safeNextPath } from "@/lib/auth/origin";
-import { createUser, findUserByEmail, findUserByGoogleId } from "@/lib/auth/users";
+import { getCurrentUser } from "@/lib/auth/current";
+import { confirmEmailOwnership, createUser, findUserByEmail, findUserByGoogleId } from "@/lib/auth/users";
 import { announceNewMember } from "@/lib/leads/member";
 
 export const dynamic = "force-dynamic";
@@ -43,14 +41,9 @@ export async function GET(request: NextRequest) {
     if (!user && profile.emailVerified) {
       const byEmail = await findUserByEmail(profile.email);
       if (byEmail) {
-        await getDb()
-          .update(users)
-          .set({
-            googleId: profile.sub,
-            emailVerifiedAt: byEmail.emailVerifiedAt ?? new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, byEmail.id));
+        const current = await getCurrentUser();
+        const { firstVerification } = await confirmEmailOwnership(byEmail, { sameBrowserIsSignedInAs: current?.id ?? null, googleId: profile.sub });
+        if (firstVerification) await announceNewMember(byEmail, "google", request);
         user = byEmail;
       }
     }

@@ -43,10 +43,11 @@ describe("streetLine", () => {
 });
 
 describe("toPublicAnalysis", () => {
-  it("shows a listing by its street line and links to it", () => {
-    expect(toPublicAnalysis(base)).toEqual({
-      label: "12 Main St",
-      href: "/listings/X5000123",
+  it("shows a listing as its market — never its address, its MLS number, or a link to it", () => {
+    const shaped = toPublicAnalysis(base);
+    expect(shaped).toEqual({
+      label: "Listing · Hamilton",
+      href: null,
       offMarket: false,
       city: "Hamilton",
       province: "ON",
@@ -54,6 +55,9 @@ describe("toPublicAnalysis", () => {
       verdict: "pursue",
       at: base.at,
     });
+    // An address beside a "Pursue" call would tell every other investor what this person is chasing.
+    expect(JSON.stringify(shaped)).not.toContain("Main St");
+    expect(JSON.stringify(shaped)).not.toContain("X5000123");
   });
 
   it("never shows an off-market address, even when one is handed to it", () => {
@@ -76,14 +80,13 @@ describe("toPublicAnalysis", () => {
     expect(shaped.city).toBeNull();
   });
 
-  it("falls back to the MLS number when a listing has no address", () => {
-    expect(toPublicAnalysis({ ...base, address: null }).label).toBe("MLS® X5000123");
-    expect(toPublicAnalysis({ ...base, address: null, mlsNumber: null })).toMatchObject({ label: "Listing · Hamilton", href: null });
+  it("labels a multiplex site and a deal with no city", () => {
+    expect(toPublicAnalysis({ ...base, source: "multiplex", city: "Toronto" }).label).toBe("Multiplex site · Toronto");
+    expect(toPublicAnalysis({ ...base, city: null }).label).toBe("Listing");
   });
 
-  it("encodes the listing key and ignores a call it doesn't know", () => {
-    const shaped = toPublicAnalysis({ ...base, mlsNumber: "X 50/1", verdict: "maybe", capRate: null });
-    expect(shaped.href).toBe("/listings/X%2050%2F1");
+  it("ignores a call it doesn't know", () => {
+    const shaped = toPublicAnalysis({ ...base, verdict: "maybe", capRate: null });
     expect(shaped.verdict).toBeNull();
     expect(shaped.capRate).toBeNull();
   });

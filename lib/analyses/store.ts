@@ -11,7 +11,7 @@ import { dealKeyFor, fsaOf } from "./dealKey";
 const KNOWN_LEARNED = new Set<string>([...LEARNABLE_FIELDS, RENT_RATIO_FIELD]);
 
 /** More new deals than this in a day is a script, not a person. */
-export const DAILY_NEW_ANALYSIS_CAP = 80;
+export const DAILY_NEW_ANALYSIS_CAP = 40;
 
 export interface AnalysisPayload {
   dealKey: string;
@@ -28,11 +28,14 @@ export interface AnalysisPayload {
   inputs: UnderwriterInputs;
   defaults: UnderwriterInputs;
   offerPrice?: number | null;
+  offerTarget?: string | null;
   verdict?: "pursue" | "watch" | "pass" | null;
   isPublic?: boolean;
 }
 
 export class AnalysisCapError extends Error {}
+/** Nothing was changed and no call was made: that is a page view, not an analysis. */
+export class NotAnAnalysisError extends Error {}
 
 /**
  * Log an analysis: one row per person per deal, latest numbers win. The
@@ -57,6 +60,7 @@ export async function saveAnalysis(actor: Actor, payload: AnalysisPayload): Prom
 
   const result = underwrite(payload.inputs);
   const edited = editedFields(payload.defaults, payload.inputs);
+  if (edited.length === 0 && !payload.verdict) throw new NotAnAnalysisError("nothing changed and no call made");
   const quality = analysisQuality(result, edited);
   const values = {
     userId: actor.user?.id ?? null,
@@ -83,19 +87,20 @@ export async function saveAnalysis(actor: Actor, payload: AnalysisPayload): Prom
     monthlyCashFlow: result.monthlyCashFlow,
     irr: result.irr,
     offerPrice: payload.offerPrice ?? null,
+    offerTarget: payload.offerPrice ? (payload.offerTarget?.slice(0, 20) ?? null) : null,
     quality: quality.score,
     eligible: quality.eligible,
     verdict: payload.verdict ?? null,
-    isPublic: payload.isPublic ?? true,
     engineVersion: INVESTMENT_METRIC_DEFAULTS.CALCULATION_VERSION,
   };
 
   const [analysis] = await db
     .insert(dealAnalyses)
-    .values({ actorKey: actor.key, dealKey: payload.dealKey, ...values })
+    .values({ actorKey: actor.key, dealKey: payload.dealKey, ...values, isPublic: payload.isPublic ?? true })
     .onConflictDoUpdate({
       target: [dealAnalyses.actorKey, dealAnalyses.dealKey],
-      set: { ...values, updatedAt: new Date() },
+      // A later autosave must never quietly re-publish something the person made private.
+      set: { ...values, updatedAt: new Date(), ...(payload.isPublic === undefined ? {} : { isPublic: payload.isPublic }) },
     })
     .returning();
   return { analysis, created: existing.length === 0 };

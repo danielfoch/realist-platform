@@ -11,6 +11,7 @@ import {
   type CalculatedInvestmentMetrics,
   type InvestmentMetricAssumptions,
 } from "./investmentMetrics";
+import { estimateClosingCosts } from "./closingCosts";
 
 export interface UnderwriterInputs {
   price: number;
@@ -47,6 +48,9 @@ export interface DealFacts {
   monthlyCondoFees?: number | null;
   /** True when monthlyRent is our estimate rather than the building's reported rent. */
   rentIsEstimate?: boolean;
+  /** Where it is — decides the land transfer tax in the closing costs. */
+  province?: string | null;
+  city?: string | null;
 }
 
 /** A market's learned value for one field, and how much evidence is behind it. */
@@ -124,7 +128,7 @@ export function houseDefaults(facts: DealFacts, learned: LearnedDefaults = {}): 
     annualInsurance: Math.round(price * 0.003),
     monthlyCondoFees: Math.max(0, Math.round(facts.monthlyCondoFees || 0)),
     monthlyUtilities: 0,
-    closingCosts: Math.round(price * (INVESTMENT_METRIC_DEFAULTS.DEFAULT_CLOSING_COST_PERCENT / 100)),
+    closingCosts: estimateClosingCosts(price, facts.province, facts.city, INVESTMENT_METRIC_DEFAULTS.DEFAULT_CLOSING_COST_PERCENT),
     holdPeriodYears: INVESTMENT_METRIC_DEFAULTS.DEFAULT_HOLD_PERIOD_YEARS,
     annualAppreciationPercent: learnedValue("annualAppreciationPercent", INVESTMENT_METRIC_DEFAULTS.DEFAULT_APPRECIATION_PERCENT),
     annualRentGrowthPercent: learnedValue("annualRentGrowthPercent", INVESTMENT_METRIC_DEFAULTS.DEFAULT_RENT_GROWTH_PERCENT),
@@ -226,10 +230,32 @@ export interface Verdict {
   detail: string;
 }
 
+/**
+ * How lenders look at it depends on size. One to four units is a residential mortgage: they qualify
+ * YOU, counting part of the rent as income — coverage isn't their test, though thin coverage is still
+ * thin. Five units and up is a commercial loan, sized to the property's own debt coverage (1.10 for
+ * CMHC MLI Select, 1.20–1.25 conventionally).
+ */
+export function coverageContext(units: number): { commercial: boolean; comfortable: string; thin: string } {
+  if (units >= 5) {
+    return {
+      commercial: true,
+      comfortable: "clears the 1.20 a conventional commercial lender sizes to (CMHC MLI Select needs 1.10)",
+      thin: "is under the 1.20 a conventional commercial lender sizes to — expect a smaller loan, or CMHC MLI Select at 1.10",
+    };
+  }
+  return {
+    commercial: false,
+    comfortable: "leaves real room for a vacancy or a rate reset",
+    thin: "is thin — a lender will qualify you on your income plus part of the rent, but one vacancy or a rate reset turns this negative",
+  };
+}
+
 /** A deterministic, numbers-only read of the deal. No model involved: it can't hallucinate. */
 export function readTheDeal(result: CalculatedInvestmentMetrics): Verdict {
   const cashFlow = result.monthlyCashFlow;
   const dscr = result.dscr;
+  const lender = coverageContext(result.assumptionsUsed.unitCount ?? 1);
   if (cashFlow == null || !result.assumptionsComplete) {
     return { tone: "neutral", headline: "Add a price and a rent to see the deal.", detail: "Everything else has a sensible starting value you can change." };
   }
@@ -238,14 +264,14 @@ export function readTheDeal(result: CalculatedInvestmentMetrics): Verdict {
     return {
       tone: "good",
       headline: `Pays for itself: +${monthly} after the mortgage.`,
-      detail: `Debt coverage of ${dscr?.toFixed(2)} clears the 1.20 most lenders want on a rental.`,
+      detail: `Rent covers the mortgage ${dscr?.toFixed(2)} times over, which ${lender.comfortable}.`,
     };
   }
   if (cashFlow >= 0) {
     return {
       tone: "neutral",
       headline: `Thin but positive: +${monthly}.`,
-      detail: `Debt coverage of ${dscr?.toFixed(2)} is under the 1.20 lenders like — one vacancy or a rate reset turns this negative.`,
+      detail: `Coverage of ${dscr?.toFixed(2)} ${lender.thin}.`,
     };
   }
   return {
@@ -270,15 +296,18 @@ export interface AnalysisQuality {
 /**
  * Volume is easy to fake; a plausible, worked analysis is not. An analysis is
  * eligible when it is complete and its numbers fall inside what real rentals
- * produce; its score rises with how much of it the person actually worked.
+ * produce; its score is how much of it the person actually worked (0.25 for a
+ * call on untouched numbers, 0.7 for one or two changes, 1 for three or more).
  */
 export function analysisQuality(result: CalculatedInvestmentMetrics, edited: readonly string[]): AnalysisQuality {
   const complete = result.assumptionsComplete;
   const within = (value: number | null, low: number, high: number) => value != null && value >= low && value <= high;
   const plausible = within(result.capRate, -10, 25) && within(result.cashOnCashReturn, -50, 60) && within(result.dscr, 0, 4);
-  const depth = edited.length === 0 ? 0.4 : edited.length <= 2 ? 0.7 : 1;
-  const score = (complete ? 0.2 : 0) + (plausible ? 0.5 : 0) + 0.3 * depth;
-  return { score: Math.round(score * 100) / 100, eligible: complete && plausible };
+  const eligible = complete && plausible;
+  // A call made on our numbers, untouched, is a glance: it counts, barely. Working the deal is what scores —
+  // which also makes minting deals to climb the board not worth anyone's time.
+  const depth = edited.length === 0 ? 0.25 : edited.length <= 2 ? 0.7 : 1;
+  return { score: eligible ? depth : 0, eligible };
 }
 
 /** Bounds a saved analysis must respect — the API rejects anything outside them. */

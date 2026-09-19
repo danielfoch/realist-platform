@@ -4,7 +4,7 @@ import { z } from "zod";
 import { resolveActor } from "@/lib/analyses/actor";
 import { BADGES, getActorStats } from "@/lib/analyses/community";
 import { dealKeyFor } from "@/lib/analyses/dealKey";
-import { AnalysisCapError, getAnalysis, listAnalyses, saveAnalysis } from "@/lib/analyses/store";
+import { AnalysisCapError, NotAnAnalysisError, getAnalysis, listAnalyses, saveAnalysis } from "@/lib/analyses/store";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
 import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { getDb } from "@/lib/db";
@@ -31,6 +31,7 @@ const schema = z.object({
   inputs: numbers,
   defaults: numbers,
   offerPrice: z.number().positive().max(5e8).nullish(),
+  offerTarget: z.enum(["breakeven", "dscr", "coc", "cap"]).nullish(),
   verdict: z.enum(["pursue", "watch", "pass"]).nullish(),
   isPublic: z.boolean().optional(),
 });
@@ -92,13 +93,15 @@ export async function POST(request: Request) {
   try {
     const actor = await resolveActor({ create: true });
     if (!actor) return Response.json({ ok: false, error: "Couldn't start a session." }, { status: 400 });
-    // Anonymous sessions are free to mint, so they're rate-limited by address. Members have a daily cap instead.
-    const ipKey = `analysis-ip:${clientIp(request)}`;
-    if (!actor.user) {
-      if (await isThrottled(ipKey, new Date(), 60)) {
+    // Anonymous sessions are free to mint, so NEW guest deals are rate-limited — by session and address
+    // together (a meetup room shares one address), and never for re-saving a deal already logged.
+    if (!actor.user && !(await getAnalysis(actor.key, dealKey))) {
+      const guestKey = `analysis:${clientIp(request)}:${actor.sessionId}`;
+      const addressKey = `analysis-ip:${clientIp(request)}`;
+      if ((await isThrottled(guestKey, new Date(), 25)) || (await isThrottled(addressKey, new Date(), 400))) {
         return Response.json({ ok: false, error: "That's a lot of deals at once — create a free account to keep going." }, { status: 429 });
       }
-      await recordFailure(ipKey);
+      await Promise.all([recordFailure(guestKey), recordFailure(addressKey)]);
     }
     const { analysis, created } = await saveAnalysis(actor, { ...parsed.data, dealKey, inputs, defaults });
     const stats = await getActorStats(actor.key);
@@ -151,6 +154,9 @@ export async function POST(request: Request) {
       badgeEarned: created && analysis.eligible ? (BADGES.find((badge) => badge.at === stats.deals)?.name ?? null) : null,
     });
   } catch (error) {
+    if (error instanceof NotAnAnalysisError) {
+      return Response.json({ ok: false, error: "Change a number or make your call on the deal — then it's an analysis." }, { status: 400 });
+    }
     if (error instanceof AnalysisCapError) {
       return Response.json({ ok: false, error: "That's a lot of deals for one day — pick it up again tomorrow." }, { status: 429 });
     }

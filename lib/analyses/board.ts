@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { analysisQuality, houseDefaults, underwrite } from "@/lib/underwriting/underwriter";
-import type { LeaderboardPeriod } from "./community";
+import { PROVEN_MEMBER, type LeaderboardPeriod } from "./community";
 import { safeCity } from "./profile";
 
 /**
@@ -69,7 +69,7 @@ export async function getBoardMarkets(period: LeaderboardPeriod, limit = 6): Pro
     SELECT mode() WITHIN GROUP (ORDER BY a.city) AS city, count(*)::int AS deals
     FROM deal_analyses a
     JOIN users u ON u.id = a.user_id
-    WHERE a.eligible AND u.show_on_leaderboard AND a.city IS NOT NULL ${since}
+    WHERE a.eligible AND u.show_on_leaderboard AND ${PROVEN_MEMBER} AND a.city IS NOT NULL ${since}
     GROUP BY lower(a.city)
     ORDER BY deals DESC, 1 ASC
     LIMIT ${limit + 4}

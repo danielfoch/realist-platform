@@ -36,7 +36,7 @@ function goToLogin() {
   // A full navigation on purpose: it drops the memoized viewer, which is stale
   // when this runs because a session expired.
   // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-  window.location.assign(`/login?next=${encodeURIComponent(here)}`);
+  window.location.assign(`/login?mode=signup&next=${encodeURIComponent(here)}`);
 }
 
 function BookmarkIcon({ filled, className }: { filled: boolean; className?: string }) {

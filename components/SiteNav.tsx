@@ -88,7 +88,7 @@ export function SiteNav() {
   const viewer = useViewer();
   const account = accountLink(viewer);
   // Members go straight to the tool; everyone else is one click from an account.
-  const cta = viewer ? { href: "/underwrite", label: "Underwrite a deal" } : { href: "/login?next=/listings", label: "Join free" };
+  const cta = viewer ? { href: "/underwrite", label: "Underwrite a deal" } : { href: "/login?mode=signup&next=/listings", label: "Join free" };
 
   useEffect(() => {
     if (!open) return;

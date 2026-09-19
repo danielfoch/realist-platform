@@ -30,10 +30,8 @@ export async function POST(request: Request) {
     const matches = await verifyPassword(parsed.data.password, user?.passwordHash);
     if (!user || !matches) {
       await Promise.all([recordFailure(emailKey), recordFailure(ipKey)]);
-      // Accounts that came over without a password (Google or link sign-in).
-      if (user && !user.passwordHash) {
-        return fail(401, "This account signs in with Google or an emailed link — no password is set.");
-      }
+      // One answer whether the address is unknown, passwordless, or the password is wrong:
+      // the form says how to get in without one, so nothing here needs to reveal which it was.
       return fail(401, WRONG);
     }
     await clearFailures(emailKey);

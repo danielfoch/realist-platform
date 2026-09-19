@@ -49,18 +49,18 @@ class GhlError extends Error {
   }
 }
 
-async function call(path: string, token: string, body: unknown): Promise<Record<string, unknown>> {
+async function call(path: string, token: string, body?: unknown, method: "POST" | "GET" | "PUT" = "POST"): Promise<Record<string, unknown>> {
   let response: Response;
   try {
     response = await fetch(`${apiBase()}${path}`, {
-      method: "POST",
+      method,
       headers: {
         Authorization: `Bearer ${token}`,
         Version: API_VERSION,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(body),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {
@@ -88,14 +88,30 @@ export async function deliverToGhl(lead: Lead, progress: Record<string, unknown>
   try {
     if (api) {
       if (typeof done.contactId !== "string") {
-        const result = await call("/contacts/upsert", api.token, { locationId: api.locationId, ...crmContact(lead) });
-        const contact = result.contact as { id?: unknown } | undefined;
-        if (typeof contact?.id !== "string") throw new GhlError("upsert returned no contact id", true);
-        done.contactId = contact.id;
+        // Look before writing. A web form is unverified: anyone who knows a contact's email could
+        // otherwise overwrite that contact's name and phone in the CRM. An existing contact only
+        // ever gains tags and a note (which records what was typed); a new one is created.
+        const query = `/contacts/search/duplicate?locationId=${encodeURIComponent(api.locationId)}&email=${encodeURIComponent(lead.email)}`;
+        const found = (await call(query, api.token, undefined, "GET")).contact as { id?: unknown } | null | undefined;
+        if (typeof found?.id === "string") {
+          done.contactId = found.id;
+          done.existing = true;
+        } else {
+          const result = await call("/contacts/upsert", api.token, { locationId: api.locationId, ...crmContact(lead) });
+          const contact = result.contact as { id?: unknown } | undefined;
+          if (typeof contact?.id !== "string") throw new GhlError("upsert returned no contact id", true);
+          done.contactId = contact.id;
+        }
       }
       if (!done.tagged) {
         await call(`/contacts/${done.contactId}/tags`, api.token, { tags: crmTags(lead) });
         done.tagged = true;
+      }
+      // Someone who turned our email off must stop getting the CRM's too. The tag above is the dependable
+      // signal (workflows can exclude it); the email do-not-disturb flag is set as well, best effort.
+      if (lead.kind === "unsubscribe" && !done.dndTried) {
+        done.dndTried = true;
+        await call(`/contacts/${done.contactId}`, api.token, { dndSettings: { Email: { status: "active", message: "Unsubscribed on realist.ca" } } }, "PUT").catch(() => {});
       }
       // A bare signup has nothing worth a note; everything else carries context.
       if (!done.noted && lead.kind !== "signup") {
