@@ -59,7 +59,9 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   surface (crawler, listings API, multiplex proforma, client) calls it. Never
   reimplement yield math inline.
 - **CREA DDF compliance on every listing surface**: listing-brokerage attribution,
-  MLS®/REALTOR® marks, "Powered by the REALTOR.ca DDF®" + last-updated stamp.
+  MLS®/REALTOR® marks, "Powered by the REALTOR.ca DDF®" + last-updated stamp. An email
+  is a listing surface too (the Monday note credits each brokerage and carries the DDF
+  line); a listing without a brokerage name is never shown anywhere.
 - **SEO**: every public page exports `generateMetadata` and renders JSON-LD via
   `lib/seo/jsonld.ts`. Sitemaps via `app/sitemap.ts`. Canonical base URL comes from
   `lib/brand.ts` `SITE_BASE_URL` (env `NEXT_PUBLIC_SITE_URL`, default realist.ca).
@@ -119,6 +121,9 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   (GoHighLevel, team email, Keypr) and retried until it lands. New kind of hand-raise =
   new entry in `LEAD_KINDS` + its tags in `lib/leads/crmPayload.ts`, not a new endpoint.
   GHL's upsert REPLACES tags, so tags only ever go through the additive tags endpoint.
+  Every step GHL delivery completes (contact, tags, opportunity, note) is recorded in the
+  delivery's `progress` before the next one runs — a retry resumes, it never repeats. A
+  new step follows the same rule.
   `/admin/leads` (role admin, or a VERIFIED address in `ADMIN_EMAILS`) shows what is
   connected, the outbox by destination, recent leads, and retries failures.
 - **Legacy members** arrive via `scripts/migrate-users.ts` (rules + tests in
