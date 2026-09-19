@@ -559,6 +559,16 @@ export function Underwriter({
       const body = (await response.json().catch(() => null)) as { ok?: boolean; path?: string; error?: string } | null;
       if (!response.ok || !body?.ok || !body.path) return setShareNote(body?.error ?? "Couldn't make a link just now.");
       const url = `${window.location.origin}${body.path}`;
+      // On a phone a link gets sent, not copied: hand it to the share sheet. Desktop copies.
+      if (typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
+        try {
+          await navigator.share({ title: "My underwrite on Realist", text: `My numbers on ${deal.address?.trim() || "this deal"} — disagree with one?`, url });
+          return setShareNote("Shared — anyone with the link can see these numbers.");
+        } catch (error) {
+          if ((error as Error).name === "AbortError") return setShareNote(null);
+          // The share sheet refused (the tap went stale while the link was made): copy instead.
+        }
+      }
       await navigator.clipboard.writeText(url).then(
         () => setShareNote("Link copied — anyone with it can see these numbers."),
         () => setShareNote(url),
