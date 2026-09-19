@@ -184,3 +184,32 @@ body {
 .band-night em {
   color: var(--color-accent);
 }
+
+/* Listings map: one price pin per card in the list beside it. */
+.listing-pin {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--color-hairline-strong);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms, color 120ms, transform 120ms;
+}
+.listing-pin:hover,
+.listing-pin-active {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: #fff;
+  z-index: 5;
+}
+.listing-pin:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}

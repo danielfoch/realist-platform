@@ -48,8 +48,14 @@ export interface ListingSearchResponse {
   count: number;
   page: number;
   pageSize: number;
-  /** "snapshots" when the page came from our own crawl rather than the live feed. */
-  source?: "snapshots";
+  /**
+   * "snapshots" when the page came from our own crawl rather than the live feed; "live-ranked" when a
+   * yield sort had no index to read and ranked the newest `pool` live listings instead.
+   */
+  source?: "snapshots" | "live-ranked";
+  pool?: number;
+  /** What CREA's feed has made us give up (names only). */
+  feed?: { droppedFields: string[]; droppedFilters: string[]; cityMatch: string };
 }
 
 /** Tour/floor-plan generators that show up in Media but aren't photos. */

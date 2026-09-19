@@ -20,6 +20,8 @@ export interface YieldSearchParams {
   minUnits?: number;
   maxUnits?: number;
   minYield?: number;
+  /** A map area. */
+  bounds?: { north: number; south: number; east: number; west: number };
   /** Several markets at once (a member's buy box). */
   cities?: string[];
   /** Listings to leave out — ones the person has already underwritten. */
@@ -46,6 +48,7 @@ export async function searchByYield(params: YieldSearchParams): Promise<{ listin
       sql`s.net_yield BETWEEN ${params.minYield ?? 0} AND 25`,
       params.city ? sql`lower(s.city) = ${params.city.trim().toLowerCase()}` : null,
       provinceName ? sql`(s.province ILIKE ${provinceName} OR s.province ILIKE ${province ?? ""})` : null,
+      params.bounds ? sql`s.latitude BETWEEN ${params.bounds.south} AND ${params.bounds.north} AND s.longitude BETWEEN ${params.bounds.west} AND ${params.bounds.east}` : null,
       params.minPrice ? sql`s.list_price >= ${params.minPrice}` : null,
       params.maxPrice ? sql`s.list_price <= ${params.maxPrice}` : null,
       params.minBeds ? sql`s.bedrooms_total >= ${params.minBeds}` : null,

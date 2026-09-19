@@ -16,9 +16,8 @@ const DOORS: Array<{ href: string; label: string; match: string[]; children: Arr
     label: "Find deals",
     match: ["/listings", "/deals"],
     children: [
-      { href: "/listings", label: "Listings", note: "Every listing in Canada, already underwritten" },
+      { href: "/listings", label: "Listings", note: "Every listing in Canada on one map, already underwritten" },
       { href: "/deals", label: "Motivated sellers", note: "Power of sale, VTB, estate — scored daily" },
-      { href: "/deals/map", label: "Deal map", note: "Rents and deals on one map" },
     ],
   },
   {

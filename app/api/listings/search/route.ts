@@ -11,6 +11,8 @@ export const maxDuration = 60;
 
 /** Cards per page — one DDF page per request, well under the API's 100 cap. */
 const PAGE_SIZE = 24;
+/** How many of the newest matching listings are underwritten and ranked when the yield index has nothing for a search. */
+const LIVE_RANK_POOL = 100;
 
 const boundsSchema = z
   .object({
@@ -53,21 +55,23 @@ export async function POST(request: NextRequest) {
   }
   const params = parsed.data;
 
-  // Yield-sorted browse reads our own snapshots; it doesn't need the live feed to be up.
-  if (params.sort === "yield" || params.minYield) {
+  // Yield-sorted browse reads our own index (the crawl's snapshots); it doesn't need the live feed to be up.
+  const wantsYield = params.sort === "yield" || Boolean(params.minYield);
+  if (wantsYield) {
     try {
       const { listings, count } = await searchByYield({ ...params, pageSize: PAGE_SIZE });
-      return NextResponse.json({ listings, count, page: params.page, pageSize: PAGE_SIZE, sort: "yield" });
+      // An empty index is not an empty market. Where the crawl hasn't reached yet (a new database,
+      // a city it hasn't got to) fall through and rank what the live feed has, and say so.
+      if (count > 0 || !isDdfConfigured()) return NextResponse.json({ listings, count, page: params.page, pageSize: PAGE_SIZE, sort: "yield" });
     } catch (error) {
       console.error("[api/listings/search] yield search:", (error as Error).message);
-      return NextResponse.json({ error: "Listing search failed — please try again." }, { status: 502 });
+      if (!isDdfConfigured()) return NextResponse.json({ error: "Listing search failed — please try again." }, { status: 502 });
     }
   }
 
   // The door never closes because CREA's feed is down: the last week of our own
   // crawl is a complete, already-underwritten set of active listings.
   const fromSnapshots = async () => {
-    if (params.bounds) return null;
     try {
       const { listings, count } = await searchByYield({ ...params, pageSize: PAGE_SIZE });
       return count > 0 ? NextResponse.json({ listings, count, page: params.page, pageSize: PAGE_SIZE, sort: "yield", source: "snapshots" }) : null;
@@ -97,8 +101,9 @@ export async function POST(request: NextRequest) {
       excludeBusinessSales: true,
       excludeParking: true,
       excludeVacantLand: true,
-      top: PAGE_SIZE,
-      skip: (params.page - 1) * PAGE_SIZE,
+      // Ranking by yield without the index: take a deeper cut of the newest matches, underwrite them all, keep the best.
+      top: wantsYield ? LIVE_RANK_POOL : PAGE_SIZE,
+      skip: wantsYield ? 0 : (params.page - 1) * PAGE_SIZE,
     });
 
     // Pre-underwrite every card. One rent memo per request so a page of
@@ -124,6 +129,25 @@ export async function POST(request: NextRequest) {
         }),
       )
     ).filter(Boolean);
+
+    if (wantsYield) {
+      type Ranked = { underwrite: { netYield: number | null } | null };
+      const floor = params.minYield ?? -Infinity;
+      const ranked = (listings as Ranked[])
+        .filter((listing) => listing.underwrite?.netYield != null && listing.underwrite.netYield >= floor && listing.underwrite.netYield <= 25)
+        .sort((a, b) => (b.underwrite!.netYield as number) - (a.underwrite!.netYield as number));
+      return NextResponse.json({
+        listings: ranked.slice((params.page - 1) * PAGE_SIZE, params.page * PAGE_SIZE),
+        count: ranked.length,
+        page: params.page,
+        pageSize: PAGE_SIZE,
+        sort: "yield",
+        // The honest label: best of the newest, not best of the market — until the index reaches this search.
+        source: "live-ranked",
+        pool: LIVE_RANK_POOL,
+        feed: ddfAdaptations(),
+      });
+    }
 
     return NextResponse.json({
       listings,

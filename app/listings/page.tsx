@@ -22,26 +22,9 @@ export default function ListingsPage() {
         )}
       />
 
-      <section className="border-b border-hairline bg-surface">
-        <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            Canada-wide · updated continuously
-          </p>
-          <h1 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Listings, pre-underwritten.
-          </h1>
-          <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
-            Every active MLS® listing in the feed gets the same treatment: a
-            rent estimate from our national rent database, gross and net yield,
-            and estimated monthly cash flow at 20% down. The numbers an
-            investor runs before booking a showing — already run.
-          </p>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <ListingsExplorer />
-      </section>
+      {/* No hero: like the listing sites people already know, the page is the map and the list. The
+          H1 lives inside the list pane. */}
+      <ListingsExplorer />
     </>
   );
 }
