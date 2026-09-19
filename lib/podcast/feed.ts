@@ -119,9 +119,10 @@ async function fetchAndParseFeed(): Promise<PodcastEpisode[]> {
       "User-Agent": "Mozilla/5.0 (compatible; Realist/1.0)",
       Accept: "application/rss+xml, application/xml, text/xml, */*",
     },
-    // Next.js fetch cache would double-cache under the in-memory layer; keep
-    // one cache with one TTL.
-    cache: "no-store",
+    // No `cache` option on purpose. "no-store" makes every page that reads the feed render
+    // per request (it did: /podcast re-downloaded 400 episodes for each visitor). Left at the
+    // default, the feed is fetched when the page is regenerated — the page's `revalidate` is
+    // the one TTL — and nothing is written to the data cache (the feed is over its 2MB limit).
   });
   if (!response.ok) throw new Error(`RSS fetch failed: ${response.status}`);
   return parseFeed(await response.text());

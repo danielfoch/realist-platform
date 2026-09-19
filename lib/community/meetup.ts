@@ -338,8 +338,8 @@ const ICAL_FETCH_HEADERS = {
 async function fetchEventsFromIcal(urlname: string): Promise<MeetupEvent[]> {
   const response = await fetch(`https://www.meetup.com/${urlname}/events/ical/`, {
     headers: ICAL_FETCH_HEADERS,
-    // One cache with one TTL (the in-memory layer below), same as the podcast feed.
-    cache: "no-store",
+    // No `cache` option on purpose: "no-store" would make /community render per request.
+    // At the default it is fetched when the page regenerates (its `revalidate` is the TTL).
   });
   if (!response.ok) throw new Error(`Meetup iCal fetch failed: ${response.status}`);
   return parseIcsEvents(await response.text(), urlname);
@@ -391,7 +391,6 @@ async function fetchEventsFromGraphql(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ query: MEETUP_GQL_QUERY, variables: { urlname } }),
-    cache: "no-store",
   });
   if (!response.ok) throw new Error(`Meetup GraphQL failed: ${response.status}`);
 

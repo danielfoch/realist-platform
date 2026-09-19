@@ -114,7 +114,8 @@ export async function getMeetupAccessToken(now: Date = new Date()): Promise<stri
         grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
         assertion,
       }).toString(),
-      cache: "no-store",
+      // A POST is never cached by default; "no-store" here only served to force every page
+      // that lists meetups into per-request rendering.
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`Meetup token request failed: HTTP ${response.status}`);
