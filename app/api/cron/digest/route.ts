@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { dealsForBox, getBuyBox } from "@/lib/analyses/buyBox";
 import { badgeFor, getActorStats } from "@/lib/analyses/community";
+import { listingStreetLine } from "@/components/listings/listingDisplay";
 import { nextMeetupFor } from "@/lib/community/nextMeetup";
 import { unauthorizedCron } from "@/lib/cron";
 import { getDb } from "@/lib/db";
@@ -42,6 +44,8 @@ export async function GET(request: NextRequest) {
       const ahead = place && place.rank > 1 ? board[place.rank - 2] : null;
       const stats = await getActorStats(`user:${member.id}`);
       const meetup = await nextMeetupFor(member.city);
+      const box = await getBuyBox(member.id).catch(() => null);
+      const fits = box ? await dealsForBox(member.id, box, 3).catch(() => []) : [];
       const email = composeWeeklyDigest({
         firstName: member.name?.trim().split(/\s+/)[0] ?? null,
         stats,
@@ -56,6 +60,17 @@ export async function GET(request: NextRequest) {
               when: new Intl.DateTimeFormat("en-CA", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: meetup.timezone ?? "America/Toronto" }).format(new Date(meetup.startsAt)),
             }
           : null,
+        // A listing without its brokerage is never shown — not on the site, not in an email.
+        fits: fits
+          .filter((listing) => listing.listOfficeName)
+          .map((listing) => ({
+            street: listingStreetLine(listing.address) || `MLS® ${listing.mlsNumber}`,
+            city: listing.address.city,
+            price: listing.listPrice,
+            netYield: listing.underwrite?.netYield ?? null,
+            url: `/listings/${encodeURIComponent(listing.mlsNumber)}`,
+            brokerage: listing.listOfficeName as string,
+          })),
         unsubscribeUrl,
         postalAddress,
       });

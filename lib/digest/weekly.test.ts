@@ -74,3 +74,24 @@ describe("unsubscribe tokens", () => {
     expect(verifyUnsubscribeToken("user-1", "anything")).toBe(false);
   });
 });
+
+describe("listings that fit the member's box", () => {
+  const fits = [{ street: "48 Barton St E", city: "Hamilton", price: 640000, netYield: 6.5, url: "/listings/H7777777", brokerage: "Steel City Realty, Brokerage" }];
+
+  it("appear with their brokerage and CREA's marks — listing content carries them everywhere", () => {
+    const email = composeWeeklyDigest({ ...base, fits });
+    for (const part of [email.text, email.html]) {
+      expect(part).toContain("48 Barton St E, Hamilton");
+      expect(part).toContain("Courtesy of Steel City Realty, Brokerage");
+      expect(part).toContain("REALTOR.ca Data Distribution Facility");
+      expect(part).toContain("https://realist.ca/listings/H7777777");
+    }
+    expect(email.text).toContain("$640,000 · 6.5% net yield");
+  });
+
+  it("leave no trace, and no CREA line, when there are none", () => {
+    const email = composeWeeklyDigest(base);
+    expect(email.text).not.toContain("buy box");
+    expect(email.html).not.toContain("Data Distribution Facility");
+  });
+});

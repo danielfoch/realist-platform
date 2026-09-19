@@ -281,3 +281,52 @@ describe("the receipt a person gets", () => {
     expect(wantsReceipt("offer")).toBe(true);
   });
 });
+
+describe("GoHighLevel opportunities", () => {
+  function stub(existing: string | null = null) {
+    const calls: Array<{ url: string; method: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        const path = String(url).replace("https://services.leadconnectorhq.com", "").split("?")[0];
+        const body = (init.body ? JSON.parse(String(init.body)) : {}) as Record<string, unknown>;
+        calls.push({ url: path, method: String(init.method), body });
+        const json = path === "/contacts/search/duplicate" ? { contact: existing ? { id: existing } : null } : path === "/contacts/upsert" ? { contact: { id: "c-1" } } : path === "/opportunities/" ? { opportunity: { id: "opp-1" } } : {};
+        return new Response(JSON.stringify(json), { status: 200 });
+      }),
+    );
+    return calls;
+  }
+
+  it("opens one on the pipeline for a showing — named for the deal and the person, valued at the price", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    vi.stubEnv("GHL_PIPELINE_ID", "pipe-1");
+    vi.stubEnv("GHL_PIPELINE_STAGE_ID", "stage-new");
+    const calls = stub();
+    const result = await deliverToGhl(lead({ kind: "showing" }), {});
+    const created = calls.find((call) => call.url === "/opportunities/")!;
+    expect(created.body).toMatchObject({
+      locationId: "loc-1", pipelineId: "pipe-1", pipelineStageId: "stage-new", status: "open", contactId: "c-1",
+      name: "Showing — 12 Main St, Toronto (Dana Tester)", monetaryValue: 899000,
+    });
+    expect(result).toMatchObject({ outcome: "sent", progress: { opportunityId: "opp-1" } });
+    // A retry carrying that progress never opens a second one.
+    const again = stub("c-1");
+    await deliverToGhl(lead({ kind: "showing" }), { contactId: "c-1", tagged: true, noted: true, opportunityId: "opp-1" });
+    expect(again.some((call) => call.url === "/opportunities/")).toBe(false);
+  });
+
+  it("stays out of the pipeline for anything that isn't a deal in the making, or when no pipeline is set", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    const withoutPipeline = stub();
+    await deliverToGhl(lead({ kind: "offer" }), {});
+    expect(withoutPipeline.some((call) => call.url === "/opportunities/")).toBe(false);
+
+    vi.stubEnv("GHL_PIPELINE_ID", "pipe-1");
+    const rsvp = stub();
+    await deliverToGhl(lead({ kind: "meetup_rsvp", intent: "general" }), {});
+    expect(rsvp.some((call) => call.url === "/opportunities/")).toBe(false);
+  });
+});

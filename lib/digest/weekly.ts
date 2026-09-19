@@ -22,6 +22,8 @@ export interface DigestInput {
   board: Array<{ rank: number; name: string; city: string | null; deals: number }>;
   badge: { name: string; next: { name: string; at: number } | null } | null;
   meetup: { title: string; when: string } | null;
+  /** Active listings inside the member's learned buy box that they haven't looked at. */
+  fits?: Array<{ street: string; city: string; price: number; netYield: number | null; url: string; brokerage: string }>;
   unsubscribeUrl: string;
   postalAddress: string;
 }
@@ -64,6 +66,11 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
       : `You sat last week out. All time you've underwritten ${plural(input.stats.deals, "deal")}.`;
   const nudge = digestNudge(input);
   const boardLines = input.board.slice(0, 5).map((row) => `${row.rank}. ${row.name}${row.city ? ` (${row.city})` : ""} — ${plural(row.deals, "deal")}`);
+  const fits = (input.fits ?? []).slice(0, 3);
+  const fitLine = (fit: NonNullable<DigestInput["fits"]>[number]) =>
+    `${fit.street}, ${fit.city} — $${Math.round(fit.price).toLocaleString("en-CA")}${fit.netYield != null ? ` · ${fit.netYield.toFixed(1)}% net yield` : ""} · Courtesy of ${fit.brokerage}`;
+  // Listing content carries CREA's marks wherever it appears, email included.
+  const ddfLine = "MLS® listing content powered by the REALTOR.ca Data Distribution Facility (DDF®). MLS®, REALTOR® and associated logos are trademarks of CREA.";
   const listings = `${SITE_BASE_URL}/listings`;
   const leaderboard = `${SITE_BASE_URL}/community/leaderboard`;
 
@@ -75,6 +82,9 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
     "",
     `Find a deal to underwrite: ${listings}`,
     "",
+    fits.length ? `New in your buy box (${fits.length}):` : null,
+    ...fits.flatMap((fit) => [fitLine(fit), `${SITE_BASE_URL}${fit.url}`]),
+    fits.length ? "" : null,
     boardLines.length ? "Last week's top five:" : null,
     ...boardLines,
     boardLines.length ? `The full board: ${leaderboard}` : null,
@@ -82,6 +92,7 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
     input.meetup ? `Near you: ${input.meetup.title}, ${input.meetup.when}. ${SITE_BASE_URL}/community` : null,
     "",
     "—",
+    fits.length ? ddfLine : null,
     `Realist · ${input.postalAddress.trim()}`,
     `You're getting this because you asked for Realist updates. Unsubscribe: ${input.unsubscribeUrl}`,
   ]
@@ -95,6 +106,13 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
   <p style="margin:0 0 20px;font-weight:600">${escapeHtml(nudge)}</p>
   <p style="margin:0 0 28px"><a href="${listings}" style="background:#be1730;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 18px;border-radius:3px;display:inline-block">Find a deal to underwrite</a></p>
   ${
+    fits.length
+      ? `<p style="font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#696969;margin:0 0 6px">New in your buy box</p>
+  ${fits.map((fit) => `<p style="margin:0 0 8px;font-size:14px"><a href="${SITE_BASE_URL}${fit.url}" style="color:#be1730;font-weight:600">${escapeHtml(fit.street)}, ${escapeHtml(fit.city)}</a><br><span style="color:#4d4d4d">$${Math.round(fit.price).toLocaleString("en-CA")}${fit.netYield != null ? ` · ${fit.netYield.toFixed(1)}% net yield` : ""} · Courtesy of ${escapeHtml(fit.brokerage)}</span></p>`).join("\n  ")}
+  <p style="margin:0 0 24px"></p>`
+      : ""
+  }
+  ${
     boardLines.length
       ? `<p style="font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#696969;margin:0 0 6px">Last week's top five</p>
   ${boardLines.map((line) => `<p style="margin:0 0 4px;font-size:14px">${escapeHtml(line)}</p>`).join("\n  ")}
@@ -107,7 +125,7 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
   <p style="margin:0 0 24px;font-size:14px">${escapeHtml(input.meetup.title)} — ${escapeHtml(input.meetup.when)}. <a href="${SITE_BASE_URL}/community" style="color:#be1730">Save your spot →</a></p>`
       : ""
   }
-  <p style="border-top:1px solid #dadada;padding-top:14px;margin:0;font-size:12px;line-height:1.6;color:#696969">Realist · ${escapeHtml(input.postalAddress.trim())}<br>You're getting this because you asked for Realist updates. <a href="${input.unsubscribeUrl}" style="color:#696969">Unsubscribe</a></p>
+  <p style="border-top:1px solid #dadada;padding-top:14px;margin:0;font-size:12px;line-height:1.6;color:#696969">${fits.length ? `${escapeHtml(ddfLine)}<br><br>` : ""}Realist · ${escapeHtml(input.postalAddress.trim())}<br>You're getting this because you asked for Realist updates. <a href="${input.unsubscribeUrl}" style="color:#696969">Unsubscribe</a></p>
 </div>`;
 
   return { subject: digestSubject(input), text, html };

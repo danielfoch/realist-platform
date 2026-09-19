@@ -36,6 +36,25 @@ function webhookUrl(): string | null {
   return url && url.startsWith("https://") ? url : null;
 }
 
+/** Requests that are deals in the making — each opens an opportunity so it can be worked stage by stage. */
+const OPPORTUNITY_KINDS = new Set(["showing", "offer", "financing"]);
+
+/**
+ * Optional. With GHL_PIPELINE_ID set (and, to land in a particular column,
+ * GHL_PIPELINE_STAGE_ID), a showing, offer or financing request also opens an
+ * opportunity on that pipeline. Without it nothing changes.
+ */
+function pipeline(): { pipelineId: string; stageId: string | null } | null {
+  const pipelineId = process.env.GHL_PIPELINE_ID?.trim();
+  return pipelineId ? { pipelineId, stageId: process.env.GHL_PIPELINE_STAGE_ID?.trim() || process.env.GHL_STAGE_ID?.trim() || null } : null;
+}
+
+export function opportunityName(lead: Pick<Lead, "kind" | "name" | "email" | "property" | "city">): string {
+  const what = lead.kind === "showing" ? "Showing" : lead.kind === "offer" ? "Offer" : "Financing";
+  const where = lead.property?.address ?? (lead.property?.mlsNumber ? `MLS® ${lead.property.mlsNumber}` : lead.city) ?? "deal";
+  return `${what} — ${where} (${lead.name?.trim() || lead.email})`.slice(0, 200);
+}
+
 export function ghlConfigured(): boolean {
   return Boolean(apiCredentials() || webhookUrl());
 }
@@ -112,6 +131,21 @@ export async function deliverToGhl(lead: Lead, progress: Record<string, unknown>
       if (lead.kind === "unsubscribe" && !done.dndTried) {
         done.dndTried = true;
         await call(`/contacts/${done.contactId}`, api.token, { dndSettings: { Email: { status: "active", message: "Unsubscribed on realist.ca" } } }, "PUT").catch(() => {});
+      }
+      const board = pipeline();
+      if (board && OPPORTUNITY_KINDS.has(lead.kind) && !done.opportunityId) {
+        const created = await call("/opportunities/", api.token, {
+          locationId: api.locationId,
+          pipelineId: board.pipelineId,
+          ...(board.stageId ? { pipelineStageId: board.stageId } : {}),
+          name: opportunityName(lead),
+          status: "open",
+          contactId: done.contactId,
+          ...(lead.property?.price ? { monetaryValue: Math.round(lead.property.price) } : {}),
+        });
+        const opportunity = created.opportunity as { id?: unknown } | undefined;
+        // Recorded either way, so a retry can never open a second one.
+        done.opportunityId = typeof opportunity?.id === "string" ? opportunity.id : "created";
       }
       // A bare signup has nothing worth a note; everything else carries context.
       if (!done.noted && lead.kind !== "signup") {

@@ -21,6 +21,7 @@ Set in Vercel (Production + Preview):
 |---|---|
 | `GHL_API_KEY` | GoHighLevel → Settings → **Private Integrations** → new token with **contacts: write** |
 | `GHL_LOCATION_ID` | The sub-account's location id (Settings → Business Profile) |
+| `GHL_PIPELINE_ID`, `GHL_PIPELINE_STAGE_ID` | *(optional)* every showing, offer and financing request also opens an **opportunity** on this pipeline, named for the deal and the person, valued at the price — so deals are worked in stages, not fished out of a contact list. The token then also needs **opportunities: write** |
 | `GHL_WEBHOOK_URL` | *(optional, instead of or as well as the two above)* an **Inbound Webhook** workflow trigger URL — same field names the old app sent |
 | `ACQUISITION_LEAD_EMAILS` | who is emailed for offers, showings, underwriting help (comma-separated) |
 | `FINANCING_LEAD_EMAILS` | who is emailed for financing (acquisition is copied) |
@@ -96,8 +97,9 @@ npx vercel --prod
 ## 8. The Monday note (optional, off by default)
 
 `/api/cron/digest` emails each consenting member who has underwritten a deal: where they
-finished last week, the one thing that keeps their streak or earns their next badge, last
-week's top five, and the next meetup in their city. It sends **nothing** until all of these
+finished last week, the one thing that keeps their streak or earns their next badge, up to
+three new listings inside their learned buy box (each credited to its listing brokerage, with
+CREA's DDF® line in the footer), last week's top five, and the next meetup in their city. It sends **nothing** until all of these
 are set: `WEEKLY_DIGEST_ENABLED=1`, `RESEND_API_KEY`, and `EMAIL_POSTAL_ADDRESS` (CASL needs a
 mailing address in every commercial email). Unsubscribe is one press, works without signing
 in, and is honoured by mail providers' own unsubscribe button.
