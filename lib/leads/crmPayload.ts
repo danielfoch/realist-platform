@@ -139,7 +139,10 @@ export function leadSummaryLines(lead: Lead): string[] {
     for (const item of Array.isArray(brief.watch) ? (brief.watch as unknown[]).slice(0, 4) : []) lines.push(`  Their concern: ${String(item)}`);
   }
 
-  const numbers = context.numbers as Record<string, unknown> | undefined;
+  // `numbers` is only ever set by the server, from the person's saved analysis. What a form
+  // sent rides along as `claimedNumbers` and is printed as exactly that.
+  const verified = context.numbers && typeof context.numbers === "object";
+  const numbers = (verified ? context.numbers : context.claimedNumbers) as Record<string, unknown> | undefined;
   if (numbers && typeof numbers === "object") {
     const parts = [
       typeof numbers.capRate === "number" ? `cap ${numbers.capRate.toFixed(1)}%` : null,
@@ -148,7 +151,7 @@ export function leadSummaryLines(lead: Lead): string[] {
       typeof numbers.offerPrice === "number" ? `target offer ${money(numbers.offerPrice)}` : null,
       typeof numbers.downPaymentPercent === "number" ? `${numbers.downPaymentPercent}% down` : null,
     ].filter(Boolean);
-    if (parts.length) lines.push(`Their numbers: ${parts.join(" · ")}`);
+    if (parts.length) lines.push(`${verified ? "Their numbers" : "On their screen (from the form, not a saved analysis)"}: ${parts.join(" · ")}`);
   }
 
   if (lead.message) lines.push(`Message: ${lead.message}`);

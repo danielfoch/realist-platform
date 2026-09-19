@@ -3,11 +3,12 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/current";
 import { crossOriginResponse, isSameOrigin, safeNextPath } from "@/lib/auth/origin";
 import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { leads } from "@/lib/db/schema";
 import { emailConfigured } from "@/lib/email";
-import { briefFor } from "@/lib/leads/brief";
+import { briefFor, trustedProperty } from "@/lib/leads/brief";
+import { formContext } from "@/lib/leads/formContext";
 import { captureLead } from "@/lib/leads/capture";
 import { deliverDue } from "@/lib/leads/outbox";
 
@@ -85,15 +86,20 @@ export async function POST(request: Request) {
     const [{ count }] = await getDb()
       .select({ count: sql<number>`count(*)::int` })
       .from(leads)
-      .where(and(eq(leads.email, input.email.trim().toLowerCase()), gt(leads.createdAt, new Date(Date.now() - 86_400_000))));
+      // Only what they sent themselves: the CRM events we raise about a member (their buy box, a first underwrite)
+      // must never be what stops that member booking a showing.
+      .where(and(eq(leads.email, input.email.trim().toLowerCase()), inArray(leads.kind, [...FORM_KINDS]), gt(leads.createdAt, new Date(Date.now() - 86_400_000))));
     if (count >= DAILY_LEADS_PER_EMAIL) {
       return Response.json({ ok: false, error: "We have your requests from today — someone will be in touch. For anything urgent, reply to our email." }, { status: 429 });
     }
     const user = await getCurrentUser();
     // For a request about a deal, attach what this person underwrote and wants checked — from OUR records.
     const dealRequest = input.kind === "showing" || input.kind === "offer" || input.kind === "financing" || input.kind === "underwriting_help";
-    const context = dealRequest ? { ...input.context, ...(await briefFor(input.property)) } : input.context;
-    const { lead, duplicate } = await captureLead({ ...input, context, userId: user?.id ?? null });
+    // The form's context first, stripped of everything only we may assert; then what our records say.
+    const fromForm = formContext(input.context);
+    const context = dealRequest ? { ...fromForm, ...(await briefFor(input.property, input.email)) } : fromForm;
+    const property = await trustedProperty(input.property);
+    const { lead, duplicate } = await captureLead({ ...input, property: property ?? undefined, context, userId: user?.id ?? null });
     // Deliver once the response is on its way: the person never waits on the CRM.
     if (!duplicate) after(() => deliverDue({ leadId: lead.id }).catch((error) => console.error("[leads] inline delivery:", error)));
     // Tells the form whether to say "check your inbox".

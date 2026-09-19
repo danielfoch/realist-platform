@@ -132,21 +132,6 @@ export async function deliverToGhl(lead: Lead, progress: Record<string, unknown>
         done.dndTried = true;
         await call(`/contacts/${done.contactId}`, api.token, { dndSettings: { Email: { status: "active", message: "Unsubscribed on realist.ca" } } }, "PUT").catch(() => {});
       }
-      const board = pipeline();
-      if (board && OPPORTUNITY_KINDS.has(lead.kind) && !done.opportunityId) {
-        const created = await call("/opportunities/", api.token, {
-          locationId: api.locationId,
-          pipelineId: board.pipelineId,
-          ...(board.stageId ? { pipelineStageId: board.stageId } : {}),
-          name: opportunityName(lead),
-          status: "open",
-          contactId: done.contactId,
-          ...(lead.property?.price ? { monetaryValue: Math.round(lead.property.price) } : {}),
-        });
-        const opportunity = created.opportunity as { id?: unknown } | undefined;
-        // Recorded either way, so a retry can never open a second one.
-        done.opportunityId = typeof opportunity?.id === "string" ? opportunity.id : "created";
-      }
       // A bare signup has nothing worth a note; everything else carries context.
       if (!done.noted && lead.kind !== "signup") {
         await call(`/contacts/${done.contactId}/notes`, api.token, { body: leadSummaryLines(lead).join("\n") });
@@ -168,7 +153,47 @@ export async function deliverToGhl(lead: Lead, progress: Record<string, unknown>
       if (!response.ok) throw new GhlError(`webhook HTTP ${response.status}`, response.status === 429 || response.status >= 500);
       done.webhooked = true;
     }
-    return { outcome: "sent", progress: done, externalId: typeof done.contactId === "string" ? done.contactId : null };
+    // Last, because it is optional and the likeliest to be refused (a wrong stage id, a pipeline that
+    // doesn't allow a second opportunity for one contact): by now the contact, tags, note and workflow
+    // have all landed, and nothing below can take them back.
+    const board = pipeline();
+    if (api && board && OPPORTUNITY_KINDS.has(lead.kind) && typeof done.contactId === "string" && !done.opportunityId && !done.opportunityError) {
+      try {
+        const name = opportunityName(lead);
+        // A create that timed out may still have landed. Look before opening another.
+        if (done.opportunityTried) {
+          const query = `/opportunities/search?location_id=${encodeURIComponent(api.locationId)}&pipeline_id=${encodeURIComponent(board.pipelineId)}&contact_id=${encodeURIComponent(done.contactId)}&limit=20`;
+          const found = await call(query, api.token, undefined, "GET").catch(() => null);
+          const match = (Array.isArray(found?.opportunities) ? (found.opportunities as Array<{ id?: unknown; name?: unknown }>) : []).find((row) => row.name === name);
+          if (typeof match?.id === "string") done.opportunityId = match.id;
+        }
+        if (!done.opportunityId) {
+          done.opportunityTried = true;
+          const created = await call("/opportunities/", api.token, {
+            locationId: api.locationId,
+            pipelineId: board.pipelineId,
+            ...(board.stageId ? { pipelineStageId: board.stageId } : {}),
+            name,
+            status: "open",
+            contactId: done.contactId,
+            ...(lead.property?.price ? { monetaryValue: Math.round(lead.property.price) } : {}),
+          });
+          const opportunity = created.opportunity as { id?: unknown } | undefined;
+          done.opportunityId = typeof opportunity?.id === "string" ? opportunity.id : "created";
+        }
+      } catch (error) {
+        // Busy or unreachable: try again later. Refused outright: say why on /admin/leads and move on —
+        // the lead itself is delivered.
+        if (!(error instanceof GhlError) || error.retryable) throw error;
+        done.opportunityError = error.message;
+      }
+    }
+    return {
+      outcome: "sent",
+      progress: done,
+      externalId: typeof done.contactId === "string" ? done.contactId : null,
+      note: typeof done.opportunityError === "string" ? `delivered, but no opportunity was opened — ${done.opportunityError}` : null,
+    };
   } catch (error) {
     const known = error instanceof GhlError;
     return {

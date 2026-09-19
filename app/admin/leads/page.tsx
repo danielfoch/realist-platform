@@ -95,7 +95,7 @@ function LeadRow({ lead, deliveries }: LeadWithDeliveries) {
         {deliveries.map((delivery) => (
           <span key={delivery.id} className={delivery.status === "failed" ? "font-semibold text-bad" : delivery.status === "sent" ? "text-ink" : ""} title={delivery.lastError ?? undefined}>
             {DESTINATION_LABELS[delivery.destination] ?? delivery.destination}: {delivery.status}
-            {delivery.status === "failed" && delivery.lastError ? ` (${delivery.lastError.slice(0, 80)})` : ""}
+            {(delivery.status === "failed" || delivery.status === "sent") && delivery.lastError ? ` (${delivery.lastError.slice(0, 120)})` : ""}
           </span>
         ))}
       </p>

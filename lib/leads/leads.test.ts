@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Lead } from "@/lib/db/schema";
 import { crmContact, crmTags, leadSummaryLines, webhookPayload } from "./crmPayload";
+import { formContext } from "./formContext";
 import { deliverToGhl } from "./ghl";
 import { deliverToKeypr, qualifiesForKeypr } from "./keypr";
 import { MAX_ATTEMPTS, retryDelayMs } from "./outbox";
@@ -317,6 +318,51 @@ describe("GoHighLevel opportunities", () => {
     expect(again.some((call) => call.url === "/opportunities/")).toBe(false);
   });
 
+  it("never costs a lead its note: a refused opportunity is recorded and the lead is still delivered", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    vi.stubEnv("GHL_PIPELINE_ID", "pipe-1");
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const path = String(url).replace("https://services.leadconnectorhq.com", "").split("?")[0];
+        calls.push(path);
+        if (path === "/opportunities/") return new Response("Duplicate opportunity not allowed for this contact", { status: 400 });
+        return new Response(JSON.stringify(path === "/contacts/upsert" ? { contact: { id: "c-1" } } : { contact: null }), { status: 200 });
+      }),
+    );
+    const result = await deliverToGhl(lead({ kind: "offer" }), {});
+    expect(calls.indexOf("/contacts/c-1/notes")).toBeGreaterThan(-1);
+    expect(calls.indexOf("/contacts/c-1/notes")).toBeLessThan(calls.indexOf("/opportunities/"));
+    expect(result.outcome).toBe("sent");
+    const progress = "progress" in result ? (result.progress ?? {}) : {};
+    expect(String(progress.opportunityError)).toContain("HTTP 400");
+    // …and it isn't attempted again.
+    calls.length = 0;
+    await deliverToGhl(lead({ kind: "offer" }), progress);
+    expect(calls).not.toContain("/opportunities/");
+  });
+
+  it("looks before opening another when an earlier create may have landed (a timeout)", async () => {
+    vi.stubEnv("GHL_API_KEY", "pit-test");
+    vi.stubEnv("GHL_LOCATION_ID", "loc-1");
+    vi.stubEnv("GHL_PIPELINE_ID", "pipe-1");
+    const calls: Array<{ path: string; method: string }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        const path = String(url).replace("https://services.leadconnectorhq.com", "").split("?")[0];
+        calls.push({ path, method: String(init.method) });
+        const json = path === "/opportunities/search" ? { opportunities: [{ id: "opp-landed", name: "Showing — 12 Main St, Toronto (Dana Tester)" }, { id: "opp-other", name: "Offer — elsewhere" }] } : {};
+        return new Response(JSON.stringify(json), { status: 200 });
+      }),
+    );
+    const result = await deliverToGhl(lead({ kind: "showing" }), { contactId: "c-1", tagged: true, noted: true, opportunityTried: true });
+    expect(result).toMatchObject({ outcome: "sent", progress: { opportunityId: "opp-landed" } });
+    expect(calls.some((call) => call.path === "/opportunities/" && call.method === "POST")).toBe(false);
+  });
+
   it("stays out of the pipeline for anything that isn't a deal in the making, or when no pipeline is set", async () => {
     vi.stubEnv("GHL_API_KEY", "pit-test");
     vi.stubEnv("GHL_LOCATION_ID", "loc-1");
@@ -328,5 +374,25 @@ describe("GoHighLevel opportunities", () => {
     const rsvp = stub();
     await deliverToGhl(lead({ kind: "meetup_rsvp", intent: "general" }), {});
     expect(rsvp.some((call) => call.url === "/opportunities/")).toBe(false);
+  });
+});
+
+describe("what a form may and may not assert", () => {
+  it("drops everything only the server may say, and keeps the form's numbers as a claim", () => {
+    const cleaned = formContext({
+      timeline: "Ready now",
+      numbers: { capRate: 14.2, monthlyCashFlow: 9800 },
+      brief: { headline: "A steal" }, buyBox: "Pursues 20–40 unit…", calls: 212, markets: ["Toronto"], dealsAnalyzed: 212,
+    });
+    expect(cleaned).toEqual({ timeline: "Ready now", claimedNumbers: { capRate: 14.2, monthlyCashFlow: 9800 } });
+  });
+
+  it("prints a form's numbers as what was on their screen — never as their underwriting", () => {
+    const claimed = leadSummaryLines(lead({ kind: "showing", context: { claimedNumbers: { capRate: 14.2, dscr: 2.4 } } })).join("\n");
+    expect(claimed).toContain("On their screen (from the form, not a saved analysis): cap 14.2% · DSCR 2.40");
+    expect(claimed).not.toContain("Their numbers");
+    const ours = leadSummaryLines(lead({ kind: "showing", context: { numbers: { capRate: 5.9 }, claimedNumbers: { capRate: 14.2 } } })).join("\n");
+    expect(ours).toContain("Their numbers: cap 5.9%");
+    expect(ours).not.toContain("14.2");
   });
 });

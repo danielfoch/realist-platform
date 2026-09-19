@@ -16,6 +16,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BATCH = 150;
+/** How many past suggestions a member's record keeps — a year of Mondays at three a week. */
+const SUGGESTION_MEMORY = 150;
 
 /**
  * Monday morning: the weekly digest. OFF unless WEEKLY_DIGEST_ENABLED=1, and it
@@ -45,7 +47,9 @@ export async function GET(request: NextRequest) {
       const stats = await getActorStats(`user:${member.id}`);
       const meetup = await nextMeetupFor(member.city);
       const box = await getBuyBox(member.id).catch(() => null);
-      const fits = box ? await dealsForBox(member.id, box, 3).catch(() => []) : [];
+      // Never the same suggestion twice: what earlier notes carried is left out of this one.
+      const alreadySent = Array.isArray(member.digestListings) ? member.digestListings : [];
+      const fits = (box ? await dealsForBox(member.id, box, 3, alreadySent).catch(() => []) : []).filter((listing) => listing.listOfficeName);
       const email = composeWeeklyDigest({
         firstName: member.name?.trim().split(/\s+/)[0] ?? null,
         stats,
@@ -61,16 +65,14 @@ export async function GET(request: NextRequest) {
             }
           : null,
         // A listing without its brokerage is never shown — not on the site, not in an email.
-        fits: fits
-          .filter((listing) => listing.listOfficeName)
-          .map((listing) => ({
-            street: listingStreetLine(listing.address) || `MLS® ${listing.mlsNumber}`,
-            city: listing.address.city,
-            price: listing.listPrice,
-            netYield: listing.underwrite?.netYield ?? null,
-            url: `/listings/${encodeURIComponent(listing.mlsNumber)}`,
-            brokerage: listing.listOfficeName as string,
-          })),
+        fits: fits.map((listing) => ({
+          street: listingStreetLine(listing.address) || `MLS® ${listing.mlsNumber}`,
+          city: listing.address.city,
+          price: listing.listPrice,
+          netYield: listing.underwrite?.netYield ?? null,
+          url: `/listings/${encodeURIComponent(listing.mlsNumber)}`,
+          brokerage: listing.listOfficeName as string,
+        })),
         unsubscribeUrl,
         postalAddress,
       });
@@ -80,7 +82,10 @@ export async function GET(request: NextRequest) {
           ...email,
           headers: { "List-Unsubscribe": `<${oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
         });
-        await getDb().update(users).set({ lastDigestAt: new Date() }).where(eq(users.id, member.id));
+        await getDb()
+          .update(users)
+          .set({ lastDigestAt: new Date(), digestListings: [...alreadySent, ...fits.map((listing) => listing.mlsNumber)].slice(-SUGGESTION_MEMORY) })
+          .where(eq(users.id, member.id));
         sent += 1;
       } catch (error) {
         failed += 1;

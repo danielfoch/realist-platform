@@ -16,9 +16,9 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { findLeakedNumbers } from "@/lib/multiplex/reportWriter";
+import { allowedNumbers, findLeakedNumbers } from "@/lib/multiplex/reportWriter";
 import { templateMemo, type MemoDeal } from "@/lib/underwriting/dealMemo";
-import { INPUT_LIMITS, solveOfferPrice, underwrite, type OfferTarget, type UnderwriterField, type UnderwriterInputs } from "@/lib/underwriting/underwriter";
+import { INPUT_LIMITS, atPrice, solveOfferPrice, underwrite, type OfferTarget, type UnderwriterField, type UnderwriterInputs } from "@/lib/underwriting/underwriter";
 
 export interface AskContext {
   deal: MemoDeal & { mlsNumber?: string | null };
@@ -103,7 +103,7 @@ const SYSTEM_PROMPT = `You are Realist's investor-realtor: the experienced agent
 Rules, in order of importance:
 1. Every number you state must come from the deal data you were given or from a tool result. Never do arithmetic yourself, never estimate, never recall a market statistic. If you need a number, call a tool. If a tool can't give it to you, say you don't have it.
 2. Be direct and specific to THIS deal. Lead with the answer. No preamble, no "great question", no generic real-estate education. Under 170 words unless they ask for detail.
-3. Use the listing remarks when they matter — what they reveal (tenancy, condition, motivation, legal status of units, who pays utilities) and what they conspicuously leave out. A remark is a claim by the seller's agent, never a verified fact.
+3. Use the listing remarks when they matter — what they reveal (tenancy, condition, motivation, legal status of units, who pays utilities) and what they conspicuously leave out. A remark is a claim by the seller's agent, never a verified fact — so never restate a dollar figure or percentage from the remarks. Refer to it instead ("the rent the listing claims", "the cap rate it advertises") and say what would verify it.
 4. Lending: 1–4 units is a residential mortgage, qualified on the borrower's income plus part of the rent; 5+ units is commercial, sized to the property's debt coverage (1.10 for CMHC MLI Select, about 1.20 conventionally). Don't apply one to the other. Mortgage payments here already use Canadian semi-annual compounding.
 5. You are not a lawyer, accountant or mortgage broker, and this is not advice. Never tell them to buy. Say what the numbers show, what would change your mind, and what must be verified in person or on paper. When it's time for a showing or an offer, tell them to use the buttons on the page: a licensed agent on the team gets their numbers and what they want verified.
 6. If their buy box is known, say plainly whether this deal is inside it or outside it, and why. Canadian spelling. Plain text only — no markdown, no headings, no bullet symbols.`;
@@ -166,7 +166,7 @@ export function runTool(name: string, input: unknown, context: AskContext): { re
       result:
         price == null
           ? { reachable: false, note: "No price in range reaches that target at this rent — the rent or the financing has to change, not the price." }
-          : { reachable: true, highestPriceMeetingTarget: price, askingOrEnteredPrice: context.inputs.price, atThatPrice: describeResult({ ...context.inputs, price: Math.min(price, context.inputs.price * 3) }) },
+          : { reachable: true, highestPriceMeetingTarget: price, askingOrEnteredPrice: context.inputs.price, atThatPrice: describeResult(atPrice(context.inputs, Math.min(price, context.inputs.price * 3))) },
       step: `Solved for the price that gets ${metric.replace(/_/g, " ")} to ${value}`,
     };
   }
@@ -184,6 +184,23 @@ export function runTool(name: string, input: unknown, context: AskContext): { re
   }
 
   return { result: { error: `unknown tool ${name}` }, step: `Tried an unknown tool (${name})` };
+}
+
+/**
+ * The check an answer has to pass. The shared one lets small integers and year-like
+ * numbers through, because in prose they are counts and dates ("3 units", "built 1962").
+ * Next to a dollar sign or a percent sign they are neither: "a 9% cap" or "$1,950 rent"
+ * is a figure, and has to have come from the deal or a tool like any other.
+ */
+export function findUnbackedFigures(answer: string, evidence: unknown): string[] {
+  const leaks = new Set(findLeakedNumbers(answer, evidence));
+  const allowed = allowedNumbers(evidence);
+  const text = answer.replace(/(\d),(?=\d{3})/g, "$1");
+  for (const match of text.matchAll(/\$\s?(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s?(?:%|percent\b)/g)) {
+    const raw = match[1] ?? match[2];
+    if (!allowed.has(String(Number(raw)))) leaks.add(raw);
+  }
+  return [...leaks];
 }
 
 const UNVERIFIED =
@@ -211,8 +228,13 @@ export async function askRealist(
   ];
 
   const steps: string[] = [];
-  // Everything the model is allowed to quote a number from.
-  const evidence: unknown[] = [base, context.decisionLine, context.consensus, context.market, context.buyBox, question];
+  // Everything the model is allowed to quote a number from: our own records, what the tools return, and what
+  // was already said in this conversation. NOT the listing's remarks — a listing agent's "projected 9% cap"
+  // (or anything planted there) is a claim to weigh, never a figure we vouch for.
+  const { listingRemarks: _remarks, ...vouchedFor } = base;
+  void _remarks;
+  const history = (options.history ?? []).slice(-6).map((turn) => turn.content.slice(0, 1500));
+  const evidence: unknown[] = [vouchedFor, context.decisionLine, context.consensus, context.market, context.buyBox, question, history];
   let corrected = false;
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS + 1; round += 1) {
@@ -246,7 +268,7 @@ export async function askRealist(
       .trim();
     if (!answer) return { answer: UNVERIFIED, steps, verified: false };
 
-    const leaks = findLeakedNumbers(answer, evidence);
+    const leaks = findUnbackedFigures(answer, evidence);
     if (leaks.length === 0) return { answer, steps, verified: true };
     if (corrected) return { answer: UNVERIFIED, steps, verified: false };
 

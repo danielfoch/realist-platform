@@ -40,6 +40,8 @@ export const users = pgTable(
     powerTeam: jsonb("power_team").$type<Record<string, "have" | "need">>(),
     /** When the weekly digest last went to this member — the cron's guard against double sends. */
     lastDigestAt: timestamp("last_digest_at"),
+    /** MLS® numbers already suggested in a Monday note (most recent last), so the note never repeats itself. */
+    digestListings: jsonb("digest_listings").$type<string[]>(),
     /** Appear as "First L." on the leaderboard and have a public track-record page. */
     showOnLeaderboard: boolean("show_on_leaderboard").default(true).notNull(),
     emailVerifiedAt: timestamp("email_verified_at"),

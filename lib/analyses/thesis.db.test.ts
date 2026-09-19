@@ -75,6 +75,21 @@ describe("a member's buy box", () => {
     expect(String(lead.context?.buyBox)).toMatch(/^Pursues 3-unit properties in Hamilton/);
     expect(lead.context?.markets).toEqual(["Hamilton"]);
   });
+
+  it("doesn't tell the CRM about drift more than weekly — but says so at once when WHERE they buy changes", async () => {
+    const [user] = await ctx.db.select().from(users).where(eq(users.id, "t1"));
+    const box = (await getBuyBox("t1"))!;
+    const drifted = { ...box, priceHigh: box.priceHigh + 5_000 };
+    expect(await announceBuyBox(user as User, drifted)).toBeNull();
+    // Eight days on, the same drift is worth a line.
+    await ctx.sql.exec("UPDATE leads SET created_at = created_at - interval '8 days' WHERE kind = 'buy_box'");
+    expect(await announceBuyBox(user as User, drifted)).toBeTruthy();
+    // An hour later they start buying in a new city: no waiting for next week.
+    await ctx.sql.exec("UPDATE leads SET created_at = created_at - interval '1 hour' WHERE kind = 'buy_box'");
+    const moved = { ...drifted, markets: [...drifted.markets, { city: "Brantford", province: "ON", share: 0.2 }] };
+    expect(await announceBuyBox(user as User, moved)).toBeTruthy();
+    expect(await announceBuyBox(user as User, { ...moved, priceLow: moved.priceLow - 5_000 })).toBeNull();
+  });
 });
 
 describe("a market's decision line", () => {

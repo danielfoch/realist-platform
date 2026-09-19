@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq, sql } from "drizzle-orm";
-import { leadDeliveries } from "@/lib/db/schema";
+import { ddfListingSnapshots, leadDeliveries } from "@/lib/db/schema";
 import { useTestDb } from "@/lib/test/db";
+import { trustedProperty } from "./brief";
 import { captureLead } from "./capture";
 import { MAX_ATTEMPTS, deliverDue, expeditePending, requeueFailed } from "./outbox";
 
@@ -132,5 +133,18 @@ describe("the outbox", () => {
     await deliverDue({ leadId: lead.id });
     expect((await deliveriesOf(lead.id)).find((row) => row.destination === "team_email")).toMatchObject({ status: "skipped" });
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+describe("the price on a lead", () => {
+  it("is our list price for a listing, whatever the form said — it sizes the opportunity in the CRM", async () => {
+    await ctx.db.insert(ddfListingSnapshots).values({ listingKey: "LK-PRICE", mlsNumber: "W9000001", city: "Toronto", province: "Ontario", listPrice: 899_000, snapshotMonth: "2026-09" });
+    expect(await trustedProperty({ mlsNumber: "w9000001", price: 950_000_000 })).toMatchObject({ price: 899_000 });
+  });
+
+  it("is the person's own figure for an off-market deal, kept only when it's a plausible purchase price", async () => {
+    expect(await trustedProperty({ address: "12 Main St", price: 640_000 })).toMatchObject({ price: 640_000 });
+    expect(await trustedProperty({ address: "12 Main St", price: 950_000_000 })).toMatchObject({ price: null });
+    expect(await trustedProperty({ mlsNumber: "UNKNOWN1", price: 5 })).toMatchObject({ price: null });
   });
 });

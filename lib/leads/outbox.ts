@@ -14,7 +14,7 @@ import { deliverToTeam } from "./teamEmail";
  */
 
 export type DeliveryResult =
-  | { outcome: "sent"; progress?: Record<string, unknown>; externalId?: string | null }
+  | { outcome: "sent"; progress?: Record<string, unknown>; externalId?: string | null; note?: string | null }
   | { outcome: "retry"; progress?: Record<string, unknown>; error: string }
   | { outcome: "failed"; progress?: Record<string, unknown>; error: string }
   | { outcome: "skipped" }
@@ -97,7 +97,8 @@ export async function deliverDue(options: { leadId?: string; limit?: number } = 
       summary.sent += 1;
       await db
         .update(leadDeliveries)
-        .set({ status: "sent", deliveredAt: now, lastError: null, progress: result.progress ?? row.progress, externalId: result.externalId ?? null })
+        // Delivered, but an optional step was refused: keep the reason where /admin/leads will show it.
+        .set({ status: "sent", deliveredAt: now, lastError: result.note ?? null, progress: result.progress ?? row.progress, externalId: result.externalId ?? null })
         .where(where);
     } else if (result.outcome === "skipped") {
       summary.skipped += 1;

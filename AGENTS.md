@@ -123,7 +123,13 @@ Every underwrite feeds the member's history, the leaderboard and the learned mar
   GHL's upsert REPLACES tags, so tags only ever go through the additive tags endpoint.
   Every step GHL delivery completes (contact, tags, opportunity, note) is recorded in the
   delivery's `progress` before the next one runs — a retry resumes, it never repeats. A
-  new step follows the same rule.
+  new step follows the same rule. **A form may not assert what only we know**: `formContext()`
+  strips `brief`, `numbers`, `buyBox`, `calls`, `markets`, `dealsAnalyzed` from anything a browser
+  sends (its numbers survive as `claimedNumbers`, printed as a claim), and a listing's price on a
+  lead is our crawl's, not the form's.
+- **Anything that costs money per call** asks `aiAllowance()` (`lib/ai/allowance.ts`) first:
+  atomic counters (`takeToken`), fail-closed, per-member + unproven-account + site-wide daily
+  ceilings. Never check-then-increment.
   `/admin/leads` (role admin, or a VERIFIED address in `ADMIN_EMAILS`) shows what is
   connected, the outbox by destination, recent leads, and retries failures.
 - **Legacy members** arrive via `scripts/migrate-users.ts` (rules + tests in

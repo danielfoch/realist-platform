@@ -94,6 +94,23 @@ Section guidance:
  * ("$4.3M", "643k"), percentages of fractions (0.0475 -> 4.75%), and years.
  */
 export function findLeakedNumbers(narrative: string, payload: unknown): string[] {
+  const allowed = allowedNumbers(payload);
+  // Small counts and common structural numbers are always fine
+  for (let i = 0; i <= 20; i++) allowed.add(String(i));
+
+  const leaks: string[] = [];
+  const numbersInText = narrative.replace(/,/g, "").match(/\d+(?:\.\d+)?/g) ?? [];
+  for (const raw of numbersInText) {
+    const n = Number(raw);
+    // years and by-law numbers read as citations, not figures
+    if (n >= 1900 && n <= 2100) continue;
+    if (!allowed.has(String(n))) leaks.push(raw);
+  }
+  return Array.from(new Set(leaks));
+}
+
+/** Every figure the payload supports, in each form a writer might render it (rounded, as a percent, in thousands or millions). */
+export function allowedNumbers(payload: unknown): Set<string> {
   const allowed = new Set<string>();
   const addNumber = (n: number) => {
     if (!Number.isFinite(n)) return;
@@ -119,23 +136,13 @@ export function findLeakedNumbers(narrative: string, payload: unknown): string[]
   const walk = (v: unknown) => {
     if (typeof v === "number") addNumber(v);
     else if (typeof v === "string") {
-      for (const m of v.match(/-?\d+(?:\.\d+)?/g) ?? []) addNumber(Number(m));
+      // "$731,600" is one number, not 731 and 600.
+      for (const m of v.replace(/(\d),(?=\d{3})/g, "$1").match(/-?\d+(?:\.\d+)?/g) ?? []) addNumber(Number(m));
     } else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
   walk(payload);
-  // Small counts and common structural numbers are always fine
-  for (let i = 0; i <= 20; i++) allowed.add(String(i));
-
-  const leaks: string[] = [];
-  const numbersInText = narrative.replace(/,/g, "").match(/\d+(?:\.\d+)?/g) ?? [];
-  for (const raw of numbersInText) {
-    const n = Number(raw);
-    // years and by-law numbers read as citations, not figures
-    if (n >= 1900 && n <= 2100) continue;
-    if (!allowed.has(String(n))) leaks.push(raw);
-  }
-  return Array.from(new Set(leaks));
+  return allowed;
 }
 
 // ─── Template fallback (no API key, or validator failed twice) ──────────────

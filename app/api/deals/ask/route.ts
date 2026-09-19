@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { aiAllowance } from "@/lib/ai/allowance";
 import { askRealist, askRealistConfigured } from "@/lib/ai/askRealist";
 import { getBuyBox } from "@/lib/analyses/buyBox";
 import { getDealConsensus } from "@/lib/analyses/community";
@@ -7,7 +8,6 @@ import { getMarketDecisionLine } from "@/lib/analyses/learn";
 import { describeBuyBox } from "@/lib/analyses/thesis";
 import { getCurrentUser } from "@/lib/auth/current";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
-import { isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { getListingSeoByMls } from "@/lib/ddf/listingSeo";
 import { marketAggregates } from "@/lib/ddf/yieldSearch";
 import { clampInputs } from "@/lib/underwriting/underwriter";
@@ -29,7 +29,8 @@ const schema = z.object({
     taxFromListing: z.boolean().optional(),
   }),
   inputs: z.record(z.string().max(40), z.number()),
-  history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(2000) })).max(8).optional(),
+  // An earlier answer can be long; it is trimmed before it reaches the model, never a reason to refuse the next question.
+  history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(12_000) })).max(8).optional(),
 });
 
 /**
@@ -48,9 +49,8 @@ export async function POST(request: Request) {
   const inputs = parsed.success ? clampInputs(parsed.data.inputs) : null;
   if (!parsed.success || !inputs) return Response.json({ ok: false, error: "That question couldn't be read." }, { status: 400 });
 
-  const key = `ask:${user.id}`;
-  if (await isThrottled(key, new Date(), 15)) return Response.json({ ok: false, error: "That's a lot of questions — give it a few minutes." }, { status: 429 });
-  await recordFailure(key);
+  const allowance = await aiAllowance(user);
+  if (!allowance.ok) return Response.json({ ok: false, error: allowance.error }, { status: allowance.status });
 
   const { deal, mlsNumber, question, history } = parsed.data;
   const dealKey = dealKeyFor({ mlsNumber, address: deal.address });

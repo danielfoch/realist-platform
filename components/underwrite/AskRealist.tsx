@@ -54,10 +54,15 @@ export function AskRealist({
           deal,
           // Always the numbers on screen right now, so an answer never describes a stale scenario.
           inputs,
-          history: thread.slice(-3).flatMap((turn) => [
-            { role: "user" as const, content: turn.question },
-            { role: "assistant" as const, content: turn.answer },
-          ]),
+          // Only answers that passed the number check travel on — an unverified one must not become
+          // something a later answer can quote. Trimmed: a long answer is never a reason to refuse the next question.
+          history: thread
+            .filter((turn) => turn.verified)
+            .slice(-3)
+            .flatMap((turn) => [
+              { role: "user" as const, content: turn.question.slice(0, 600) },
+              { role: "assistant" as const, content: turn.answer.slice(0, 4000) },
+            ]),
         }),
       });
       const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; answer?: string; steps?: string[]; verified?: boolean } | null;

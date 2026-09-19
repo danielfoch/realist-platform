@@ -121,7 +121,10 @@ export async function rebuildLearnedAssumptions(): Promise<{ written: number }> 
       JOIN engaged e ON e.k1 = m.k1 AND e.k2 = m.k2
       UNION ALL
       -- The market's decision line: the cap rate members say yes at, and the one they walk away from.
-      -- A call is its own evidence (nobody makes one by accident), so every calling member is "engaged".
+      -- The 25% share rule above exists because editors are self-selected: members who kept a default agree
+      -- with it silently, so a handful of edits must not outvote them. A verdict has no silent majority —
+      -- each line is the median of exactly the members who made that call — so the share is 1 by
+      -- construction and only the distinct-proven-members floor applies.
       SELECT b.k1, b.k2, CASE b.verdict WHEN 'pursue' THEN ${PURSUE_CAP_FIELD}::text ELSE ${PASS_CAP_FIELD}::text END,
         percentile_cont(0.25) WITHIN GROUP (ORDER BY b.cap_rate),
         percentile_cont(0.5) WITHIN GROUP (ORDER BY b.cap_rate),

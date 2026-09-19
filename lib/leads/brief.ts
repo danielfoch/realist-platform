@@ -5,7 +5,31 @@ import { getAnalysis } from "@/lib/analyses/store";
 import { describeBuyBox } from "@/lib/analyses/thesis";
 import { templateMemo } from "@/lib/underwriting/dealMemo";
 import { clampInputs, underwrite } from "@/lib/underwriting/underwriter";
+import { sql } from "drizzle-orm";
+import { getDb } from "@/lib/db";
 import type { LeadProperty } from "@/lib/db/schema";
+
+/**
+ * The price we stand behind. For a listing that is the crawl's list price, not
+ * the form's; for an off-market deal it is the person's own figure, kept only
+ * when it is a plausible purchase price.
+ */
+export async function trustedProperty<T extends LeadProperty>(property: T | null | undefined): Promise<T | null | undefined> {
+  if (!property) return property;
+  const typed = typeof property.price === "number" && property.price >= 10_000 && property.price <= 100_000_000 ? property.price : null;
+  if (!property.mlsNumber) return { ...property, price: typed };
+  try {
+    const result = await getDb().execute(sql`
+      SELECT list_price FROM ddf_listing_snapshots
+      WHERE upper(mls_number) = ${property.mlsNumber.trim().toUpperCase()} AND list_price > 0
+      ORDER BY captured_at DESC LIMIT 1`);
+    const rows = (Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])) as Array<{ list_price: number | string }>;
+    const listed = rows[0] ? Number(rows[0].list_price) : null;
+    return { ...property, price: listed && isFinite(listed) ? listed : typed };
+  } catch {
+    return { ...property, price: typed };
+  }
+}
 
 /**
  * The showing brief. When someone who underwrote a deal at their desk asks for
@@ -15,7 +39,7 @@ import type { LeadProperty } from "@/lib/db/schema";
  * the server from the person's own saved analysis; nothing here is typed into
  * a form, so nothing here can be forged by one.
  */
-export async function briefFor(property: LeadProperty | null | undefined): Promise<Record<string, unknown>> {
+export async function briefFor(property: LeadProperty | null | undefined, email?: string | null): Promise<Record<string, unknown>> {
   const extra: Record<string, unknown> = {};
   try {
     const actor = await resolveActor({ create: false });
@@ -40,7 +64,8 @@ export async function briefFor(property: LeadProperty | null | undefined): Promi
         downPaymentPercent: inputs.downPaymentPercent,
       };
     }
-    if (actor.user) {
+    // A member's profile belongs on their own CRM contact — not on whoever's address was typed into the form.
+    if (actor.user && (!email || actor.user.email.toLowerCase() === email.trim().toLowerCase())) {
       const box = await getBuyBox(actor.user.id);
       if (box) {
         extra.buyBox = describeBuyBox(box, "agent");

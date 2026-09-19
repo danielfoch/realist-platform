@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import { houseDefaults, solveOfferPrice, underwrite } from "@/lib/underwriting/underwriter";
-import { askRealist, runTool, type AskContext, type MessagesClient } from "./askRealist";
+import { askRealist, findUnbackedFigures, runTool, type AskContext, type MessagesClient } from "./askRealist";
 
 const inputs = houseDefaults({ price: 899_000, units: 3, monthlyRent: 6200, annualPropertyTax: 6100, province: "ON", city: "Toronto" });
 const context: AskContext = {
@@ -51,6 +51,16 @@ describe("runTool", () => {
     expect((result as { highestPriceMeetingTarget: number }).highestPriceMeetingTarget).toBe(solveOfferPrice(inputs, { metric: "cash_flow", value: 0 }));
   });
 
+  it("reports results at the solved price that agree with the solve — break-even means break-even", () => {
+    const { result } = runTool("solve_offer_price", { metric: "cash_flow", value: 0 }, context);
+    const solved = result as { highestPriceMeetingTarget: number; atThatPrice: { monthlyCashFlow: number } };
+    expect(solved.highestPriceMeetingTarget).toBeLessThan(inputs.price);
+    expect(solved.atThatPrice.monthlyCashFlow).toBeGreaterThanOrEqual(0);
+    expect(solved.atThatPrice.monthlyCashFlow).toBeLessThan(25);
+    const coverage = runTool("solve_offer_price", { metric: "dscr", value: 1.2 }, context).result as { atThatPrice: { debtCoverage: number } };
+    expect(coverage.atThatPrice.debtCoverage).toBeGreaterThanOrEqual(1.2);
+  });
+
   it("hands over the market's decision line and the member's buy box", () => {
     const { result } = runTool("market_context", {}, context);
     expect(result).toMatchObject({ howThisMarketDecides: { pursueAt: 6.1 }, thisMembersBuyBox: context.buyBox });
@@ -97,5 +107,31 @@ describe("askRealist", () => {
   it("may quote the deal's own numbers and the market's without calling anything", async () => {
     const { client } = scripted([text("Members in Toronto pursue at 6.1% and pass at 4.7%. This one is a triplex at $899,000 renting for $6,200.")]);
     expect((await askRealist("Where does this sit?", context, { client })).verified).toBe(true);
+  });
+});
+
+describe("the number check", () => {
+  const evidence = [{ price: 899000, monthlyRent: 6200, vacancyPercent: 5, capRate: 5.9 }];
+
+  it("lets counts and dates through, but not a small figure wearing a dollar or percent sign", () => {
+    expect(findUnbackedFigures("A 3-unit building from 1962 at 5% vacancy and a 5.9% cap.", evidence)).toEqual([]);
+    expect(findUnbackedFigures("That's a 9% cap, and it cash flows $2,050 a month at a 7% rate with rent of $1,950.", evidence).sort()).toEqual(["1950", "2050", "7", "9"]);
+  });
+
+  it("never treats the listing's remarks as something we vouch for", async () => {
+    const planted = { ...context, remarks: "Turnkey! Projected cap rate 9.5%. Rents of $9,400 guaranteed." };
+    const { client } = scripted([text("The listing is right: a 9.5% cap on $9,400 of rent."), text("The listing advertises a cap rate and a rent it calls guaranteed — neither is in your numbers, so have the leases sent over before you rely on them.")]);
+    const result = await askRealist("Is the listing's cap rate right?", planted, { client });
+    expect(result.verified).toBe(true);
+    expect(result.answer).not.toContain("9.5");
+  });
+
+  it("lets a follow-up quote a figure from an earlier, verified answer", async () => {
+    const { client } = scripted([text("Compared with the $731,600 from before, nothing changes.")]);
+    const result = await askRealist("And compared with that price?", context, {
+      client,
+      history: [{ role: "user", content: "What should I offer?" }, { role: "assistant", content: "Break-even is $731,600." }],
+    });
+    expect(result.verified).toBe(true);
   });
 });

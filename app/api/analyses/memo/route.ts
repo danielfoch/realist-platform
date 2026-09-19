@@ -1,8 +1,8 @@
 import { z } from "zod";
+import { aiAllowance } from "@/lib/ai/allowance";
 import { memoWriterConfigured, writeDealMemo } from "@/lib/ai/dealMemoWriter";
 import { getCurrentUser } from "@/lib/auth/current";
 import { crossOriginResponse, isSameOrigin } from "@/lib/auth/origin";
-import { clientIp, isThrottled, recordFailure } from "@/lib/auth/throttle";
 import { getListingSeoByMls } from "@/lib/ddf/listingSeo";
 import { clampInputs } from "@/lib/underwriting/underwriter";
 
@@ -33,15 +33,15 @@ export async function POST(request: Request) {
   if (!isSameOrigin(request)) return crossOriginResponse();
   if (!memoWriterConfigured()) return Response.json({ ok: false, error: "AI memos aren't switched on yet." }, { status: 503 });
   // The rules-based memo is free to everyone and needs no request. The written-up one costs money per call.
-  if (!(await getCurrentUser())) return Response.json({ ok: false, error: "Create a free account for the AI write-up." }, { status: 401 });
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ ok: false, error: "Create a free account for the AI write-up." }, { status: 401 });
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   const inputs = parsed.success ? clampInputs(parsed.data.inputs) : null;
   if (!parsed.success || !inputs) return Response.json({ ok: false, error: "Those numbers couldn't be read." }, { status: 400 });
 
-  const key = `memo-ip:${clientIp(request)}`;
-  if (await isThrottled(key)) return Response.json({ ok: false, error: "That's a lot of memos — try again in a few minutes." }, { status: 429 });
-  await recordFailure(key);
+  const allowance = await aiAllowance(user);
+  if (!allowance.ok) return Response.json({ ok: false, error: allowance.error }, { status: allowance.status });
 
   // Remarks come from our own copy of the listing, never from the browser.
   let remarks: string | null = null;

@@ -193,7 +193,7 @@ function metricFor(target: OfferTarget, result: CalculatedInvestmentMetrics): nu
 }
 
 /** Price-linked defaults move with the price being tested; typed values stay put. */
-function atPrice(inputs: UnderwriterInputs, price: number): UnderwriterInputs {
+export function atPrice(inputs: UnderwriterInputs, price: number): UnderwriterInputs {
   const ratio = inputs.price > 0 ? price / inputs.price : 1;
   return { ...inputs, price, closingCosts: inputs.closingCosts * ratio, annualInsurance: inputs.annualInsurance * ratio };
 }

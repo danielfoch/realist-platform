@@ -43,6 +43,33 @@ export async function recordFailure(key: string, now: Date = new Date()): Promis
   }
 }
 
+/**
+ * Count this use and say whether it is within the allowance — in ONE statement, so
+ * a burst of parallel requests can't all read "under the limit" before any of them
+ * is counted. For anything that costs money per call. Fails closed by default:
+ * if the counter can't be written, the paid thing doesn't run.
+ */
+export async function takeToken(key: string, max: number, options: { windowMs?: number; now?: Date; failOpen?: boolean } = {}): Promise<boolean> {
+  const now = options.now ?? new Date();
+  const windowFloor = new Date(now.getTime() - (options.windowMs ?? WINDOW_MS));
+  try {
+    const rows = await getDb()
+      .insert(authThrottle)
+      .values({ key, count: 1, windowStartedAt: now })
+      .onConflictDoUpdate({
+        target: authThrottle.key,
+        set: {
+          count: sql`CASE WHEN ${authThrottle.windowStartedAt} < ${windowFloor} THEN 1 ELSE ${authThrottle.count} + 1 END`,
+          windowStartedAt: sql`CASE WHEN ${authThrottle.windowStartedAt} < ${windowFloor} THEN ${now} ELSE ${authThrottle.windowStartedAt} END`,
+        },
+      })
+      .returning({ count: authThrottle.count });
+    return (rows[0]?.count ?? 1) <= max;
+  } catch {
+    return options.failOpen ?? false;
+  }
+}
+
 export async function clearFailures(key: string): Promise<void> {
   try {
     await getDb().delete(authThrottle).where(eq(authThrottle.key, key));

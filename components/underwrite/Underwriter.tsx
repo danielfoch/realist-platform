@@ -392,6 +392,9 @@ export function Underwriter({
   const [log, setLog] = useState<LogState>({
     status: saved ? "saved" : "idle",
   });
+  // Once a deal has been logged it stays "underwritten" while later autosaves are in flight —
+  // otherwise the rail above the inputs un-ticks and re-ticks (and the page jumps) on every edit.
+  const [everSaved, setEverSaved] = useState(Boolean(saved));
   const [shareNote, setShareNote] = useState<string | null>(null);
   // What this member has already asked for on this deal (showing, offer…).
   const [requests, setRequests] = useState<string[]>([]);
@@ -476,6 +479,7 @@ export function Underwriter({
           if (!body.analysis || touched.current) return;
           setInputs(body.analysis.inputs);
           setVerdict(body.analysis.verdict);
+          setEverSaved(true);
           setLog({
             status: "saved",
             signedIn: body.signedIn,
@@ -528,6 +532,7 @@ export function Underwriter({
           });
           return;
         }
+        setEverSaved(true);
         setLog({
           status: "saved",
           signedIn: body.signedIn,
@@ -650,7 +655,7 @@ export function Underwriter({
         <div className="mb-5">
           <DeskReviewRail
             state={{
-              underwritten: log.status === "saved",
+              underwritten: everSaved,
               called: verdict,
               showingRequested: requests.includes("showing"),
               offerRequested: requests.includes("offer"),

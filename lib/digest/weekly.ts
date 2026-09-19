@@ -82,7 +82,7 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
     "",
     `Find a deal to underwrite: ${listings}`,
     "",
-    fits.length ? `New in your buy box (${fits.length}):` : null,
+    fits.length ? `In your buy box, and not yet underwritten (${fits.length}):` : null,
     ...fits.flatMap((fit) => [fitLine(fit), `${SITE_BASE_URL}${fit.url}`]),
     fits.length ? "" : null,
     boardLines.length ? "Last week's top five:" : null,
@@ -107,7 +107,7 @@ export function composeWeeklyDigest(input: DigestInput): ComposedEmail {
   <p style="margin:0 0 28px"><a href="${listings}" style="background:#be1730;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 18px;border-radius:3px;display:inline-block">Find a deal to underwrite</a></p>
   ${
     fits.length
-      ? `<p style="font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#696969;margin:0 0 6px">New in your buy box</p>
+      ? `<p style="font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:#696969;margin:0 0 6px">In your buy box · not yet underwritten</p>
   ${fits.map((fit) => `<p style="margin:0 0 8px;font-size:14px"><a href="${SITE_BASE_URL}${fit.url}" style="color:#be1730;font-weight:600">${escapeHtml(fit.street)}, ${escapeHtml(fit.city)}</a><br><span style="color:#4d4d4d">$${Math.round(fit.price).toLocaleString("en-CA")}${fit.netYield != null ? ` · ${fit.netYield.toFixed(1)}% net yield` : ""} · Courtesy of ${escapeHtml(fit.brokerage)}</span></p>`).join("\n  ")}
   <p style="margin:0 0 24px"></p>`
       : ""

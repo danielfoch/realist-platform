@@ -21,7 +21,7 @@ Set in Vercel (Production + Preview):
 |---|---|
 | `GHL_API_KEY` | GoHighLevel → Settings → **Private Integrations** → new token with **contacts: write** |
 | `GHL_LOCATION_ID` | The sub-account's location id (Settings → Business Profile) |
-| `GHL_PIPELINE_ID`, `GHL_PIPELINE_STAGE_ID` | *(optional)* every showing, offer and financing request also opens an **opportunity** on this pipeline, named for the deal and the person, valued at the price — so deals are worked in stages, not fished out of a contact list. The token then also needs **opportunities: write** |
+| `GHL_PIPELINE_ID`, `GHL_PIPELINE_STAGE_ID` | *(optional)* every showing, offer and financing request also opens an **opportunity** on this pipeline, named for the deal and the person, valued at OUR list price — so deals are worked in stages, not fished out of a contact list. The token then also needs **opportunities: write** (and read, to avoid duplicates on a retry). If the pipeline refuses a second opportunity for the same contact, the lead is still delivered and `/admin/leads` shows why — turn on *Allow duplicate opportunities* in the pipeline's settings if you want one per request |
 | `GHL_WEBHOOK_URL` | *(optional, instead of or as well as the two above)* an **Inbound Webhook** workflow trigger URL — same field names the old app sent |
 | `ACQUISITION_LEAD_EMAILS` | who is emailed for offers, showings, underwriting help (comma-separated) |
 | `FINANCING_LEAD_EMAILS` | who is emailed for financing (acquisition is copied) |
@@ -65,6 +65,7 @@ After it, run the learning job once: `GET /api/cron/learn` with the cron bearer 
 |---|---|
 | `CREA_DDF_USERNAME`, `CREA_DDF_PASSWORD` | the live MLS® feed (also add to GitHub Actions secrets for the nightly sync) |
 | `ANTHROPIC_API_KEY` | AI-written deal memos and multiplex reports. Without it both fall back to the rules-based versions, which are complete on their own |
+| `AI_DAILY_BUDGET` | *(optional, default 2000)* the most model calls the whole site makes in a day, so a bad night costs a known amount. Members get 60 a day (15 per 15 min); an account that hasn't confirmed its email gets 3. `0` turns the paid AI off |
 
 ## 6. Decisions only you can make before launch
 
