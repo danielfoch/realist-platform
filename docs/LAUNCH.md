@@ -1,13 +1,23 @@
 # Taking Realist (lean) live
 
+> **Where it stands (Sept 19 2026).** Done: the production database exists (Neon via Vercel, free
+> plan, schema pushed) and `lean` is deployed to production at **https://realist-lean.vercel.app**
+> — public, reading and writing that database. Underwriting, accounts (password), saved deals,
+> the leaderboard and lead capture work today; leads wait in the outbox until the CRM keys arrive.
+> **Still yours:** the keys in steps 2, 3 and 5 (GHL, inboxes, Resend, Google, CREA, Anthropic,
+> Keypr), the member migration (step 4), legal review (step 6), and the DNS record (step 7) —
+> `new.realist.ca` is already attached to the project and starts working the moment the CNAME
+> exists. After adding keys, redeploy (`npx vercel --prod`) so the build picks them up.
+
 Everything below is configuration — the code is done and verified against a real Postgres.
 Do the steps in order; each one unlocks the next. Nothing is lost if a step is late: leads
 captured before the CRM is connected wait in the outbox and are delivered when it is.
 
 ## 1. A database (nothing persists without it)
 
-Vercel → project `realist-lean` → **Storage → Create → Neon**. That adds `DATABASE_URL`.
-Then, once, from a machine with that URL exported:
+**Done** — resource `realist-lean-db`, connected to Production and Preview. For the record, it
+was: Vercel → project `realist-lean` → **Storage → Create → Neon** (adds `DATABASE_URL`), then,
+once, from a machine with that URL exported (and again after any schema change):
 
 ```bash
 npm run db:push
