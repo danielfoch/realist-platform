@@ -1,5 +1,4 @@
 import {
-  memo,
   useEffect,
   useRef,
   useState,
@@ -14,8 +13,11 @@ export type LandingCta = (name: string, href: string, location: string) => void;
 type Props = { onCta?: LandingCta; signedIn?: boolean };
 const clamp = (n: number, low = 0, high = 1) =>
   Math.min(high, Math.max(low, n));
-const STEP_VH = 0.56;
-const STILL_FRAMES = [0, 1.62, 2.3, 3.5, 4.5, 5.8, 6.4];
+const STEP_VH = 0.4;
+const STILL_FRAMES = [0, 1.55, 2.62, 3.65, 4.3, 5.5, 6.5, 7.5, 8.8, 9.4];
+// The offer holds the concept in place before finance and construction continue.
+const projectProgress = (progress: number) =>
+  progress < 6 ? Math.max(2, progress - 2) : progress < 7 ? 3.5 : progress - 3;
 
 export const CHAPTERS = [
   {
@@ -29,11 +31,28 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Start with 400+ free episodes of The Canadian Real Estate Investor. Real conversations about finding deals, funding projects, and building wealth in Canada.",
-    tags: ["Free podcast", "Investor guides", "Market insights"],
+      "Learn for free with Canada’s #1 real estate podcast. Join Daniel Foch and Nick Hill for 400+ episodes of The Canadian Real Estate Investor—real conversations about deals, financing, and building wealth.",
+    tags: ["Canada’s #1 real estate podcast", "400+ free episodes"],
     cta: "Start listening",
     href: "/insights/podcast",
-    note: "Your unfair advantage starts here.",
+    note: "The Canadian Real Estate Investor · Daniel Foch & Nick Hill",
+  },
+  {
+    name: "Education",
+    label: "100+ hours. Zero tuition.",
+    title: (
+      <>
+        Your multiplex education.
+        <br />
+        <em>On the house.</em>
+      </>
+    ),
+    description:
+      "Go deeper with 100+ hours of free multiplex education. Learn how to assess a site, plan a project, understand financing, and build with more confidence—one episode at a time.",
+    tags: ["100+ hours of free education", "Multiplex fundamentals"],
+    cta: "Explore free multiplex education",
+    href: "/insights/podcast",
+    note: "Learn at your own pace. Put your knowledge to work.",
   },
   {
     name: "Connect",
@@ -51,6 +70,27 @@ export const CHAPTERS = [
     cta: "Find your people",
     href: "/meetups",
     note: "A conversation can change the whole project.",
+  },
+  {
+    name: "Analyze",
+    label: "A whole market. Your next investment.",
+    title: (
+      <>
+        Find your next investment.
+        <br />
+        <em>Analyze it instantly.</em>
+      </>
+    ),
+    description:
+      "Turn a map full of properties into a shortlist that makes sense. Analyze deals instantly, compare estimated cash flow and cap rates, and rank the possibilities before taking a closer look.",
+    tags: [
+      "150,000+ Canadian properties",
+      "Instant deal analysis",
+      "Ranked opportunities",
+    ],
+    cta: "Find your next investment",
+    href: "/tools/cap-rates",
+    note: "Modeled estimates. Your assumptions, your due diligence.",
   },
   {
     name: "Find",
@@ -85,6 +125,23 @@ export const CHAPTERS = [
     cta: "Explore a multiplex concept",
     href: "/tools/multiplex-underwriter",
     note: "Early concepts to discuss with your architect.",
+  },
+  {
+    name: "Offer",
+    label: "The next move is yours.",
+    title: (
+      <>
+        Make your move.
+        <br />
+        <em>Keep more capital.</em>
+      </>
+    ),
+    description:
+      "Found the right site? Make an offer with investor-focused representation, then explore cashback on eligible purchases. Keep more capital for the project you’re about to build.",
+    tags: ["Offer strategy", "Negotiation support", "Eligible buyer cashback"],
+    cta: "Make an offer",
+    href: "/offer",
+    note: "Ontario cashback through Keypr. Eligibility and agreement terms apply.",
   },
   {
     name: "Finance",
@@ -194,6 +251,7 @@ function TrackedLink({
   name,
   location = "landing",
   onCta,
+  tabIndex,
 }: {
   children: ReactNode;
   href: string;
@@ -201,10 +259,12 @@ function TrackedLink({
   name: string;
   location?: string;
   onCta?: LandingCta;
+  tabIndex?: number;
 }) {
   return (
     <a
       href={href}
+      tabIndex={tabIndex}
       className={className}
       onClick={() => onCta?.(name, href, location)}
     >
@@ -212,17 +272,52 @@ function TrackedLink({
     </a>
   );
 }
-const HeroScene = memo(function HeroScene() {
-  return <MultiplexScene hero />;
-});
-
 function ProjectDocuments({ progress }: { progress: number }) {
   const finance =
-    clamp((progress - 3.65) * 3) * (1 - clamp((progress - 4.8) * 4));
-  const commitment = clamp((progress - 4.2) * 3);
-  const ownership = clamp((progress - 5.7) * 3.4);
+    clamp((progress - 6.95) * 5) * (1 - clamp((progress - 7.8) * 4));
+  const commitment = clamp((progress - 7.2) * 3);
+  const offer =
+    clamp((progress - 5.9) * 5) * (1 - clamp((progress - 6.85) * 6));
+  const ownership = clamp((progress - 8.7) * 3.4);
   return (
     <div className="rl-documents" aria-hidden="true">
+      <div
+        className="rl-offer-document rl-document"
+        style={{
+          opacity: offer,
+          transform: `translate(${(1 - offer) * -75}px, ${(1 - offer) * 85}px) rotate(-6deg)`,
+        }}
+      >
+        <div className="rl-doc-brand">
+          realist. <span>YOUR NEXT MOVE</span>
+        </div>
+        <span className="rl-eyebrow">AGREEMENT OF PURCHASE & SALE</span>
+        <h3>
+          Make an offer.
+          <br />
+          Get cash back.
+        </h3>
+        <div className="rl-doc-rule" />
+        <div className="rl-budget-row">
+          <span>The right site</span>
+          <b>Found.</b>
+        </div>
+        <div className="rl-budget-row">
+          <span>Offer strategy</span>
+          <b>Let’s make a plan.</b>
+        </div>
+        <div className="rl-budget-row">
+          <span>Representation</span>
+          <b>In your corner.</b>
+        </div>
+        <span className="rl-cashback-label">
+          MORE CAPITAL FOR WHAT’S NEXT ↗
+        </span>
+        <p>Explore cashback on eligible purchases.</p>
+        <span className="rl-doc-fine">
+          ONTARIO CASHBACK WITH KEYPR · TERMS APPLY
+        </span>
+      </div>
       <div
         className="rl-budget rl-document"
         style={{
@@ -360,9 +455,13 @@ function Story({
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
   }, []);
-  const active = Math.min(6, Math.floor(progress));
+  const active = Math.min(CHAPTERS.length - 1, Math.floor(progress + 0.5));
   const visualProgress =
-    reducedMotion || still ? STILL_FRAMES[active] : progress;
+    reducedMotion || still
+      ? STILL_FRAMES[active]
+      : Math.min(progress + 0.5, CHAPTERS.length - 0.001);
+  const textProgress =
+    reducedMotion || still ? active : Math.min(progress, CHAPTERS.length - 1);
 
   useEffect(() => {
     if (shortViewport) return;
@@ -379,7 +478,11 @@ function Story({
         (root.current.offsetHeight - (sticky?.offsetHeight ?? 0)) /
           CHAPTERS.length,
       );
-      const next = clamp((header - top) / chapterDistance, 0, 6.999);
+      const next = clamp(
+        (header - top) / chapterDistance,
+        0,
+        CHAPTERS.length - 0.001,
+      );
       setProgress((previous) =>
         Math.abs(previous - next) > 0.002 ? next : previous,
       );
@@ -397,6 +500,17 @@ function Story({
     };
   }, [shortViewport]);
 
+  useEffect(() => {
+    const nav = root.current?.querySelector<HTMLElement>(".rl-chapter-nav");
+    const selected = nav?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (nav && selected && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft =
+        selected.offsetLeft -
+        nav.offsetLeft -
+        (nav.clientWidth - selected.offsetWidth) / 2;
+    }
+  }, [active, shortViewport]);
+
   function goToChapter(index: number) {
     if (!root.current) return;
     const header = window.innerWidth <= 700 ? 64 : 80;
@@ -410,7 +524,7 @@ function Story({
       window.scrollY +
       root.current.getBoundingClientRect().top -
       header +
-      (index + 0.06) * chapterDistance;
+      index * chapterDistance;
     window.scrollTo({
       top,
       behavior: reducedMotion || still ? "instant" : "smooth",
@@ -428,14 +542,15 @@ function Story({
       <section
         id="journey"
         className="rl-static-journey"
-        aria-label="The seven-step multiplex journey"
+        aria-label="The ten-step multiplex journey"
       >
+        <h1 className="rl-eyebrow rl-static-title">The multiplex journey</h1>
         {CHAPTERS.map((chapter, i) => (
           <article key={chapter.name} className="rl-static-chapter">
             <div className="rl-chapter-copy">
               <div className="rl-chapter-index">
-                <span>0{i + 1}</span>
-                <span>/ 07</span>
+                <span>{String(i + 1).padStart(2, "0")}</span>
+                <span>/ 10</span>
                 <i />
                 <span>{chapter.name.toUpperCase()}</span>
               </div>
@@ -467,10 +582,13 @@ function Story({
             >
               <div className="rl-visual-grid" />
               <div className="rl-building-scene" aria-hidden="true">
-                {i < 2 ? (
-                  <KnowledgeScene progress={STILL_FRAMES[i]} />
+                {i < 4 ? (
+                  <KnowledgeScene
+                    progress={STILL_FRAMES[i]}
+                    animate={!reducedMotion}
+                  />
                 ) : (
-                  <MultiplexScene progress={STILL_FRAMES[i]} />
+                  <MultiplexScene progress={projectProgress(STILL_FRAMES[i])} />
                 )}
               </div>
               <ProjectDocuments progress={STILL_FRAMES[i]} />
@@ -489,15 +607,32 @@ function Story({
     <section
       id="journey"
       className="rl-journey"
+      data-motion={reducedMotion || still ? "reduced" : "full"}
       ref={root}
-      aria-label="Seven steps from learning to owning a multiplex"
-      style={{ "--chapter-vh": `${STEP_VH * 7 * 100}svh` } as CSSProperties}
+      aria-label="Ten steps from learning to owning a multiplex"
+      style={
+        {
+          "--chapter-vh": `${STEP_VH * CHAPTERS.length * 100}svh`,
+        } as CSSProperties
+      }
     >
       <div className="rl-story-sticky">
         <div className="rl-story-top">
-          <span className="rl-eyebrow">
-            <span className="rl-status-dot" /> THE MULTIPLEX JOURNEY
-          </span>
+          <h1 className="rl-eyebrow">
+            <span className="rl-status-dot" /> The multiplex journey
+          </h1>
+          {progress < 0.12 && (
+            <button
+              type="button"
+              className="rl-entry-scroll"
+              onClick={() => goToChapter(1)}
+            >
+              <span>Scroll to explore</span>
+              <span className="rl-scroll-arrow" aria-hidden="true">
+                ↓
+              </span>
+            </button>
+          )}
           <button
             className="rl-motion-toggle"
             onClick={() => setStill(!still)}
@@ -508,38 +643,44 @@ function Story({
           </button>
         </div>
         <div className="rl-story-body">
-          <div className="rl-chapter-copy">
-            <div className="rl-chapter-index">
-              <span>0{active + 1}</span>
-              <span>/ 07</span>
-              <i />
-              <span>{CHAPTERS[active].name.toUpperCase()}</span>
-            </div>
+          <div className="rl-chapter-copy rl-chapter-flow">
             {CHAPTERS.map((chapter, i) => (
               <div
                 key={chapter.name}
-                hidden={i !== active}
-                className="rl-chapter-text"
-                id={`chapter-${i + 1}`}
+                className="rl-flow-card"
+                aria-hidden={i !== active}
+                style={{
+                  transform: `translateY(${(i - textProgress) * 100}%)`,
+                  pointerEvents: i === active ? "auto" : "none",
+                }}
               >
-                <h2>{chapter.title}</h2>
-                <p>{chapter.description}</p>
-                <ul className="rl-tags">
-                  {chapter.tags.map((tag) => (
-                    <li key={tag}>{tag}</li>
-                  ))}
-                </ul>
-                <TrackedLink
-                  href={chapter.href}
-                  name={`journey_${chapter.name.toLowerCase()}`}
-                  location="journey"
-                  className="rl-text-link"
-                  onCta={onCta}
-                >
-                  {chapter.cta}
-                  <Arrow diagonal />
-                </TrackedLink>
-                <span className="rl-chapter-note">{chapter.note}</span>
+                <div className="rl-chapter-index">
+                  <span>{String(i + 1).padStart(2, "0")}</span>
+                  <span>/ 10</span>
+                  <i />
+                  <span>{chapter.name.toUpperCase()}</span>
+                </div>
+                <div className="rl-chapter-text" id={`chapter-${i + 1}`}>
+                  <h2>{chapter.title}</h2>
+                  <p>{chapter.description}</p>
+                  <ul className="rl-tags">
+                    {chapter.tags.map((tag) => (
+                      <li key={tag}>{tag}</li>
+                    ))}
+                  </ul>
+                  <TrackedLink
+                    href={chapter.href}
+                    name={`journey_${chapter.name.toLowerCase()}`}
+                    location="journey"
+                    className="rl-text-link"
+                    onCta={onCta}
+                    tabIndex={i === active ? 0 : -1}
+                  >
+                    {chapter.cta}
+                    <Arrow diagonal />
+                  </TrackedLink>
+                  <span className="rl-chapter-note">{chapter.note}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -551,24 +692,27 @@ function Story({
             <div className="rl-visual-grid" />
             <div className="rl-scene-label">
               <span>REALIST FIELD NOTES</span>
-              <span>FIG. 0{active + 1}</span>
+              <span>FIG. {String(active + 1).padStart(2, "0")}</span>
             </div>
             <div
               className="rl-knowledge-scene"
               aria-hidden="true"
-              style={{ opacity: 1 - clamp((visualProgress - 1.9) / 0.3) }}
+              style={{ opacity: 1 - clamp((visualProgress - 3.85) / 0.35) }}
             >
-              {visualProgress < 2.2 ? (
-                <KnowledgeScene progress={visualProgress} />
+              {visualProgress < 4.2 ? (
+                <KnowledgeScene
+                  progress={visualProgress}
+                  animate={!reducedMotion && !still}
+                />
               ) : null}
             </div>
             <div
               className="rl-building-scene"
               aria-hidden="true"
-              style={{ opacity: clamp((visualProgress - 1.9) / 0.3) }}
+              style={{ opacity: clamp((visualProgress - 3.85) / 0.35) }}
             >
-              {visualProgress > 1.9 ? (
-                <MultiplexScene progress={visualProgress} />
+              {visualProgress > 3.85 ? (
+                <MultiplexScene progress={projectProgress(visualProgress)} />
               ) : null}
             </div>
             <ProjectDocuments progress={visualProgress} />
@@ -588,16 +732,39 @@ function Story({
               aria-controls={`chapter-${i + 1}`}
               className={i <= active ? "is-reached" : ""}
             >
-              <span className="rl-step-number">0{i + 1}</span>
+              <span className="rl-step-number">
+                {String(i + 1).padStart(2, "0")}
+              </span>
               <span>{chapter.name}</span>
               <i style={{ transform: `scaleX(${clamp(progress - i)})` }} />
             </button>
           ))}
         </nav>
-        <div className="rl-scroll-cue">
-          <span>KEEP SCROLLING. WATCH IT COME TOGETHER.</span>
-          <span aria-hidden="true">↓</span>
-        </div>
+        <button
+          type="button"
+          className={`rl-scroll-cue${progress < 0.12 ? " is-intro" : ""}`}
+          aria-label={
+            active < CHAPTERS.length - 1
+              ? "Scroll to the next chapter"
+              : "Explore all platform features"
+          }
+          onClick={() =>
+            active < CHAPTERS.length - 1
+              ? goToChapter(active + 1)
+              : document.getElementById("platform")?.scrollIntoView({
+                  behavior: reducedMotion || still ? "instant" : "smooth",
+                })
+          }
+        >
+          <span className="rl-scroll-label">
+            {progress < 0.12
+              ? "SCROLL TO BEGIN — YOUR JOURNEY STARTS HERE"
+              : "KEEP SCROLLING. WATCH IT COME TOGETHER."}
+          </span>
+          <span className="rl-scroll-arrow" aria-hidden="true">
+            ↓
+          </span>
+        </button>
       </div>
     </section>
   );
@@ -638,6 +805,11 @@ const TOOL_GROUPS = [
         name: "Multiplex underwriter",
         note: "Lot, concept, costs, and takeout.",
         href: "/tools/multiplex-underwriter",
+      },
+      {
+        name: "Make an offer + cashback",
+        note: "Your next move. More capital for the project.",
+        href: "/offer",
       },
       {
         name: "Deal analyzer & tools",
@@ -690,12 +862,6 @@ export default function ScrollcraftLanding({ onCta, signedIn = false }: Props) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
-  function startJourney() {
-    document.getElementById("journey")?.scrollIntoView({
-      behavior: reducedMotion ? "instant" : "smooth",
-      block: "start",
-    });
-  }
   return (
     <div className="rl-page">
       <a href="#main" className="rl-skip-link">
@@ -708,7 +874,7 @@ export default function ScrollcraftLanding({ onCta, signedIn = false }: Props) {
           </a>
           <nav className="rl-desktop-nav" aria-label="Main navigation">
             <a href="#journey">
-              The journey<span>07</span>
+              The journey<span>10</span>
             </a>
             <a href="#platform">The platform</a>
             <TrackedLink href="/meetups" name="nav_community" onCta={onCta}>
@@ -773,107 +939,6 @@ export default function ScrollcraftLanding({ onCta, signedIn = false }: Props) {
         )}
       </header>
       <main id="main" tabIndex={-1}>
-        <section className="rl-hero">
-          <div className="rl-hero-copy">
-            <span className="rl-eyebrow rl-hero-kicker">
-              <span className="rl-status-dot" /> BIG IDEAS. SMALL MULTIPLEXES.
-            </span>
-            <h1>
-              Small footprint.
-              <br />
-              Extraordinary
-              <br />
-              <em>potential.</em>
-            </h1>
-            <p>
-              From your first listen to your first multiplex.
-              <br className="rl-desktop-break" /> The knowledge, people, and
-              tools to build
-              <br className="rl-desktop-break" /> something that lasts.
-            </p>
-            <div className="rl-hero-actions">
-              <TrackedLink
-                href="/tools/multiplex-underwriter"
-                name="hero_start"
-                location="hero"
-                className="rl-button"
-                onCta={onCta}
-              >
-                Find your next possibility
-                <Arrow diagonal />
-              </TrackedLink>
-              <button className="rl-watch-journey" onClick={startJourney}>
-                <span>↓</span>See how it comes together
-              </button>
-            </div>
-            <div className="rl-hero-proof">
-              <span className="rl-proof-mark">
-                CA<span>↗</span>
-              </span>
-              <span>
-                Built for Canadian investors.
-                <br />
-                <b>From the people behind the podcast.</b>
-              </span>
-            </div>
-          </div>
-          <div className="rl-hero-art">
-            <div className="rl-hero-orbit" />
-            <div className="rl-art-coordinate">43°39′ N &nbsp; 79°23′ W</div>
-            <div className="rl-hero-scene">
-              <HeroScene />
-            </div>
-            <div className="rl-hero-project">
-              <span className="rl-status-dot" />
-              <span>THE MULTIPLEX OPPORTUNITY</span>
-              <Arrow diagonal />
-              <div>
-                <strong>One lot.</strong>
-                <em>More possibility.</em>
-              </div>
-              <span className="rl-project-foot">A CONCEPT WORTH EXPLORING</span>
-            </div>
-            <span className="rl-hero-annotation">
-              <i />
-              THE NEXT CHAPTER OF YOUR NEIGHBOURHOOD.
-            </span>
-            <span className="rl-art-index">FIG. 01 / THE BIGGER PICTURE</span>
-          </div>
-        </section>
-        <div className="rl-proof-strip">
-          <div>
-            <strong>400+</strong>
-            <span>free podcast episodes</span>
-          </div>
-          <div>
-            <strong>150,000+</strong>
-            <span>properties across Canada</span>
-          </div>
-          <div>
-            <strong>One connected journey.</strong>
-            <span>From learning to long-term ownership.</span>
-          </div>
-          <button
-            onClick={startJourney}
-            aria-label="Explore the seven-step journey"
-          >
-            ↓
-          </button>
-        </div>
-        <div className="rl-journey-intro">
-          <span className="rl-eyebrow">THERE’S A WAY TO BUILD THIS.</span>
-          <h2>
-            Big ambitions.
-            <br />
-            <em>One step at a time.</em>
-          </h2>
-          <p>
-            A little knowledge becomes a conversation.
-            <br />A conversation becomes a project.
-            <br />
-            Scroll to see what happens next.
-          </p>
-        </div>
         <Story onCta={onCta} reducedMotion={reducedMotion} />
         <section id="platform" className="rl-platform">
           <div className="rl-section-heading">

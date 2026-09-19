@@ -3,11 +3,11 @@ import { useId } from "react";
 type Point = [number, number];
 type Props = { progress?: number; hero?: boolean };
 const C = {
-  ink: "#212b25",
-  forest: "#285542",
-  lime: "#c8f16a",
-  ivory: "#f5f3eb",
-  line: "#748175",
+  ink: "#282828",
+  structure: "#383838",
+  accent: "#be1730",
+  ivory: "#f3f3f3",
+  line: "#7d7d7d",
 };
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
 const ramp = (n: number, a: number, b: number) => {
@@ -58,30 +58,30 @@ function Tree({ x, y, size = 1 }: { x: number; y: number; size?: number }) {
   return (
     <g transform={`translate(${cx},${cy}) scale(${size})`}>
       <ellipse cx="10" cy="0" rx="28" ry="10" fill={C.ink} opacity=".08" />
-      <path d="M-2 1 L-2 -48 L2 -48 L2 0 Z" fill="#5d6850" />
+      <path d="M-2 1 L-2 -48 L2 -48 L2 0 Z" fill="#646464" />
       <path
         d="M0 -21 L-12 -39 M0 -30 L12 -48"
-        stroke="#5d6850"
+        stroke="#646464"
         strokeWidth="2"
         fill="none"
       />
       <path
         d="M-27 -48 C-34 -64 -18 -78 -10 -82 C-9 -97 13 -98 20 -85 C36 -82 39 -64 29 -55 C31 -38 8 -30 -2 -36 C-17 -30 -31 -36 -27 -48Z"
-        fill="#739569"
+        fill="#8b8b8b"
       />
       <path
         d="M-10 -82 C-20 -68 -16 -48 -2 -36 C-17 -30 -31 -36 -27 -48 C-34 -64 -18 -78 -10 -82Z"
-        fill="#50765a"
+        fill="#6c6c6c"
       />
       <path
         d="M0 -88 C14 -90 24 -78 24 -65 C16 -68 3 -72 0 -88Z"
-        fill="#9bb17b"
+        fill="#a8a8a8"
         opacity=".7"
       />
       <path
         d="M0 -44 L0 -69 M0 -53 L12 -64 M0 -61 L-9 -73"
         fill="none"
-        stroke="#365b45"
+        stroke="#525252"
         strokeWidth=".7"
         opacity=".5"
       />
@@ -125,12 +125,12 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
       </desc>
       <defs>
         <linearGradient id={`glass-${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop stopColor="#3c5046" />
-          <stop offset="1" stopColor="#1d3026" />
+          <stop stopColor="#4b4b4b" />
+          <stop offset="1" stopColor="#2b2b2b" />
         </linearGradient>
         <linearGradient id={`paper-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop stopColor="#faf9f3" />
-          <stop offset="1" stopColor="#e7e7dc" />
+          <stop stopColor="#f9f9f9" />
+          <stop offset="1" stopColor="#e6e6e6" />
         </linearGradient>
         <filter
           id={`shadow-${id}`}
@@ -144,23 +144,23 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
       </defs>
 
       {/* A quiet cadastral context keeps the architecture attached to a real place. */}
-      <g stroke="#a9afa1" strokeWidth=".7" opacity=".28">
+      <g stroke="#adadad" strokeWidth=".7" opacity=".28">
         <polygon points={top(-7, -9, 26, 35)} strokeDasharray="3 5" />
         <polygon
           points={top(-7, -9, 26, -3)}
-          fill="#d9ddd1"
+          fill="#dbdbdb"
           fillOpacity=".28"
         />
         <polygon
           points={top(24, -9, 29, 35)}
-          fill="#d9ddd1"
+          fill="#dbdbdb"
           fillOpacity=".28"
         />
         {[-5, 7, 19, 31].map((y) => (
-          <Line key={y} a={P(-7, y)} b={P(-2, y)} color="#a9afa1" />
+          <Line key={y} a={P(-7, y)} b={P(-2, y)} color="#adadad" />
         ))}
-        <Line a={P(-7, -6)} b={P(29, -6)} color="#afb4a6" dash="7 8" />
-        <Line a={P(26.5, -9)} b={P(26.5, 35)} color="#afb4a6" dash="7 8" />
+        <Line a={P(-7, -6)} b={P(29, -6)} color="#b2b2b2" dash="7 8" />
+        <Line a={P(26.5, -9)} b={P(26.5, 35)} color="#b2b2b2" dash="7 8" />
         <polygon points={top(-8, 7, -3, 16)} />
         <polygon points={top(-8, 20, -3, 29)} />
         <polygon points={top(3, 32, 16, 37)} />
@@ -172,31 +172,31 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
       >
         <polygon points={top(0, 0, 21, 30)} fill={C.ink} />
       </g>
-      <polygon points={front(0, 21, 0, -0.42, 0)} fill="#d3d7c7" />
-      <polygon points={side(0, 0, 30, -0.42, 0)} fill="#bcc6b1" />
+      <polygon points={front(0, 21, 0, -0.42, 0)} fill="#d5d5d5" />
+      <polygon points={side(0, 0, 30, -0.42, 0)} fill="#c2c2c2" />
       <polygon
         points={top(0, 0, 21, 30)}
-        fill="#e7ebdc"
-        stroke="#b3bea4"
+        fill="#e9e9e9"
+        stroke={C.accent}
         strokeWidth=".8"
       />
       <polygon
         points={top(0.7, 0.7, 20.3, 29.3)}
-        stroke="#83986e"
+        stroke={C.accent}
         strokeWidth=".65"
         strokeDasharray="3 4"
         opacity=".6"
       />
       <g opacity={0.35 + 0.65 * landscape}>
-        <polygon points={top(2, 1.6, 19, 5.8)} fill="#f5f4eb" />
-        <polygon points={top(8.7, 0, 11.5, 7)} fill="#f5f4eb" />
-        <polygon points={top(17.5, 6, 19.4, 26)} fill="#f5f4eb" />
+        <polygon points={top(2, 1.6, 19, 5.8)} fill="#f4f4f4" />
+        <polygon points={top(8.7, 0, 11.5, 7)} fill="#f4f4f4" />
+        <polygon points={top(17.5, 6, 19.4, 26)} fill="#f4f4f4" />
         {[3.1, 4.7, 6.3, 13.8, 15.4, 17].map((x) => (
           <Line
             key={x}
             a={P(x, 1.6)}
             b={P(x, 5.8)}
-            color="#d5d8cb"
+            color="#d6d6d6"
             width={0.5}
           />
         ))}
@@ -205,7 +205,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
             key={y}
             a={P(17.5, y)}
             b={P(19.4, y)}
-            color="#d5d8cb"
+            color="#d6d6d6"
             width={0.5}
           />
         ))}
@@ -220,12 +220,12 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
       {/* Ground floor plan: room divisions, stairs, door arcs and glazing. */}
       <g
         opacity={plan * (1 - ramp(q, 5.12, 5.5))}
-        stroke={C.forest}
+        stroke={C.structure}
         strokeWidth="1.2"
       >
         <polygon
           points={top(3, 7, 17, 22, 0.045)}
-          fill="#f6f6ec"
+          fill="#f5f5f5"
           fillOpacity=".54"
         />
         <polygon
@@ -235,25 +235,25 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
         <Line
           a={P(10, 7, 0.05)}
           b={P(10, 22, 0.05)}
-          color={C.forest}
+          color={C.structure}
           width={1.2}
         />
         <Line
           a={P(3, 14.5, 0.05)}
           b={P(17, 14.5, 0.05)}
-          color={C.forest}
+          color={C.structure}
           width={1.2}
         />
         <Line
           a={P(6.5, 14.5, 0.05)}
           b={P(6.5, 22, 0.05)}
-          color={C.forest}
+          color={C.structure}
           width={1.2}
         />
         <Line
           a={P(13.4, 14.5, 0.05)}
           b={P(13.4, 22, 0.05)}
-          color={C.forest}
+          color={C.structure}
           width={1.2}
         />
         <polygon points={top(8.7, 8.3, 11.2, 13.6, 0.06)} strokeWidth=".65" />
@@ -262,7 +262,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
             key={y}
             a={P(8.7, y, 0.06)}
             b={P(11.2, y, 0.06)}
-            color={C.forest}
+            color={C.structure}
             width={0.55}
           />
         ))}
@@ -271,7 +271,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
             key={x}
             points={top(x, 8.2, x + 3.1, 10.1, 0.06)}
             strokeWidth=".55"
-            fill="#c8d4b7"
+            fill="#cfcfcf"
             fillOpacity=".3"
           />
         ))}
@@ -290,17 +290,17 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
           <g key={z}>
             <polygon
               points={top(3, 7, 17, 22, z * height)}
-              fill={i === 0 ? "#e2e5d7" : "#e9ecdf"}
+              fill={i === 0 ? "#e3e3e3" : "#eaeaea"}
               fillOpacity={
                 0.15 + ramp(q, 4.95 + i * 0.08, 5.2 + i * 0.08) * 0.48
               }
-              stroke={C.forest}
+              stroke={C.structure}
               strokeWidth={i === 0 ? 1.2 : 0.8}
             />
             {i > 0 && (
               <polygon
                 points={front(3, 17, 7, (z - 0.15) * height, z * height)}
-                fill="#a4b298"
+                fill="#adadad"
                 opacity={ramp(q, 4.95 + i * 0.08, 5.2 + i * 0.08)}
               />
             )}
@@ -312,7 +312,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
               key={`${x}-${y}`}
               a={P(x, y)}
               b={P(x, y, 9.6 * height)}
-              color={C.forest}
+              color={C.structure}
               width={1.6}
             />
           )),
@@ -324,7 +324,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
                 key={x}
                 a={P(x, 7, f * 3.2 * height)}
                 b={P(x, 7, (f * 3.2 + 3.05) * height)}
-                color="#9c996f"
+                color="#979797"
                 width={1}
               />
             ))}
@@ -333,7 +333,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
                 key={y}
                 a={P(3, y, f * 3.2 * height)}
                 b={P(3, y, (f * 3.2 + 3.05) * height)}
-                color="#9c996f"
+                color="#979797"
                 width={1}
               />
             ))}
@@ -349,7 +349,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
           <g key={f} opacity={visible}>
             <polygon
               points={side(3, 7, 22, z, z + 3.2)}
-              fill={f === 0 ? "#355943" : C.forest}
+              fill={f === 0 ? "#505050" : C.structure}
             />
             <polygon
               points={front(3, 17, 7, z, z + 3.2)}
@@ -357,12 +357,12 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
             />
             <polygon
               points={side(3, 7, 22, z, z + 0.1)}
-              fill="#183b2b"
+              fill="#323232"
               opacity=".5"
             />
             <polygon
               points={front(3, 17, 7, z, z + 0.1)}
-              fill="#bfc6b4"
+              fill="#c3c3c3"
               opacity=".5"
             />
             {[
@@ -373,7 +373,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
                 key={y}
                 a={P(3, y, z + 0.15)}
                 b={P(3, y, z + 3.1)}
-                color="#779076"
+                color="#898989"
                 width={0.4}
               />
             ))}
@@ -381,26 +381,26 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
               <g key={y}>
                 <polygon
                   points={side(2.97, y, y + 2.5, z + 0.78, z + 2.54)}
-                  fill="#122c20"
+                  fill="#262626"
                 />
                 <polygon
                   points={side(2.94, y + 0.11, y + 2.39, z + 0.9, z + 2.43)}
-                  fill="#577263"
+                  fill="#6b6b6b"
                 />
                 <polygon
                   points={side(2.91, y + 0.14, y + 1.14, z + 0.93, z + 2.4)}
-                  fill="#294837"
+                  fill="#404040"
                 />
                 <Line
                   a={P(2.9, y + 1.24, z + 0.86)}
                   b={P(2.9, y + 1.24, z + 2.5)}
-                  color="#b0b9a1"
+                  color="#b5b5b5"
                   width={0.6}
                 />
                 <Line
                   a={P(2.9, y, z + 0.76)}
                   b={P(2.9, y + 2.55, z + 0.76)}
-                  color="#82967b"
+                  color="#909090"
                   width={1}
                 />
               </g>
@@ -409,7 +409,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
               <g key={x}>
                 <polygon
                   points={front(x, x + 4.1, 6.97, z + 0.61, z + 2.59)}
-                  fill="#c4cabb"
+                  fill="#c8c8c8"
                 />
                 <polygon
                   points={front(x + 0.11, x + 3.99, 6.92, z + 0.74, z + 2.5)}
@@ -417,39 +417,39 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
                 />
                 <polygon
                   points={front(x + 0.17, x + 1.83, 6.9, z + 0.79, z + 2.45)}
-                  fill={f === 1 && idx === 0 ? "#d8cf9f" : "#678475"}
+                  fill={f === 1 && idx === 0 ? "#cdcdcd" : "#7d7d7d"}
                   fillOpacity={f === 1 && idx === 0 ? ".7" : ".32"}
                 />
                 <Line
                   a={P(x + 1.96, 6.86, z + 0.73)}
                   b={P(x + 1.96, 6.86, z + 2.5)}
-                  color="#b5bda9"
+                  color="#bababa"
                   width={1}
                 />
                 <Line
                   a={P(x + 0.14, 6.85, z + 0.73)}
                   b={P(x + 3.97, 6.85, z + 0.73)}
-                  color="#455447"
+                  color="#505050"
                   width={1.3}
                 />
                 <polygon
                   points={front(x + 0.16, x + 3.96, 6.86, z + 2.36, z + 2.47)}
-                  fill="#c7cebb"
+                  fill="#cbcbcb"
                   fillOpacity=".35"
                 />
                 {f > 0 && (
                   <g>
                     <polygon
                       points={top(x - 0.2, 5.8, x + 4.3, 7, z + 0.51)}
-                      fill="#ebece1"
+                      fill="#ebebeb"
                     />
                     <polygon
                       points={front(x - 0.2, x + 4.3, 5.8, z + 0.4, z + 0.51)}
-                      fill="#b4bdac"
+                      fill="#bababa"
                     />
                     <polygon
                       points={side(x - 0.2, 5.8, 7, z + 0.4, z + 0.51)}
-                      fill="#879982"
+                      fill="#949494"
                     />
                     <polygon
                       points={front(
@@ -459,22 +459,22 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
                         z + 0.56,
                         z + 1.42,
                       )}
-                      fill="#dfe7d3"
+                      fill="#e4e4e4"
                       fillOpacity=".14"
-                      stroke="#536851"
+                      stroke="#626262"
                       strokeWidth=".7"
                     />
                     <polygon
                       points={side(x - 0.12, 5.87, 6.94, z + 0.56, z + 1.42)}
-                      fill="#dfe7d3"
+                      fill="#e4e4e4"
                       fillOpacity=".12"
-                      stroke="#536851"
+                      stroke="#626262"
                       strokeWidth=".7"
                     />
                     <Line
                       a={P(x + 2.08, 5.84, z + 0.56)}
                       b={P(x + 2.08, 5.84, z + 1.42)}
-                      color="#536851"
+                      color="#626262"
                       width={0.65}
                     />
                   </g>
@@ -483,14 +483,14 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
             ))}
             <polygon
               points={front(9.05, 10.75, 6.99, z, z + 3.2)}
-              fill="#d9dccd"
+              fill="#dadada"
             />
             {[9.2, 9.42, 9.64, 9.86, 10.08, 10.3, 10.52].map((x) => (
               <Line
                 key={x}
                 a={P(x, 6.94, z + 0.1)}
                 b={P(x, 6.94, z + 3.15)}
-                color="#b9c0af"
+                color="#bdbdbd"
                 width={0.65}
               />
             ))}
@@ -498,30 +498,30 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
               <g>
                 <polygon
                   points={front(9.13, 10.67, 6.88, 0.06, 2.45)}
-                  fill="#203e2b"
+                  fill={C.accent}
                 />
                 <polygon
                   points={front(9.28, 10.52, 6.84, 0.22, 2.3)}
-                  fill="#536e57"
+                  fill="#d22e44"
                 />
                 <Line
                   a={P(10.3, 6.8, 0.94)}
                   b={P(10.3, 6.8, 1.25)}
-                  color="#d2d5c0"
+                  color="#d3d3d3"
                   width={1.5}
                 />
                 <polygon
                   points={top(8.76, 5.95, 11.03, 7, 2.54)}
-                  fill="#3b5140"
+                  fill="#4b4b4b"
                 />
                 <polygon
                   points={front(8.76, 11.03, 5.95, 2.47, 2.54)}
-                  fill="#244131"
+                  fill="#3a3a3a"
                 />
-                <polygon points={top(8.9, 6.3, 10.9, 7, 0.12)} fill="#c8cdbd" />
+                <polygon points={top(8.9, 6.3, 10.9, 7, 0.12)} fill="#cbcbcb" />
                 <polygon
                   points={top(8.9, 5.95, 10.9, 6.3, 0.06)}
-                  fill="#d6dacb"
+                  fill="#d8d8d8"
                 />
               </g>
             )}
@@ -530,45 +530,45 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
       })}
 
       <g opacity={hero ? 1 : ramp(q, 5.64, 5.91)}>
-        <polygon points={top(2.85, 6.85, 17.15, 22.15, 9.64)} fill="#697c68" />
-        <polygon points={top(3.42, 7.42, 16.58, 21.58, 9.65)} fill="#9aa78e" />
-        <polygon points={top(4.1, 8.1, 15.9, 20.9, 9.66)} fill="#87987f" />
-        <polygon points={side(2.85, 6.85, 22.15, 9.45, 9.8)} fill="#274735" />
-        <polygon points={front(2.85, 17.15, 6.85, 9.45, 9.8)} fill="#e4e6da" />
-        <polygon points={top(2.85, 6.85, 17.15, 7.08, 9.8)} fill="#f5f4ed" />
-        <polygon points={top(2.85, 7.08, 3.09, 22.15, 9.8)} fill="#b9c4b0" />
-        <polygon points={top(3.09, 21.91, 17.15, 22.15, 9.8)} fill="#d8decf" />
-        <polygon points={top(16.91, 7.08, 17.15, 21.91, 9.8)} fill="#d8decf" />
-        <polygon points={side(7.7, 14.4, 17.8, 9.68, 10.08)} fill="#697e65" />
-        <polygon points={front(7.7, 12.4, 14.4, 9.68, 10.08)} fill="#b8c2ab" />
-        <polygon points={top(7.7, 14.4, 12.4, 17.8, 10.08)} fill="#d1d8c4" />
+        <polygon points={top(2.85, 6.85, 17.15, 22.15, 9.64)} fill="#777777" />
+        <polygon points={top(3.42, 7.42, 16.58, 21.58, 9.65)} fill="#a2a2a2" />
+        <polygon points={top(4.1, 8.1, 15.9, 20.9, 9.66)} fill="#939393" />
+        <polygon points={side(2.85, 6.85, 22.15, 9.45, 9.8)} fill="#3f3f3f" />
+        <polygon points={front(2.85, 17.15, 6.85, 9.45, 9.8)} fill="#e5e5e5" />
+        <polygon points={top(2.85, 6.85, 17.15, 7.08, 9.8)} fill="#f4f4f4" />
+        <polygon points={top(2.85, 7.08, 3.09, 22.15, 9.8)} fill="#c0c0c0" />
+        <polygon points={top(3.09, 21.91, 17.15, 22.15, 9.8)} fill="#dcdcdc" />
+        <polygon points={top(16.91, 7.08, 17.15, 21.91, 9.8)} fill="#dcdcdc" />
+        <polygon points={side(7.7, 14.4, 17.8, 9.68, 10.08)} fill="#787878" />
+        <polygon points={front(7.7, 12.4, 14.4, 9.68, 10.08)} fill="#bebebe" />
+        <polygon points={top(7.7, 14.4, 12.4, 17.8, 10.08)} fill="#d5d5d5" />
         {[8.2, 9, 9.8, 10.6, 11.4].map((x) => (
           <Line
             key={x}
             a={P(x, 14.7, 10.1)}
             b={P(x, 17.5, 10.1)}
-            color="#84927b"
+            color="#8d8d8d"
             width={0.65}
           />
         ))}
         <polygon
           points={top(5.1, 10.3, 7.4, 12.5, 9.7)}
-          fill="#465f4a"
-          stroke="#bbc5ae"
+          fill="#585858"
+          stroke="#c1c1c1"
           strokeWidth=".65"
         />
-        <Line a={P(6.25, 10.3, 9.72)} b={P(6.25, 12.5, 9.72)} color="#92a28b" />
+        <Line a={P(6.25, 10.3, 9.72)} b={P(6.25, 12.5, 9.72)} color="#9d9d9d" />
       </g>
 
       <g opacity={landscape}>
-        <polygon points={top(3, 3.9, 7.5, 5.7, 0.15)} fill="#a5b78c" />
-        <polygon points={top(12.5, 3.9, 17, 5.7, 0.15)} fill="#a5b78c" />
+        <polygon points={top(3, 3.9, 7.5, 5.7, 0.15)} fill="#b0b0b0" />
+        <polygon points={top(12.5, 3.9, 17, 5.7, 0.15)} fill="#b0b0b0" />
         {[3.7, 5.1, 6.5, 13.2, 14.6, 16].map((x) => {
           const [cx, cy] = P(x, 4.8, 0.2);
           return (
             <g key={x}>
-              <ellipse cx={cx} cy={cy - 3} rx="9" ry="5" fill="#718d5e" />
-              <ellipse cx={cx - 2} cy={cy - 5} rx="6" ry="4" fill="#8aa36e" />
+              <ellipse cx={cx} cy={cy - 3} rx="9" ry="5" fill="#848484" />
+              <ellipse cx={cx - 2} cy={cy - 5} rx="6" ry="4" fill="#9a9a9a" />
             </g>
           );
         })}
@@ -577,17 +577,17 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
 
       {/* Survey annotations remain legible at compact viewport sizes. */}
       <g opacity={dimensionOpacity}>
-        <Line a={P(0, -2.4)} b={P(21, -2.4)} color={C.forest} width={0.6} />
-        <Line a={P(0, -3.05)} b={P(0, -1.75)} color={C.forest} width={0.8} />
-        <Line a={P(21, -3.05)} b={P(21, -1.75)} color={C.forest} width={0.8} />
-        <Line a={P(-2.4, 0)} b={P(-2.4, 30)} color={C.forest} width={0.6} />
-        <Line a={P(-3.05, 0)} b={P(-1.75, 0)} color={C.forest} width={0.8} />
-        <Line a={P(-3.05, 30)} b={P(-1.75, 30)} color={C.forest} width={0.8} />
+        <Line a={P(0, -2.4)} b={P(21, -2.4)} color={C.accent} width={0.6} />
+        <Line a={P(0, -3.05)} b={P(0, -1.75)} color={C.accent} width={0.8} />
+        <Line a={P(21, -3.05)} b={P(21, -1.75)} color={C.accent} width={0.8} />
+        <Line a={P(-2.4, 0)} b={P(-2.4, 30)} color={C.accent} width={0.6} />
+        <Line a={P(-3.05, 0)} b={P(-1.75, 0)} color={C.accent} width={0.8} />
+        <Line a={P(-3.05, 30)} b={P(-1.75, 30)} color={C.accent} width={0.8} />
         <text
           x={P(10.5, -3.8)[0]}
           y={P(10.5, -3.8)[1]}
           textAnchor="middle"
-          fill={C.forest}
+          fill={C.accent}
           fontFamily="monospace"
           fontSize="9"
           letterSpacing="1.1"
@@ -599,7 +599,7 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
           x={P(-3.8, 15)[0]}
           y={P(-3.8, 15)[1]}
           textAnchor="middle"
-          fill={C.forest}
+          fill={C.accent}
           fontFamily="monospace"
           fontSize="9"
           letterSpacing="1.1"
@@ -614,19 +614,19 @@ export default function MultiplexScene({ progress = 6, hero = false }: Props) {
               cy={y}
               r="3.1"
               fill={C.ivory}
-              stroke={C.forest}
+              stroke={C.accent}
               strokeWidth=".85"
             />
-            <circle cx={x} cy={y} r="1" fill={C.forest} />
+            <circle cx={x} cy={y} r="1" fill={C.accent} />
           </g>
         ))}
       </g>
       <g opacity={1 - shell} transform="translate(583 158)">
-        <path d="M0 29V0M0 0L-4 9M0 0L4 9" stroke={C.forest} strokeWidth="1" />
+        <path d="M0 29V0M0 0L-4 9M0 0L4 9" stroke={C.accent} strokeWidth="1" />
         <text
           y="-8"
           textAnchor="middle"
-          fill={C.forest}
+          fill={C.accent}
           fontFamily="monospace"
           fontSize="9"
         >

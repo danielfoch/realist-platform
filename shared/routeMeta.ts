@@ -22,7 +22,7 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   "/ask/moderate": { title: "Host moderation | Realist", description: "Review questions for Unpacking Multiplexes Toronto." },
   "/": {
     title: "Realist | From Your First Listen to Your First Multiplex",
-    description: "Learn, connect, find, design, finance, build, and own. Explore free real estate podcasts, Canadian properties, multiplex concepts, project pro formas, and the people to help you move forward.",
+    description: "Learn for free, analyze Canadian investment properties, and turn a multiplex concept into your next project. Find your network, make an offer, explore financing, and build with Realist.",
   },
   "/tools": {
     title: "Free Canadian Real Estate Tools - Realist.ca",
