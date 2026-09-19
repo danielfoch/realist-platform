@@ -52,8 +52,10 @@ const VACANT_LAND_PHRASES = [
   "without buildings",
 ];
 
-function normalizeClassification(value: string | null | undefined): string {
-  return (value || "")
+function normalizeClassification(value: unknown): string {
+  // CREA has sent these as text, as lists of text, and as nothing at all.
+  const text = Array.isArray(value) ? value.filter((item) => typeof item === "string").join(" ") : typeof value === "string" ? value : "";
+  return text
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/[/_-]/g, " ")

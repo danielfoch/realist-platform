@@ -269,3 +269,17 @@ describe("adapting to CREA's schema", () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe("the shape of what CREA sends", () => {
+  it("turns list-valued and numeric fields into the text everything downstream expects", async () => {
+    const { coerceDdfListing } = await import("./client");
+    const listing = coerceDdfListing({ ListingKey: 123, StructureType: ["House", "Duplex"], PropertySubType: "Single Family", City: null, PublicRemarks: { odd: true }, ListPrice: 899000 } as Record<string, unknown>);
+    expect(listing).toEqual({ ListingKey: "123", StructureType: "House, Duplex", PropertySubType: "Single Family", City: null, PublicRemarks: "", ListPrice: 899000 });
+  });
+
+  it("classifies vacant land without assuming a field is text", async () => {
+    const { isVacantLandLikeProperty } = await import("./propertyEligibility");
+    expect(isVacantLandLikeProperty({ StructureType: ["Vacant Land"] as unknown as string })).toBe(true);
+    expect(isVacantLandLikeProperty({ StructureType: ["House"] as unknown as string, PropertySubType: "Single Family" })).toBe(false);
+  });
+});

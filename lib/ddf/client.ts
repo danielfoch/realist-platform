@@ -223,6 +223,31 @@ export function adaptDdfUrl(url: string): string {
   return parsed.toString();
 }
 
+/**
+ * CREA also changes the SHAPE of fields: `StructureType` now arrives as a list
+ * (["House"]) where it used to be text, and everything downstream — eligibility
+ * rules, the crawler's text columns, the page — expects text. Fix it once, at the
+ * door: anything we treat as text is text after this, whatever CREA sent.
+ */
+const TEXT_FIELDS = [
+  "PropertySubType", "StructureType", "StandardStatus", "City", "CityRegion", "StateOrProvince", "PostalCode", "Country",
+  "UnparsedAddress", "StreetNumber", "StreetName", "StreetSuffix", "StreetDirPrefix", "StreetDirSuffix", "UnitNumber",
+  "PublicRemarks", "ListOfficeName", "LotSizeDimensions", "LotSizeAreaUnits", "LivingAreaUnits", "BuildingAreaUnits",
+  "LeaseAmountFrequency", "AssociationFeeFrequency", "ListingId", "ListingKey",
+] as const;
+
+export function coerceDdfListing<T extends object>(raw: T): T {
+  const listing = raw as Record<string, unknown>;
+  for (const field of TEXT_FIELDS) {
+    const value = listing[field];
+    if (value == null || typeof value === "string") continue;
+    if (Array.isArray(value)) listing[field] = value.filter((item) => typeof item === "string" || typeof item === "number").join(", ");
+    else if (typeof value === "number" || typeof value === "boolean") listing[field] = String(value);
+    else listing[field] = "";
+  }
+  return raw;
+}
+
 /** Every Property request goes through here: rate limits honoured, schema changes absorbed. */
 async function ddfApiFetch(url: string, init: RequestInit): Promise<Response> {
   let response = await ddfRateLimitedFetch(adaptDdfUrl(url), init);
@@ -401,7 +426,7 @@ export async function searchDdfListings(params: {
   }
 
   const data: DdfSearchResponse = await response.json();
-  let listings = data.value || [];
+  let listings = (data.value || []).map(coerceDdfListing);
   // When CREA won't filter on status for us, do it here: a listing that states a different status is dropped.
   const wantedStatus = (params.standardStatus || "Active").toLowerCase();
   listings = listings.filter((listing) => !listing.StandardStatus || listing.StandardStatus.toLowerCase() === wantedStatus);
@@ -521,7 +546,7 @@ export async function searchDdfByRemarks(params: {
   }
 
   const data: DdfSearchResponse = await response.json();
-  const allListings = data.value || [];
+  const allListings = (data.value || []).map(coerceDdfListing);
   const totalCount = data["@odata.count"] || allListings.length;
 
   if (totalCount > requestedTop && !params.skip) {
@@ -534,7 +559,7 @@ export async function searchDdfByRemarks(params: {
         const pageResponse = await ddfApiFetch(`${DDF_API_BASE}/Property?${pageParams.toString()}`, fetchOpts);
         if (pageResponse.ok) {
           const pageData = await pageResponse.json();
-          if (pageData?.value) allListings.push(...pageData.value);
+          if (pageData?.value) allListings.push(...(pageData.value as DdfListing[]).map(coerceDdfListing));
         }
       } catch {
       }
@@ -564,7 +589,7 @@ export async function getDdfListing(listingKey: string): Promise<DdfListing | nu
     throw new Error(`DDF listing fetch failed: ${response.status}`);
   }
 
-  return response.json();
+  return coerceDdfListing((await response.json()) as DdfListing);
 }
 
 export function normalizeDdfListing(ddf: DdfListing): any {
@@ -656,7 +681,7 @@ export async function searchDdfByMlsNumber(mlsNumber: string): Promise<DdfListin
   }
 
   const data: DdfSearchResponse = await response.json();
-  return data.value?.[0] || null;
+  return data.value?.[0] ? coerceDdfListing(data.value[0]) : null;
 }
 
 export function isDdfConfigured(): boolean {
