@@ -48,6 +48,8 @@ export interface ListingSearchResponse {
   count: number;
   page: number;
   pageSize: number;
+  /** "snapshots" when the page came from our own crawl rather than the live feed. */
+  source?: "snapshots";
 }
 
 /** Tour/floor-plan generators that show up in Media but aren't photos. */

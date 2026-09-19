@@ -64,6 +64,23 @@ function buildRequestBody(filters: Filters, page: number): Record<string, unknow
   return body;
 }
 
+/** One page of results. Never throws: the outcome is a status the page can render. */
+async function fetchPage(filters: Filters, page: number): Promise<{ status: Exclude<Status, "loading">; data?: ListingSearchResponse }> {
+  try {
+    const response = await fetch("/api/listings/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildRequestBody(filters, page)),
+    });
+    if (response.status === 503) return { status: "unconfigured" };
+    if (!response.ok) return { status: "error" };
+    return { status: "ready", data: (await response.json()) as ListingSearchResponse };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+
 const inputClass =
   "w-full rounded-md border border-hairline-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none";
 
@@ -75,36 +92,25 @@ export function ListingsExplorer() {
   const [data, setData] = useState<ListingSearchResponse | null>(null);
   const requestIdRef = useRef(0);
 
-  const runSearch = useCallback(async (filters: Filters, nextPage: number) => {
+  const runSearch = useCallback((filters: Filters, nextPage: number) => {
     const requestId = ++requestIdRef.current;
     setStatus("loading");
-    try {
-      const response = await fetch("/api/listings/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildRequestBody(filters, nextPage)),
-      });
+    fetchPage(filters, nextPage).then((result) => {
       if (requestId !== requestIdRef.current) return;
-      if (response.status === 503) {
-        setStatus("unconfigured");
-        return;
-      }
-      if (!response.ok) {
-        setStatus("error");
-        return;
-      }
-      const payload = (await response.json()) as ListingSearchResponse;
-      if (requestId !== requestIdRef.current) return;
-      setData(payload);
-      setStatus("ready");
-    } catch {
-      if (requestId === requestIdRef.current) setStatus("error");
-    }
+      if (result.data) setData(result.data);
+      setStatus(result.status);
+    });
   }, []);
 
+  // The page opens in its loading state, so the first search only has to fetch.
   useEffect(() => {
-    runSearch(EMPTY_FILTERS, 1);
-  }, [runSearch]);
+    const requestId = ++requestIdRef.current;
+    fetchPage(EMPTY_FILTERS, 1).then((result) => {
+      if (requestId !== requestIdRef.current) return;
+      if (result.data) setData(result.data);
+      setStatus(result.status);
+    });
+  }, []);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -333,6 +339,9 @@ export function ListingsExplorer() {
             <p className="tnum mb-4 text-sm text-ink-faint">
               {data.count.toLocaleString("en-CA")} listings · page {data.page} of{" "}
               {totalPages}
+              {data.source === "snapshots" && applied.sort !== "yield" && !applied.minYield
+                ? " · highest yield first while the live feed catches up"
+                : ""}
             </p>
             <ListingResultsGrid listings={data.listings} />
             <div className="mt-8 flex items-center justify-center gap-3">

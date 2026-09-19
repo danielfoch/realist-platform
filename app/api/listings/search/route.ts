@@ -68,8 +68,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // The door never closes because CREA's feed is down: the last week of our own
+  // crawl is a complete, already-underwritten set of active listings.
+  const fromSnapshots = async () => {
+    if (params.bounds) return null;
+    try {
+      const { listings, count } = await searchByYield({ ...params, pageSize: PAGE_SIZE });
+      return count > 0 ? NextResponse.json({ listings, count, page: params.page, pageSize: PAGE_SIZE, sort: "yield", source: "snapshots" }) : null;
+    } catch {
+      return null;
+    }
+  };
+
   if (!isDdfConfigured()) {
-    return NextResponse.json({ error: "listings_unconfigured" }, { status: 503 });
+    return (await fromSnapshots()) ?? NextResponse.json({ error: "listings_unconfigured" }, { status: 503 });
   }
 
   try {
@@ -124,9 +136,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[api/listings/search]", error);
-    return NextResponse.json(
-      { error: "Listing search failed — please try again." },
-      { status: 502 },
+    return (
+      (await fromSnapshots()) ??
+      NextResponse.json({ error: "Listing search failed — please try again." }, { status: 502 })
     );
   }
 }

@@ -33,6 +33,9 @@ const nextConfig: NextConfig = {
       { source: "/my-performance", destination: "/account", permanent: true },
       { source: "/community/meetups", destination: "/community", permanent: true },
       { source: "/meetups", destination: "/community", permanent: true },
+      // The old app's partner pages (the homepage still links PropCare's). Temporary on
+      // purpose: a real partner page can take the URL back without fighting browser caches.
+      { source: "/community/events/partners/:partner", destination: "/team?roles=property_manager#request", permanent: false },
     ];
   },
 };

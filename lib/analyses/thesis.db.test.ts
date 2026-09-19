@@ -55,6 +55,8 @@ describe("a member's buy box", () => {
       snapshot("LOWYIELD", "Hamilton", 660_000, 3.1, "Steel City Realty"),
       snapshot("FARAWAY", "Calgary", 650_000, 7.5, "Bow Valley Realty"),
       snapshot("NOBROKER", "Hamilton", 655_000, 7.0, null),
+      // Not seen by the crawl in three weeks: sold or pulled, so it is never suggested.
+      { ...snapshot("STALE", "Hamilton", 650_000, 6.9, "Steel City Realty"), snapshotMonth: "2026-08", capturedAt: new Date(Date.now() - 21 * 86_400_000) },
     ]);
     const box = (await getBuyBox("t1"))!;
     const deals = await dealsForBox("t1", box);
