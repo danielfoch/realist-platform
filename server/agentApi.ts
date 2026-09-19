@@ -51,6 +51,8 @@ import {
 } from "./agentCrm";
 import { BrowserActError, previewBrowserAct, runBrowserAct } from "./browserAct";
 import { browserActInputSchema, listBrowserPlaybooks } from "@shared/browserAct";
+import { applyDocsRoute, previewDocsRoute } from "./agentDocs";
+import { docsRouteInputSchema, listClosingChecklists, listDocClasses } from "@shared/docsRoute";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import {
@@ -445,6 +447,13 @@ registerSpecialistExecutor("browser.act", async (input, ctx) => {
   }
 });
 
+registerSpecialistExecutor("docs.route", async (input, ctx) => {
+  if (ctx.mode === "apply") {
+    return applyDocsRoute(input, ctx.userId, { jobId: ctx.jobId, previousResult: ctx.previousResult });
+  }
+  return previewDocsRoute(input, ctx.userId);
+});
+
 function jobErrorResponse(res: Response, err: unknown) {
   if (err instanceof AgentJobError) {
     return res.status(err.status).json({ error: err.code, message: err.message });
@@ -829,6 +838,51 @@ function registerSpecialistRoutes(app: Express) {
       const contact = await getAgentCrmContact(req.agentUserId!, req.params.id);
       if (!contact) return res.status(404).json({ error: "contact_not_found" });
       res.json({ contact });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Closing-packet classes + stage checklist (maps only, no blank forms). */
+  app.get("/api/agent/docs/classes", requireScope("read"), (_req, res) => {
+    res.json({
+      classes: listDocClasses(),
+      checklists: listClosingChecklists(),
+      ocr: "not_in_v1",
+      note: "User-supplied deal documents only. Official blank forms are not stored.",
+    });
+  });
+
+  /** Create a docs.route job (always needs_approval before metadata persist). */
+  app.post("/api/agent/docs/route", async (req, res) => {
+    try {
+      const needed = scopesForJobType("docs.route");
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const { idempotencyKey, ...input } = body;
+      const parsed = docsRouteInputSchema.safeParse(input);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { job, replayed } = await createAgentJob({
+        request: {
+          type: "docs.route",
+          input: parsed.data,
+          idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({
+        job: serializeAgentJob(job),
+        classification: job.result,
+        replayed,
+      });
     } catch (err) {
       jobErrorResponse(res, err);
     }

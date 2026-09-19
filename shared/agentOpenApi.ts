@@ -64,12 +64,13 @@ export const AGENT_API_OPENAPI = {
   openapi: "3.0.3",
   info: {
     title: "Realist Agent API",
-    version: "1.5.0",
+    version: "1.6.0",
     description:
       "Bearer-authenticated API used by @realist/mcp and specialist tools. " +
       "Keys are `realist_live_*`, SHA-256 hashed in `api_keys`. " +
       "P0 spine + P1 Ontario forms + P2 worldwide listing extract " +
-      "+ P3 Realist CRM writes + P4 listing-portal browser playbooks. Realist-only.",
+      "+ P3 Realist CRM writes + P4 listing-portal browser playbooks " +
+      "+ P5 document routing. Realist-only.",
   },
   servers: [{ url: "https://realist.ca", description: "Production" }],
   tags: [
@@ -79,6 +80,7 @@ export const AGENT_API_OPENAPI = {
     { name: "Listings", description: "Worldwide URL extract + underwrite (Zillow for Earth for AI agents)" },
     { name: "CRM", description: "Realist-owned contacts only. No external CRM." },
     { name: "Browser", description: "Public listing-portal playbooks (cookie banner, expand, gallery, scroll, extract). No login." },
+    { name: "Docs", description: "Classify user-supplied deal documents. No blank-form storage." },
     { name: "Schemas", description: "Canonical Realist domain objects" },
   ],
   paths: {
@@ -322,6 +324,33 @@ export const AGENT_API_OPENAPI = {
         summary: "Extract a listing URL then underwrite in listing currency",
         security: [{ bearerAuth: [] }],
         responses: { "201": { description: "Extract + underwrite jobs" } },
+      },
+    },
+    "/api/agent/docs/classes": {
+      get: {
+        tags: ["Docs"],
+        summary: "List document classes and closing-checklist maps",
+        security: [{ bearerAuth: [] }],
+        responses: { "200": { description: "Doc class enum + stage checklists" } },
+      },
+    },
+    "/api/agent/docs/route": {
+      post: {
+        tags: ["Docs"],
+        summary: "Create a docs.route job (needs_approval before attachment metadata persist)",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/DocsRouteInput" },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "docs.route job + proposed classification" },
+          "403": { description: "docs:write or jobs:write required" },
+        },
       },
     },
     "/api/agent/browser/playbooks": {
@@ -579,6 +608,21 @@ export const AGENT_API_OPENAPI = {
           interestRate: { type: "number" },
           vacancyRate: { type: "number" },
           expenseRatio: { type: "number" },
+        },
+      },
+      DocsRouteInput: {
+        type: "object",
+        properties: {
+          filename: { type: "string" },
+          mimeType: { type: "string" },
+          textContent: { type: "string", description: "Extracted text. Required for high confidence. OCR is not in v1." },
+          base64: { type: "string", description: "Size-capped bytes. Not OCR'd in v1." },
+          dealId: { type: "string" },
+          analysisId: { type: "string" },
+          mlsNumber: { type: "string" },
+          documentId: { type: "string" },
+          docClass: { type: "string", description: "Optional caller hint. Never invents parties, prices, or dates." },
+          hints: { type: "object", additionalProperties: true },
         },
       },
       BrowserActInput: {

@@ -178,6 +178,11 @@ describe("job scope + approval policy", () => {
     expect(SPECIALIST_REGISTRY["listing.extract"].implemented).toBe(true);
     expect(jobRequiresApproval("listing.extract")).toBe(false);
     expect(jobRequiresApproval("docs.route")).toBe(true);
+    expect(SPECIALIST_REGISTRY["docs.route"].implemented).toBe(true);
+    expect(SPECIALIST_REGISTRY["docs.route"].previewOnCreate).toBe(true);
+    expect(SPECIALIST_REGISTRY["docs.route"].applyOnApprove).toBe(true);
+    expect(scopesForJobType("docs.route")).toEqual(["docs:write", "jobs:write"]);
+    expect(parseJobInput("docs.route", { dealId: "deal-1", textContent: "Agreement of Purchase and Sale. OREA Form 100. Buyer agrees to purchase." }).success).toBe(true);
     expect(SPECIALIST_REGISTRY["crm.update"].implemented).toBe(true);
     expect(SPECIALIST_REGISTRY["crm.update"].previewOnCreate).toBe(true);
     expect(SPECIALIST_REGISTRY["crm.update"].applyOnApprove).toBe(true);

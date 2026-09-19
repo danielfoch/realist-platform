@@ -10,8 +10,17 @@
  */
 import { z } from "zod";
 import { browserActInputSchema } from "./browserAct";
+import {
+  docsRouteInputSchema,
+  transactionDocClassSchema,
+} from "./docsRoute";
 
 export { browserActInputSchema } from "./browserAct";
+export {
+  docsRouteInputSchema,
+  transactionDocClassSchema,
+  DOCS_ROUTE_CLASSES,
+} from "./docsRoute";
 
 // ---------------------------------------------------------------------------
 // Auth scopes (single source of truth for minting + route checks)
@@ -216,17 +225,6 @@ export const contactSchema = z.object({
 });
 export type Contact = z.infer<typeof contactSchema>;
 
-export const transactionDocClassSchema = z.enum([
-  "offer",
-  "waiver",
-  "amendment",
-  "status_certificate",
-  "insurance",
-  "mortgage",
-  "identification",
-  "other",
-]);
-
 export const transactionFileStatusSchema = z.enum([
   "placeholder",
   "pending",
@@ -371,12 +369,6 @@ export const formsFillInputSchema = z.object({
   locale: z.string().optional(),
 }).passthrough();
 
-export const docsRouteInputSchema = z.object({
-  dealId: z.string().min(1).optional(),
-  documentId: z.string().min(1).optional(),
-  docClass: transactionDocClassSchema.optional(),
-});
-
 export const crmContactWriteSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().trim().min(1).max(200).optional(),
@@ -497,7 +489,9 @@ export const SPECIALIST_REGISTRY: Record<AgentJobType, SpecialistHandlerMeta> = 
   "docs.route": {
     specialistId: "realist.docs",
     requiresApproval: true,
-    implemented: false,
+    implemented: true,
+    previewOnCreate: true,
+    applyOnApprove: true,
     scopes: ["docs:write", "jobs:write"],
   },
   "crm.update": {

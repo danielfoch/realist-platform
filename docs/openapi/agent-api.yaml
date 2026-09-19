@@ -1,12 +1,13 @@
 openapi: 3.0.3
 info:
   title: Realist Agent API
-  version: 1.5.0
+  version: 1.6.0
   description: |
     Bearer-authenticated API used by @realist/mcp and specialist tools.
     Keys are `realist_live_*`, SHA-256 hashed in `api_keys`.
     P0 spine + P1 Ontario forms + P2 worldwide listing extract
-    + P3 Realist CRM writes + P4 listing-portal browser playbooks.
+    + P3 Realist CRM writes + P4 listing-portal browser playbooks
+    + P5 document routing.
     Realist-only — Homies is out of scope.
     JSON copy is served at GET /api/agent/openapi.json (read scope).
     Source object: shared/agentOpenApi.ts
@@ -20,6 +21,7 @@ tags:
   - name: Listings
   - name: CRM
   - name: Browser
+  - name: Docs
   - name: Schemas
 paths:
   /api/agent/me:
@@ -210,6 +212,21 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "201": { description: Extract + underwrite jobs }
+  /api/agent/docs/classes:
+    get:
+      tags: [Docs]
+      summary: List document classes and closing-checklist maps
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Doc class enum + stage checklists }
+  /api/agent/docs/route:
+    post:
+      tags: [Docs]
+      summary: Create a docs.route job (needs_approval before attachment metadata persist)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: docs.route job + proposed classification }
+        "403": { description: docs:write or jobs:write required }
   /api/agent/browser/playbooks:
     get:
       tags: [Browser]
