@@ -113,7 +113,7 @@ describe("the data sync, in slices", () => {
         const ontarioLeases = filter.includes("ListPrice eq null") && filter.includes("StateOrProvince eq 'Ontario'") && !new URL(target).searchParams.get("$skip");
         const value = ontarioLeases
           ? [
-              { ListingKey: "R1", City: "Toronto (Regent Park)", StateOrProvince: "Ontario", BedroomsTotal: 2, LeaseAmount: 2850, PropertySubType: "Single Family" },
+              { ListingKey: "R1", City: "Toronto (Regent Park)", StateOrProvince: "Ontario", BedroomsTotal: 2, TotalActualRent: 2850, LeaseAmountFrequency: "Monthly", PropertySubType: "Single Family" },
               { ListingKey: "R2", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 1, LeaseAmount: 2300, LeaseAmountFrequency: "Monthly", PropertySubType: "Single Family" },
               { ListingKey: "C1", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 0, LeaseAmount: 9.95, LeasePerUnit: "square feet", PropertySubType: "Industrial" },
             ]

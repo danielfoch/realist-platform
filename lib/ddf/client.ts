@@ -540,7 +540,8 @@ export async function searchDdfListings(params: {
   if (params.forLease) {
     // DDF dropped TransactionType (For sale/For rent). A lease listing is one with NO sale price —
     // verified on the live feed: `ListPrice eq null` returns them, while `LeaseAmount ne null`
-    // (the obvious filter) is accepted and matches nothing.
+    // (the obvious filter) is accepted and matches nothing. A residential rental's rent is in
+    // TotalActualRent; LeaseAmount is the commercial, per-square-foot figure.
     filters.push("ListPrice eq null");
   } else {
     // …and for-sale listings are the ones carrying a price. Without this, rentals ($0 "price",
@@ -634,7 +635,7 @@ export async function searchDdfListings(params: {
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
   listings = params.forLease
-    ? listings.filter((listing) => (listing.LeaseAmount ?? 0) > 0)
+    ? listings.filter((listing) => (listing.TotalActualRent ?? listing.LeaseAmount ?? 0) > 0)
     : listings.filter((listing) => (listing.ListPrice ?? 0) > 0);
   // If CREA ever refuses part of that group the whole group is dropped, so the rule is enforced here too.
   if (params.minUnits === 2) listings = listings.filter(isMultiUnit);

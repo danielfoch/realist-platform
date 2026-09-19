@@ -32,6 +32,7 @@ export interface DdfLeaseListing {
   ListingKey: string;
   ListPrice?: number;
   LeaseAmount?: number;
+  TotalActualRent?: number;
   LeaseAmountFrequency?: string;
   LeasePerUnit?: string;
   TransactionType?: string;
@@ -76,11 +77,13 @@ export function ddfLeaseExternalId(listingKey: string): string {
  * daily-rate vacation listings).
  */
 /**
- * What a lease listing rents for, per month. CREA puts it in LeaseAmount (with a frequency);
- * ListPrice is empty on a lease. (The first version read ListPrice and never stored one rent.)
+ * What a lease listing rents for, per month. ListPrice is empty on a lease. (The first version
+ * read ListPrice, the second LeaseAmount; neither ever stored a residential rent.)
  */
-export function monthlyLeaseAmount(listing: { LeaseAmount?: number | null; LeaseAmountFrequency?: string | null; LeasePerUnit?: string | null; ListPrice?: number | null }): number | null {
-  const amount = listing.LeaseAmount ?? listing.ListPrice;
+export function monthlyLeaseAmount(listing: { LeaseAmount?: number | null; TotalActualRent?: number | null; LeaseAmountFrequency?: string | null; LeasePerUnit?: string | null; ListPrice?: number | null }): number | null {
+  // Seen on the live feed: a RESIDENTIAL rental carries its rent in TotalActualRent (frequency
+  // "Monthly") and has no LeaseAmount; LeaseAmount is what commercial leases use, per square foot.
+  const amount = listing.TotalActualRent ?? listing.LeaseAmount ?? listing.ListPrice;
   if (amount == null || !(amount > 0)) return null;
   // "$9.95 per square foot" is a commercial lease, not a rent.
   if (listing.LeasePerUnit && /square|sq|acre|hectare|foot|feet|met/i.test(listing.LeasePerUnit)) return null;
