@@ -439,8 +439,8 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
     </Suspense>
-    {!eventQaPage && (
-    <div className={isLanding ? "dark bg-background text-foreground" : undefined}>
+    {!eventQaPage && !isLanding && (
+    <div>
       <SiteFooter />
     </div>
     )}

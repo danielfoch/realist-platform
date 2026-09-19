@@ -21,8 +21,8 @@ export const SHARED_ROUTE_META: Record<string, SharedRouteMeta> = {
   "/ask/screen": { title: "Panel Q&A screen | Realist", description: "Live approved audience questions from Unpacking Multiplexes Toronto." },
   "/ask/moderate": { title: "Host moderation | Realist", description: "Review questions for Unpacking Multiplexes Toronto." },
   "/": {
-    title: "Realist - Canadian Real Estate Investing Platform | Deal Analyzer & Cap Rate Map",
-    description: "Find, analyze, and compare Canadian real estate deals with AI-powered underwriting, a free deal analyzer, cap rate map, and market reports. Built by investor-focused broker Daniel Foch and mortgage broker Nick Hill — work with the team when you're ready.",
+    title: "Realist | From Your First Listen to Your First Multiplex",
+    description: "Learn, connect, find, design, finance, build, and own. Explore free real estate podcasts, Canadian properties, multiplex concepts, project pro formas, and the people to help you move forward.",
   },
   "/tools": {
     title: "Free Canadian Real Estate Tools - Realist.ca",
