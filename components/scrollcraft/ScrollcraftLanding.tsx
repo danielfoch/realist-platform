@@ -9,14 +9,15 @@ import {
 } from "react";
 import MultiplexScene from "./MultiplexScene";
 import KnowledgeScene from "./KnowledgeScene";
+import OperatingScene from "./OperatingScene";
 import "./scrollcraft.css";
 
 export type LandingCta = (name: string, href: string, location: string) => void;
 type Props = { onCta?: LandingCta };
 const clamp = (n: number, low = 0, high = 1) =>
   Math.min(high, Math.max(low, n));
-const STEP_VH = 0.4;
-const STILL_FRAMES = [0, 1.55, 2.62, 3.65, 4.3, 5.5, 6.5, 7.5, 8.8, 9.4];
+const STEP_VH = 0.37;
+const STILL_FRAMES = [0, 1.55, 2.62, 3.65, 4.3, 5.5, 6.5, 7.5, 8.8, 9.4, 10.5];
 // The offer holds the concept in place before finance and construction continue.
 const projectProgress = (progress: number) =>
   progress < 6 ? Math.max(2, progress - 2) : progress < 7 ? 3.5 : progress - 3;
@@ -54,7 +55,7 @@ export const CHAPTERS = [
     tags: ["100+ hours of free education", "Multiplex fundamentals"],
     cta: "Explore free multiplex education",
     href: "/podcast",
-    note: "Learn at your own pace. Put your knowledge to work.",
+    note: "Learn the fundamentals. Put AI to work with confidence.",
   },
   {
     name: "Connect",
@@ -75,19 +76,19 @@ export const CHAPTERS = [
   },
   {
     name: "Analyze",
-    label: "A whole market. Your next investment.",
+    label: "Fast calculations. AI insights. Your next move.",
     title: (
       <>
         Find your next investment.
         <br />
-        <em>Analyze it instantly.</em>
+        <em>Analyze it with AI.</em>
       </>
     ),
     description:
-      "Turn a map full of properties into a shortlist that makes sense. Analyze deals instantly, compare estimated cash flow and cap rates, and rank the possibilities before taking a closer look.",
+      "Find promising properties and compare cash flow and cap rates. Take a Toronto site into the AI Multiplex Underwriter to understand the scenarios, risks, and questions behind your next move.",
     tags: [
       "150,000+ Canadian properties",
-      "Instant deal analysis",
+      "AI deal insights",
       "Ranked opportunities",
     ],
     cta: "Find your next investment",
@@ -122,11 +123,11 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Explore what a Toronto lot could become. Screen zoning, compare unit configurations, and bring a multiplex concept into focus before committing to a project.",
-    tags: ["Lot & zoning checks", "Concept massing", "Unit scenarios"],
+      "Explore what a Toronto lot could become with the AI Multiplex Underwriter. Screen zoning, compare unit configurations, and surface site risks before bringing the concept to your architect.",
+    tags: ["AI multiplex underwriter", "Lot & zoning checks", "Unit scenarios"],
     cta: "Explore a multiplex concept",
     href: "/multiplex",
-    note: "Early concepts to discuss with your architect.",
+    note: "AI-assisted feasibility. Your architect takes it from here.",
   },
   {
     name: "Offer",
@@ -143,7 +144,7 @@ export const CHAPTERS = [
     tags: ["Offer strategy", "Negotiation support", "Eligible buyer cashback"],
     cta: "Make an offer",
     href: "/work-with-us",
-    note: "Ontario cashback through Keypr. Eligibility and agreement terms apply.",
+    note: "Cashback through partner brokerages. Eligibility and agreement terms apply.",
   },
   {
     name: "Finance",
@@ -156,8 +157,8 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Bring land, construction costs, and rental assumptions into one pro forma. Compare financing scenarios, then work with a mortgage professional on the next step.",
-    tags: ["Development budget", "Rental pro forma", "Financing scenarios"],
+      "Bring land, costs, and rents into one pro forma. Use AI to explain the tradeoffs, compare financing scenarios, and prepare better questions for your mortgage professional.",
+    tags: ["Development budget", "AI-assisted insights", "Financing scenarios"],
     cta: "Run your numbers",
     href: "/multiplex",
     note: "Model first. Validate with your financing team.",
@@ -173,7 +174,7 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Bring your plan to the people who can build it. Connect with a project team and move from diligence and drawings toward foundations, framing, and finishing touches.",
+      "Bring your AI-assisted analysis to the people who can build it. Connect with a project team and move from diligence and drawings toward foundations, framing, and finishing touches.",
     tags: [
       "Architects & planners",
       "Building professionals",
@@ -194,15 +195,28 @@ export const CHAPTERS = [
       </>
     ),
     description:
-      "Plan the next chapter: lease-up, property management, and long-term ownership. Explore CMHC MLI Select scenarios for eligible projects with five or more units.",
-    tags: [
-      "Lease-up planning",
-      "Management connections",
-      "MLI Select scenarios",
-    ],
+      "Turn a completed project into a rental asset. Plan lease-up and explore CMHC MLI Select scenarios for eligible projects with five or more units, with your financing team beside you.",
+    tags: ["Lease-up planning", "Long-term ownership", "MLI Select scenarios"],
     cta: "Plan your next chapter",
     href: "/work-with-us",
     note: "Financing is subject to program and lender review.",
+  },
+  {
+    name: "Operate",
+    label: "A long-term asset. A team for the long run.",
+    title: (
+      <>
+        Owned today.
+        <br />
+        <em>Managed for tomorrow.</em>
+      </>
+    ),
+    description:
+      "Stay with Realist beyond completion. Plan your asset’s long-term performance with property management partners, AI-assisted tenant support, maintenance, leasing, and reporting.",
+    tags: ["Asset strategy", "Property management", "AI-assisted operations"],
+    cta: "Build your management team",
+    href: "/work-with-us",
+    note: "Real people and specialist partners. Working alongside you.",
   },
 ];
 
@@ -280,7 +294,8 @@ function ProjectDocuments({ progress }: { progress: number }) {
   const commitment = clamp((progress - 7.2) * 3);
   const offer =
     clamp((progress - 5.9) * 5) * (1 - clamp((progress - 6.85) * 6));
-  const ownership = clamp((progress - 8.7) * 3.4);
+  const ownership =
+    clamp((progress - 8.7) * 3.4) * (1 - clamp((progress - 9.65) / 0.4));
   return (
     <div className="rl-documents" aria-hidden="true">
       <div
@@ -317,7 +332,7 @@ function ProjectDocuments({ progress }: { progress: number }) {
         </span>
         <p>Explore cashback on eligible purchases.</p>
         <span className="rl-doc-fine">
-          ONTARIO CASHBACK WITH KEYPR · TERMS APPLY
+          PARTNER BROKERAGE CASHBACK · TERMS APPLY
         </span>
       </div>
       <div
@@ -544,7 +559,7 @@ function Story({
       <section
         id="journey"
         className="rl-static-journey"
-        aria-label="The ten-step multiplex journey"
+        aria-label="The eleven-step multiplex journey"
       >
         <h1 className="rl-eyebrow rl-static-title">The multiplex journey</h1>
         {CHAPTERS.map((chapter, i) => (
@@ -552,7 +567,7 @@ function Story({
             <div className="rl-chapter-copy">
               <div className="rl-chapter-index">
                 <span>{String(i + 1).padStart(2, "0")}</span>
-                <span>/ 10</span>
+                <span>/ {CHAPTERS.length}</span>
                 <i />
                 <span>{chapter.name.toUpperCase()}</span>
               </div>
@@ -589,6 +604,8 @@ function Story({
                     progress={STILL_FRAMES[i]}
                     animate={!reducedMotion}
                   />
+                ) : i === CHAPTERS.length - 1 ? (
+                  <OperatingScene progress={1} />
                 ) : (
                   <MultiplexScene progress={projectProgress(STILL_FRAMES[i])} />
                 )}
@@ -611,13 +628,22 @@ function Story({
       className="rl-journey"
       data-motion={reducedMotion || still ? "reduced" : "full"}
       ref={root}
-      aria-label="Ten steps from learning to owning a multiplex"
+      aria-label="Eleven steps from learning to operating a multiplex"
       style={
         {
           "--chapter-vh": `${STEP_VH * CHAPTERS.length * 100}svh`,
+          "--chapter-count": CHAPTERS.length,
         } as CSSProperties
       }
     >
+      {CHAPTERS.map((chapter, i) => (
+        <span
+          key={chapter.name}
+          className="rl-chapter-snap"
+          aria-hidden="true"
+          style={{ top: `${i * STEP_VH * 100}svh` }}
+        />
+      ))}
       <div className="rl-story-sticky">
         <div className="rl-story-top">
           <h1 className="rl-eyebrow">
@@ -658,7 +684,7 @@ function Story({
               >
                 <div className="rl-chapter-index">
                   <span>{String(i + 1).padStart(2, "0")}</span>
-                  <span>/ 10</span>
+                  <span>/ {CHAPTERS.length}</span>
                   <i />
                   <span>{chapter.name.toUpperCase()}</span>
                 </div>
@@ -693,7 +719,7 @@ function Story({
           >
             <div className="rl-visual-grid" />
             <div className="rl-scene-label">
-              <span>REALIST FIELD NOTES</span>
+              <span>REALIST / AI + HUMAN EXPERTISE</span>
               <span>FIG. {String(active + 1).padStart(2, "0")}</span>
             </div>
             <div
@@ -711,12 +737,27 @@ function Story({
             <div
               className="rl-building-scene"
               aria-hidden="true"
-              style={{ opacity: clamp((visualProgress - 3.85) / 0.35) }}
+              style={{
+                opacity:
+                  clamp((visualProgress - 3.85) / 0.35) *
+                  (1 - clamp((visualProgress - 9.65) / 0.45)),
+              }}
             >
-              {visualProgress > 3.85 ? (
+              {visualProgress > 3.85 && visualProgress < 10.1 ? (
                 <MultiplexScene progress={projectProgress(visualProgress)} />
               ) : null}
             </div>
+            {visualProgress > 9.65 && (
+              <div
+                className="rl-operating-scene rl-building-scene"
+                aria-hidden="true"
+                style={{ opacity: clamp((visualProgress - 9.65) / 0.35) }}
+              >
+                <OperatingScene
+                  progress={clamp((visualProgress - 9.65) / 0.85)}
+                />
+              </div>
+            )}
             <ProjectDocuments progress={visualProgress} />
             <div className="rl-scene-caption">
               <span className="rl-cross">+</span>
@@ -804,8 +845,8 @@ const TOOL_GROUPS = [
         href: "/listings",
       },
       {
-        name: "Multiplex underwriter",
-        note: "Lot, concept, costs, and takeout.",
+        name: "AI multiplex underwriter",
+        note: "Site risks, scenarios, and AI-written insights.",
         href: "/multiplex",
       },
       {
@@ -836,8 +877,13 @@ const TOOL_GROUPS = [
       },
       {
         name: "Work with Realist",
-        note: "Experienced people in your corner.",
+        note: "From your first project to long-term asset strategy.",
         href: "/work-with-us",
+      },
+      {
+        name: "AI property management",
+        note: "Meet PropCare, our property technology partner.",
+        href: "https://realist.ca/community/events/partners/propcare",
       },
     ],
   },
@@ -876,7 +922,7 @@ export default function ScrollcraftLanding({ onCta }: Props) {
           </a>
           <nav className="rl-desktop-nav" aria-label="Main navigation">
             <a href="#journey">
-              The journey<span>10</span>
+              The journey<span>{CHAPTERS.length}</span>
             </a>
             <a href="#platform">The platform</a>
             <TrackedLink href="/community" name="nav_community" onCta={onCta}>
@@ -945,17 +991,19 @@ export default function ScrollcraftLanding({ onCta }: Props) {
         <section id="platform" className="rl-platform">
           <div className="rl-section-heading">
             <div>
-              <span className="rl-eyebrow">EVERYTHING CONNECTS.</span>
+              <span className="rl-eyebrow">
+                THE INTELLIGENCE BEHIND YOUR INVESTMENT.
+              </span>
               <h2>
-                Your ambition.
+                Artificial intelligence.
                 <br />
-                <em>A whole platform behind it.</em>
+                <em>Real-world expertise.</em>
               </h2>
             </div>
             <p>
-              Pick up wherever you are.
-              <br />
-              There’s a next step for that.
+              AI to make sense of the numbers. People to move the project
+              forward. One connected journey, from your first question to
+              long-term operations.
             </p>
           </div>
           <div className="rl-tool-groups">
@@ -996,7 +1044,9 @@ export default function ScrollcraftLanding({ onCta }: Props) {
               <br />
               <em>You see what’s next.</em>
             </h2>
-            <p>Let’s turn that possibility into a plan.</p>
+            <p>
+              AI-assisted analysis. Experienced people. A plan for the long run.
+            </p>
             <div className="rl-closing-actions">
               <TrackedLink
                 href="/multiplex"
