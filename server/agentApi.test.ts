@@ -636,7 +636,80 @@ describe("agent API jobs spine", () => {
     expect(response.body.paths["/api/agent/underwrite/listing"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/extract"]).toBeTruthy();
     expect(response.body.paths["/api/agent/listings/underwrite-url"]).toBeTruthy();
-    expect(response.body.info.version).toBe("1.4.0");
+    expect(response.body.info.version).toBe("1.5.0");
     expect(response.body.paths["/api/agent/crm/contacts/upsert"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/browser/act"]).toBeTruthy();
+    expect(response.body.paths["/api/agent/browser/playbooks"]).toBeTruthy();
+  });
+
+  it("blocks browser.act without browser:write or jobs:write", async () => {
+    const response = await request(app())
+      .post("/api/agent/jobs")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({ type: "browser.act", input: { url: "https://www.zillow.com/homedetails/1" } });
+
+    expect(response.status).toBe(403);
+    expect(response.body.requiredScope).toBe("browser:write");
+    expect(mocks.createAgentJob).not.toHaveBeenCalled();
+  });
+
+  it("creates a browser.act job from the convenience route", async () => {
+    mocks.createAgentJob.mockResolvedValue({
+      job: sampleJob({
+        type: "browser.act",
+        status: "needs_approval",
+        result: { dryRun: true, playbookId: "zillow", actionsTaken: [] },
+      }),
+      replayed: false,
+    });
+    mockDbAuth(["browser:write"]);
+
+    const response = await request(app())
+      .post("/api/agent/browser/act")
+      .set("Authorization", "Bearer realist_live_testtoken")
+      .send({
+        url: "https://www.zillow.com/homedetails/1",
+        actions: ["dismiss_cookie_banner", "extract_after_render"],
+        idempotencyKey: "browser-1",
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.job.status).toBe("needs_approval");
+    expect(mocks.createAgentJob).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({
+        type: "browser.act",
+        idempotencyKey: "browser-1",
+        input: expect.objectContaining({ url: "https://www.zillow.com/homedetails/1" }),
+      }),
+    }));
+  });
+
+  it("approves a browser.act job with browser:write", async () => {
+    mocks.getAgentJob.mockResolvedValue(sampleJob({ type: "browser.act", status: "needs_approval" }));
+    mocks.approveAgentJob.mockResolvedValue(sampleJob({
+      type: "browser.act",
+      status: "succeeded",
+      result: { finalUrl: "https://www.zillow.com/homedetails/1", actionsTaken: ["dismiss_cookie_banner"] },
+    }));
+    mockDbAuth(["browser:write"]);
+
+    const response = await request(app())
+      .post("/api/agent/jobs/job-1/approve")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.job.status).toBe("succeeded");
+    expect(mocks.approveAgentJob).toHaveBeenCalledWith("job-1", "user-1");
+  });
+
+  it("lists browser playbooks behind read", async () => {
+    const response = await request(app())
+      .get("/api/agent/browser/playbooks")
+      .set("Authorization", "Bearer realist_live_testtoken");
+
+    expect(response.status).toBe(200);
+    expect(response.body.playbooks.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining(["zillow", "realtor-ca", "generic-public"]),
+    );
   });
 });

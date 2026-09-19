@@ -49,6 +49,8 @@ import {
   listAgentCrmContacts,
   previewCrmUpdate,
 } from "./agentCrm";
+import { BrowserActError, previewBrowserAct, runBrowserAct } from "./browserAct";
+import { browserActInputSchema, listBrowserPlaybooks } from "@shared/browserAct";
 import { isAuthenticated } from "./auth";
 import { agentRateLimit, usageMeter, getUsageSummaryForUser } from "./services/usage";
 import {
@@ -420,6 +422,24 @@ registerSpecialistExecutor("forms.fill", async (input) => {
   } catch (err: any) {
     if (err instanceof FormFillError) {
       throw new AgentJobError(400, err.code, err.message);
+    }
+    throw err;
+  }
+});
+
+registerSpecialistExecutor("browser.act", async (input, ctx) => {
+  try {
+    if (ctx.mode === "preview") {
+      return previewBrowserAct(input) as unknown as Record<string, unknown>;
+    }
+    return await runBrowserAct(input, { jobId: ctx.jobId }) as unknown as Record<string, unknown>;
+  } catch (err: any) {
+    if (err instanceof BrowserActError) {
+      throw new AgentJobError(
+        err.code === "blocked_or_login_wall" ? 403 : err.code === "invalid_input" || err.code === "action_not_allowed" ? 400 : 503,
+        err.code,
+        err.message,
+      );
     }
     throw err;
   }
@@ -809,6 +829,42 @@ function registerSpecialistRoutes(app: Express) {
       const contact = await getAgentCrmContact(req.agentUserId!, req.params.id);
       if (!contact) return res.status(404).json({ error: "contact_not_found" });
       res.json({ contact });
+    } catch (err) {
+      jobErrorResponse(res, err);
+    }
+  });
+
+  /** Registered listing-portal playbooks (host → allowed public actions). */
+  app.get("/api/agent/browser/playbooks", requireScope("read"), (_req, res) => {
+    res.json({ playbooks: listBrowserPlaybooks() });
+  });
+
+  /** Convenience wrapper: create a browser.act job. Clicks always need_approval. */
+  app.post("/api/agent/browser/act", async (req, res) => {
+    try {
+      const needed = scopesForJobType("browser.act");
+      if (!hasAnyScope(req, needed)) {
+        return res.status(403).json({
+          error: "scope_required",
+          requiredScope: needed[0],
+          requiredScopes: needed,
+          message: `This API key needs one of: ${needed.join(", ")}.`,
+        });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      const { idempotencyKey, ...input } = body;
+      const parsed = browserActInputSchema.safeParse(input);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_input", details: parsed.error.issues });
+      const { job, replayed } = await createAgentJob({
+        request: {
+          type: "browser.act",
+          input: parsed.data,
+          idempotencyKey: typeof idempotencyKey === "string" ? idempotencyKey : undefined,
+        },
+        userId: req.agentUserId!,
+        apiKeyId: req.agentKeyId ?? null,
+      });
+      res.status(replayed ? 200 : 201).json({ job: serializeAgentJob(job), replayed });
     } catch (err) {
       jobErrorResponse(res, err);
     }

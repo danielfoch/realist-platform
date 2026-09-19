@@ -1,12 +1,14 @@
 /**
  * Agent jobs store — persist + run specialist work for /api/agent/jobs.
  *
- * Handlers are registered by type. Underwrite adapters, forms, and
- * listing.extract are wired from agentApi.ts. Docs / CRM remain stubs.
+ * Handlers are registered by type. Underwrite adapters, forms,
+ * listing.extract, CRM, and browser.act are wired from agentApi.ts.
+ * Docs remain a stub.
  */
 import { and, desc, eq } from "drizzle-orm";
 import { db, pool } from "./db";
 import { agentJobs, type AgentJobRow } from "@shared/schema";
+import { browserActRequiresApproval } from "@shared/browserAct";
 import {
   SPECIALIST_REGISTRY,
   applyJobTransition,
@@ -287,7 +289,12 @@ export async function createAgentJob(input: {
     if (existing) return { job: existing, replayed: true };
   }
 
-  const approvalRequired = jobRequiresApproval(request.type, request.approvalRequired);
+  let approvalRequired = jobRequiresApproval(request.type, request.approvalRequired);
+  if (request.type === "browser.act") {
+    // extract_after_render alone may run without approval; any click stays gated.
+    approvalRequired = browserActRequiresApproval(parsedInput.data as { url: string; actions?: any })
+      || Boolean(request.approvalRequired);
+  }
   const status = approvalRequired ? "needs_approval" : "queued";
   const specialistId = SPECIALIST_REGISTRY[request.type].specialistId;
   const now = new Date();
