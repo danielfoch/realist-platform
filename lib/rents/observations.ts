@@ -33,6 +33,7 @@ export interface DdfLeaseListing {
   ListPrice?: number;
   LeaseAmount?: number;
   LeaseAmountFrequency?: string;
+  LeasePerUnit?: string;
   TransactionType?: string;
   PropertySubType?: string;
   BedroomsTotal?: number;
@@ -78,9 +79,11 @@ export function ddfLeaseExternalId(listingKey: string): string {
  * What a lease listing rents for, per month. CREA puts it in LeaseAmount (with a frequency);
  * ListPrice is empty on a lease. (The first version read ListPrice and never stored one rent.)
  */
-export function monthlyLeaseAmount(listing: { LeaseAmount?: number | null; LeaseAmountFrequency?: string | null; ListPrice?: number | null }): number | null {
+export function monthlyLeaseAmount(listing: { LeaseAmount?: number | null; LeaseAmountFrequency?: string | null; LeasePerUnit?: string | null; ListPrice?: number | null }): number | null {
   const amount = listing.LeaseAmount ?? listing.ListPrice;
   if (amount == null || !(amount > 0)) return null;
+  // "$9.95 per square foot" is a commercial lease, not a rent.
+  if (listing.LeasePerUnit && /square|sq|acre|hectare|foot|feet|met/i.test(listing.LeasePerUnit)) return null;
   const frequency = (listing.LeaseAmountFrequency ?? "").toLowerCase();
   if (!frequency || frequency.includes("month")) return amount;
   if (frequency.includes("year") || frequency.includes("annual")) return amount / 12;

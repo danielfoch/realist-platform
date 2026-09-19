@@ -21,6 +21,8 @@ export interface DdfListing {
   StandardStatus?: string;
   LeaseAmount?: number;
   LeaseAmountFrequency?: string;
+  /** Commercial leases are quoted per unit of area ("square feet"); a residential rent has none. */
+  LeasePerUnit?: string;
   PropertySubType?: string;
   StructureType?: string;
   BedroomsTotal?: number;
@@ -92,7 +94,7 @@ const RATE_LIMIT_DEFAULT_WAIT_MS = 2_000;
 
 export const DDF_SELECT_FIELDS = [
   "ListingKey", "ListingId", "ListPrice", "StandardStatus",
-  "LeaseAmount", "LeaseAmountFrequency",
+  "LeaseAmount", "LeaseAmountFrequency", "LeasePerUnit",
   "PropertySubType", "StructureType",
   "BedroomsTotal", "BathroomsTotalInteger", "BathroomsPartial",
   "LivingArea", "LivingAreaUnits", "BuildingAreaTotal", "BuildingAreaUnits",
@@ -536,9 +538,10 @@ export async function searchDdfListings(params: {
   const filters: string[] = [];
   filters.push(`StandardStatus eq '${(params.standardStatus || "Active").replace(/'/g, "''")}'`);
   if (params.forLease) {
-    // DDF dropped TransactionType (For sale/For rent); lease listings are now
-    // the ones carrying a LeaseAmount.
-    filters.push("LeaseAmount ne null");
+    // DDF dropped TransactionType (For sale/For rent). A lease listing is one with NO sale price —
+    // verified on the live feed: `ListPrice eq null` returns them, while `LeaseAmount ne null`
+    // (the obvious filter) is accepted and matches nothing.
+    filters.push("ListPrice eq null");
   } else {
     // …and for-sale listings are the ones carrying a price. Without this, rentals ($0 "price",
     // nothing to underwrite) made up ~40% of a Toronto results page.
@@ -630,7 +633,9 @@ export async function searchDdfListings(params: {
 
   const data: DdfSearchResponse = await response.json();
   let listings = await attachOfficeNames((data.value || []).map(coerceDdfListing), token);
-  if (!params.forLease) listings = listings.filter((listing) => (listing.ListPrice ?? 0) > 0);
+  listings = params.forLease
+    ? listings.filter((listing) => (listing.LeaseAmount ?? 0) > 0)
+    : listings.filter((listing) => (listing.ListPrice ?? 0) > 0);
   // If CREA ever refuses part of that group the whole group is dropped, so the rule is enforced here too.
   if (params.minUnits === 2) listings = listings.filter(isMultiUnit);
   if (params.city && cityMatch === "contains") {

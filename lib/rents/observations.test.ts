@@ -101,6 +101,7 @@ describe("what a lease listing rents for", () => {
     expect(monthlyLeaseAmount({ LeaseAmount: 2600 })).toBe(2600);
     expect(monthlyLeaseAmount({ LeaseAmount: 31200, LeaseAmountFrequency: "Annually" })).toBe(2600);
     expect(monthlyLeaseAmount({ LeaseAmount: 45, LeaseAmountFrequency: "Per Square Foot" })).toBeNull();
+    expect(monthlyLeaseAmount({ LeaseAmount: 9.95, LeasePerUnit: "square feet" })).toBeNull(); // as the live feed sends a commercial lease
     expect(monthlyLeaseAmount({})).toBeNull();
     const row = ddfLeaseToRentObservation({ ListingKey: "K1", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 2, LeaseAmount: 2850, LeaseAmountFrequency: "Monthly" });
     expect(row).toMatchObject({ city: "Toronto", rent: 2850, bedrooms: "2" });

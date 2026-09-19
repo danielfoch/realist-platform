@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { areaYieldHistory, crawlState, ddfListingSnapshots } from "@/lib/db/schema";
+import { areaYieldHistory, crawlState, ddfListingSnapshots, rentListings } from "@/lib/db/schema";
 import { useTestDb } from "@/lib/test/db";
 import { CRAWL_PROVINCES } from "./crawler";
 import { forgetDdfOffices, forgetDdfSchemaRejections } from "./client";
@@ -32,7 +32,7 @@ function fakeCrea() {
       calls.push(`${query.get("$filter")} skip=${query.get("$skip") ?? 0}`);
       const filter = query.get("$filter") ?? "";
       const firstProvince = filter.includes(`StateOrProvince eq '${CRAWL_PROVINCES[0]}'`);
-      if (filter.includes("LeaseAmount ne null") || !firstProvince) return new Response(JSON.stringify({ "@odata.count": 0, value: [] }), { status: 200 });
+      if (filter.includes("ListPrice eq null") || !firstProvince) return new Response(JSON.stringify({ "@odata.count": 0, value: [] }), { status: 200 });
       const skip = Number(query.get("$skip") ?? 0);
       const value = skip === 0 ? Array.from({ length: 100 }, (_, i) => listing(i)) : skip === 100 ? Array.from({ length: 7 }, (_, i) => listing(100 + i)) : [];
       return new Response(JSON.stringify({ "@odata.count": 107, value }), { status: 200 });
@@ -82,7 +82,7 @@ describe("the data sync, in slices", () => {
       vi.fn(async (input: string) => {
         const target = String(input);
         if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
-        if ((new URL(target).searchParams.get("$filter") ?? "").includes("LeaseAmount")) leaseCalls += 1;
+        if ((new URL(target).searchParams.get("$filter") ?? "").includes("ListPrice eq null")) leaseCalls += 1;
         return new Response(JSON.stringify({ error: { details: "The string is not a valid enumeration type constant.", message: "invalid query" } }), { status: 400 });
       }),
     );
@@ -97,6 +97,34 @@ describe("the data sync, in slices", () => {
     expect(state.page).toBeLessThan(3);
     // …and left the reason where it can be read.
     expect(state.lastError).toContain("rents");
+    await ctx.db.update(crawlState).set({ stage: "done", finishedAt: new Date(), leaseUntil: null });
+  }, 60_000);
+
+  it("stores real rents: residential leases in, per-square-foot commercial leases out", async () => {
+    forgetDdfSchemaRejections();
+    vi.stubEnv("CREA_DDF_USERNAME", "u");
+    vi.stubEnv("CREA_DDF_PASSWORD", "p");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const target = String(input);
+        if (target.includes("/connect/token")) return new Response(JSON.stringify({ access_token: "t", expires_in: 3600 }), { status: 200 });
+        const filter = new URL(target).searchParams.get("$filter") ?? "";
+        const ontarioLeases = filter.includes("ListPrice eq null") && filter.includes("StateOrProvince eq 'Ontario'") && !new URL(target).searchParams.get("$skip");
+        const value = ontarioLeases
+          ? [
+              { ListingKey: "R1", City: "Toronto (Regent Park)", StateOrProvince: "Ontario", BedroomsTotal: 2, LeaseAmount: 2850, PropertySubType: "Single Family" },
+              { ListingKey: "R2", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 1, LeaseAmount: 2300, LeaseAmountFrequency: "Monthly", PropertySubType: "Single Family" },
+              { ListingKey: "C1", City: "Toronto", StateOrProvince: "Ontario", BedroomsTotal: 0, LeaseAmount: 9.95, LeasePerUnit: "square feet", PropertySubType: "Industrial" },
+            ]
+          : [];
+        return new Response(JSON.stringify({ "@odata.count": value.length, value }), { status: 200 });
+      }),
+    );
+    await ctx.db.update(crawlState).set({ stage: "rents", provinceIndex: 0, page: 0, rentsSeen: 0, lastError: null, finishedAt: null, leaseUntil: null });
+    await runCrawlSlice({ budgetMs: 8_000 });
+    const rents = await ctx.db.select().from(rentListings);
+    expect(rents.map((row) => [row.city, row.rent]).sort()).toEqual([["Toronto", 2300], ["Toronto", 2850]]);
     await ctx.db.update(crawlState).set({ stage: "done", finishedAt: new Date(), leaseUntil: null });
   }, 60_000);
 

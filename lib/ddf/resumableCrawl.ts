@@ -156,7 +156,8 @@ async function rentPage(province: string, page: number): Promise<{ fetched: numb
  * values — a rent is not a secret). One request; the answer lands in `last_error`.
  */
 export async function probeRentalShape(): Promise<string> {
-  const query = new URLSearchParams({ $filter: "StateOrProvince eq 'Ontario' and ListPrice eq null", $top: "3" });
+  // Residential on purpose: commercial leases (priced per square foot) are not what the rent database wants.
+  const query = new URLSearchParams({ $filter: "StateOrProvince eq 'Ontario' and ListPrice eq null and PropertySubType eq 'Single Family'", $top: "3" });
   let result = await ddfRawGet(`/Property?${query.toString()}`);
   let rows = ((result.body as { value?: Array<Record<string, unknown>> })?.value ?? []) as Array<Record<string, unknown>>;
   if (!result.ok || rows.length === 0) {
