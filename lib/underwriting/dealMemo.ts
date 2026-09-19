@@ -82,6 +82,12 @@ function inspectionFocus(yearBuilt: number | null | undefined): string {
   return `Built ${yearBuilt}: the big items should have life left — confirm with the inspector, and ask for any warranty or permit records.`;
 }
 
+/** A label used mid-sentence: lower-case its first word unless that word is an acronym ("CMHC average" stays). */
+export function midSentence(label: string): string {
+  const [first, ...rest] = label.trim().split(" ");
+  return [/^[A-Z0-9]{2,}$/.test(first) ? first : first.toLowerCase(), ...rest].join(" ");
+}
+
 export function templateMemo(deal: MemoDeal, inputs: UnderwriterInputs): DealMemo {
   const result = underwrite(inputs);
   const what = sensitivities(inputs);
@@ -112,7 +118,7 @@ export function templateMemo(deal: MemoDeal, inputs: UnderwriterInputs): DealMem
   }
   if (what.cashFlowRatePlus1 != null && cashFlow >= 0 && what.cashFlowRatePlus1 < 0) watch.push(`One point higher at renewal turns it negative (${money(what.cashFlowRatePlus1)} a month). Pick your term with that in mind.`);
   if (what.cashFlowRentMinus10 != null && what.cashFlowRentMinus10 < 0 && cashFlow >= 0) watch.push(`If rents come in 10% under, cash flow goes to ${money(what.cashFlowRentMinus10)} a month. The rent number is the one to be sure of.`);
-  if (deal.rentSourceLabel && deal.rentSourceLabel !== "Actual rent" && !deal.rentEdited) watch.push(`The rent is an estimate (${deal.rentSourceLabel.toLowerCase()}), not this building's rent roll. Everything downstream depends on it.`);
+  if (deal.rentSourceLabel && deal.rentSourceLabel !== "Actual rent" && !deal.rentEdited) watch.push(`The rent is an estimate (${midSentence(deal.rentSourceLabel)}), not this building's rent roll. Everything downstream depends on it.`);
   if (deal.taxFromListing === false) watch.push("The property tax is inferred at 1% of price. Get the actual bill — in some municipalities it is half that, in others nearly double.");
   if (inputs.managementPercent === 0) watch.push("You've priced management at zero. If you ever hire it out — or value your own time — budget 8–10% of rent.");
   if (inputs.vacancyPercent < 3) watch.push(`Vacancy at ${inputs.vacancyPercent}% leaves no room for turnover. One empty month in a year is already 8%.`);

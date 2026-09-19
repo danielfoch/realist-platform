@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/components/multiplex/format";
 import { closingCostsNote } from "@/lib/underwriting/closingCosts";
+import { midSentence } from "@/lib/underwriting/dealMemo";
 import { AskRealist } from "./AskRealist";
 import { DealMemoPanel } from "./DealMemoPanel";
 import { DeskReviewRail } from "./DeskReviewRail";
@@ -599,7 +600,7 @@ export function Underwriter({
   const rentMoved = rentEstimate != null && rentRatio != null && Math.abs(defaults.monthlyRent - rentEstimate) >= 5;
   const rentNote = rentMoved
     ? `Our estimate was ${fmtMoney(rentEstimate)}. ${rentRatio.scopeLabel} investors underwrite ${Math.abs(Math.round((1 - rentRatio.value) * 100))}% ${rentRatio.value < 1 ? "under" : "over"} it (median of ${rentRatio.sampleSize}), so you start there.`
-    : `Starting point: ${(rentSourceLabel ?? "estimate").toLowerCase()}. Use what you know.`;
+    : `Starting point: ${midSentence(rentSourceLabel ?? "estimate")}. Use what you know.`;
   const rentEdited = edited.has("monthlyRent");
   const memoDeal = useMemo(
     () => ({
