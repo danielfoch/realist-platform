@@ -57,7 +57,7 @@ const aliases: Record<string, string> = { st: "street", ave: "avenue", av: "aven
 export function streetKey(address: string): string {
   return fold(address.split(",")[0]).replace(/[.]/g, "").replace(/\b\w+\b/g, (w) => aliases[w] ?? w).replace(/\s+/g, " ").trim();
 }
-function civicStreetKey(address: string): string {
+export function civicStreetKey(address: string): string {
   const tokens = fold(address.split(",")[0]).replace(/[-'’]/g, " ").replace(/\./g, "").split(/\s+/);
   // St John / St-Denis means Saint; the suffix in Queen St W means Street.
   const directions = /^(n|s|e|w|ne|nw|se|sw|north|south|east|west|northeast|northwest|southeast|southwest|o|ouest)$/;

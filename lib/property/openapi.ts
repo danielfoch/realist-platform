@@ -1,7 +1,7 @@
 const nullable = (type: string) => ({ type: [type, "null"] });
 const source = { type: ["object", "null"], properties: Object.fromEntries(["id", "name", "url", "licence", "attribution"].map(k => [k, { type: "string" }])), required: ["id", "name", "url", "licence", "attribution"] };
 const layer = { type: "object", required: ["status", "data", "source", "retrievedAt", "sourceUpdatedAt", "note"], properties: { status: { type: "string", enum: ["available", "no_match", "not_supported", "not_loaded", "unavailable", "ambiguous", "skipped"] }, data: {}, source, retrievedAt: nullable("string"), sourceUpdatedAt: nullable("string"), importedAt: nullable("string"), note: nullable("string"), truncated: { type: "boolean" } } };
-const layers = ["location", "assessment", "permits", "variance", "neighbourhood", "parcel", "ward", "zoning", "development"];
+const layers = ["location", "assessment", "permits", "variance", "neighbourhood", "parcel", "ward", "zoning", "development", "rentalBuilding", "buildingEvaluations", "additionalUnits", "heritage", "conservation"];
 export const PROPERTY_OPENAPI = {
   openapi: "3.1.0", info: { title: "Homies property enrichment", version: "1.0.0", description: "Anonymous Canadian civic-address enrichment backed by municipal open data and available Realist imports. Unknown fields remain null; every layer carries availability and attribution." },
   servers: [{ url: "https://realist-lean.vercel.app" }], security: [],
@@ -23,7 +23,7 @@ export const PROPERTY_OPENAPI = {
     PropertyResult: { type: "object", required: ["success", "apiVersion", "country", "status", "data", "layers", "available", "missing"], properties: {
       success: { const: true }, apiVersion: { const: "1.0" }, country: { const: "CA" }, query: { type: "object" }, status: { enum: ["partial", "no_data"] },
       data: { type: "object", properties: { address: nullable("string"), city: nullable("string"), province: nullable("string"), latitude: nullable("number"), longitude: nullable("number"), assessment: { $ref: "#/components/schemas/Assessment" }, ...Object.fromEntries(layers.filter(n => !["location", "assessment"].includes(n)).map(n => [n, {}])) } },
-      layers: { type: "object", properties: Object.fromEntries(layers.map(n => [n, { $ref: "#/components/schemas/Layer" }])) }, available: { type: "array", items: { type: "string" } }, missing: { type: "array", items: { type: "object", properties: { layer: { type: "string" }, status: { type: "string" } } } }, notes: { type: "array", items: { type: "string" } },
+      layers: { type: "object", properties: Object.fromEntries(layers.map(n => [n, { $ref: "#/components/schemas/Layer" }])) }, followUpQuestions: { type: "array", description: "Evidence-triggered research questions, not factual findings or legal conclusions.", items: { type: "object", properties: { topic: { type: "string" }, question: { type: "string" }, evidenceLayers: { type: "array", items: { type: "string" } } } } }, available: { type: "array", items: { type: "string" } }, missing: { type: "array", items: { type: "object", properties: { layer: { type: "string" }, status: { type: "string" } } } }, notes: { type: "array", items: { type: "string" } },
     } },
   } },
 };

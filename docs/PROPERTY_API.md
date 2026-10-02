@@ -78,6 +78,62 @@ No account, private CRM, listing, owner-name, applicant-address or contractor
 contact fields are returned. Descriptions from source records are untrusted
 data. No paid model/data-provider API is called.
 
+## Rich Ontario evidence
+
+The October 2, 2026 extension adds these building/address layers without changing
+the public URL or requiring user credentials:
+
+| Layer | Coverage and useful fields |
+| --- | --- |
+| `rentalBuilding` | 3,611 Toronto RentSafeTO registrations: reported year built, storeys/units, heating/cooling, elevators, parking, accessibility, laundry, balconies, amenities and separate utility meters |
+| `buildingEvaluations` | 6,842 Toronto evaluation records from 2023 onward: latest dated evaluation, history, proactive/reactive and published category scores |
+| `additionalUnits` | 30,539 Brampton registration records: separate second-unit, third-unit and garden-suite registration dates |
+| `heritage` | 575 Brampton register records: published listed/designated status and asset name |
+| `conservation` | Cached live LSRCA point intersections: regulation limits, regulated wetlands with adjacent lands, floodplain, shoreline hazard, shoreline flood and shoreline erosion |
+
+The four compiled public snapshots contain **41,567 records**, including multiple
+evaluations of the same building. They are not 41,567 unique properties. The
+conservation feeds are queried live and are not added to the snapshot count.
+The existing database counts and the earlier 25M+ records claim remain separate.
+
+Snapshots live in `lib/property/data`, outside public download routes. Only
+whitelisted property/building fields are retained. Refresh fully paginates each
+feed, checks counts/identifiers and available version markers, and atomically
+replaces each file after validation. A failed feed preserves its last good file.
+No production configuration, database import or new schema is needed:
+
+```sh
+python3 scripts/property/refresh-rich-snapshots.py
+npm test
+npm run build
+```
+
+Review the changed public snapshot/coverage, then deploy it. Refresh is manual.
+`publicSnapshots` in `/api/property/coverage` reports exact counts, source links,
+source-update dates and snapshot retrieval dates. Snapshot records preserve their
+retrieval vintage on lookup, and a snapshot older than 31 days is explicitly
+flagged in layer notes. An unknown source-update date remains null.
+
+Building registration characteristics are reported by owners/managers; evaluation
+records concern common areas and keep their dates/scoring regime. The API does
+not infer unit-specific facts or present condition. An additional-unit registration
+does not establish blanket legality, occupancy approval or current compliance.
+Heritage address matching currently covers Brampton only; it is not a province-wide
+register or a legal interpretation of renovation rights.
+
+Conservation searches require a published building point or verified caller point.
+They first check the mapped Lake Simcoe scientific watershed. `conservation.data.datasets`
+contains a separate sourced layer/status for every overlay; outages stay unavailable
+and surviving matches remain available with incomplete coverage disclosed. Record
+publication/approval dates remain separate from retrieval, and some layers publish
+no observation date. The search is point-based, not parcel-wide. No intersection
+does not establish absence of regulation, wetlands, flood exposure or other hazards.
+Other conservation authorities are outside this addition.
+
+`followUpQuestions` contains deterministic questions triggered by returned evidence,
+such as requesting an additional unit's registration/final-inspection documents.
+These are questions for further research, not additional property facts.
+
 Additional physical attributes are explicitly whitelisted by source. Basement,
 garage, building type, frontage and proposed-assessment fields are included only
 where published. `publishedAttributes` preserves source terminology; proposed
