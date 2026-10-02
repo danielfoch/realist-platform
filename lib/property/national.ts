@@ -28,7 +28,8 @@ export async function nationalAddress(input: PropertyRequest, provinceKey: (v: s
     const r = result.rows[0], building = number(r.latitude) !== null && number(r.longitude) !== null;
     const latitude = number(building ? r.latitude : r.blockface_latitude), longitude = number(building ? r.longitude : r.blockface_longitude);
     if (latitude === null || longitude === null || latitude < 41 || latitude > 84 || longitude < -142 || longitude > -52) return null;
-    return layer("available", { address, city, province: p, latitude, longitude, accuracy: building ? "source_building_point" : "blockface_representative", provider: NAR_SOURCE.id,
+    const municipality = String(r.csduid) === "3520005" ? "Toronto" : city;
+    return layer("available", { address, city: municipality, province: p, latitude, longitude, accuracy: building ? "source_building_point" : "blockface_representative", provider: NAR_SOURCE.id,
       addressRegister: { buildingId: String(r.location_id), publishedAddressRecords: Number(r.published_address_records), postalCodes: r.postal_codes as string[], buildingUsageCodes: r.building_usage_codes as string[], csduid: r.csduid ? String(r.csduid) : null },
     }, NAR_SOURCE, building ? "Published building coordinate matched by civic address, municipality and province. Reference period June 2026; verify position near boundaries. Published address-record count is not a verified dwelling count." : "Blockface representative coordinate is approximate and must not select a parcel or zoning permission.", "2026-06-26");
   } catch { return null; }

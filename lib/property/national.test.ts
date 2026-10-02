@@ -32,6 +32,10 @@ describe("published national building coordinates", () => {
     expect(result?.status).toBe("ambiguous"); expect(result?.data).toBeNull();
     await testDb.sql.exec("DELETE FROM national_addresses WHERE location_id='B'");
   });
+  it("uses the published municipality for Toronto mailing-city aliases", async () => {
+    await testDb.sql.exec("UPDATE national_addresses SET mailing_city_key='etobicoke' WHERE location_id='A'");
+    expect((await nationalAddress({ address: "90 Ash Cres, Etobicoke, ON" }, provinceKey))?.data?.city).toBe("Toronto");
+  });
   it("labels a blockface as approximate when building coordinates are unpublished", async () => {
     await testDb.sql.exec("UPDATE national_locations SET latitude=NULL,longitude=NULL WHERE location_id='A'");
     expect((await nationalAddress(input, provinceKey))?.data?.accuracy).toBe("blockface_representative");
