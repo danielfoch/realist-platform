@@ -1,7 +1,5 @@
-import buildings from "./data/toronto-rental-buildings.json";
-import evaluations from "./data/toronto-building-evaluations.json";
-import units from "./data/brampton-additional-units.json";
-import heritage from "./data/brampton-heritage.json";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { cityKey, civicStreetKey, layer, number, publishedYear, sameStreet, text, type Layer, type Row, type Source } from "./model";
 import { provinceKey } from "./geocode";
 
@@ -12,19 +10,32 @@ export const RICH_SOURCES: Record<string, Source> = {
   additionalUnits: { id: "brampton:additional-units", name: "Brampton registered additional residential units", url: "https://geohub.brampton.ca/datasets/brampton::registered-additional-residential-units", licence: "CC BY 4.0", attribution: "City of Brampton, Registered Additional Residential Units, CC BY 4.0. Address normalization and field selection by Realist/Homies. https://creativecommons.org/licenses/by/4.0/" },
   heritage: { id: "brampton:heritage", name: "Brampton heritage properties", url: "https://geohub.brampton.ca/datasets/brampton::heritage-properties", licence: "CC BY 4.0", attribution: "City of Brampton, Heritage Properties, CC BY 4.0. Address normalization and field selection by Realist/Homies. https://creativecommons.org/licenses/by/4.0/" },
 };
-const FEEDS: Record<string, { city: string; field: string; snapshot: Snapshot; note: string }> = {
-  rentalBuilding: { city: "toronto", field: "SITE_ADDRESS", snapshot: buildings as Snapshot, note: "Building-level characteristics reported by owners/managers to RentSafeTO and renewed annually. They are not unit-specific or independently measured facts." },
-  buildingEvaluations: { city: "toronto", field: "SITE ADDRESS", snapshot: evaluations as Snapshot, note: "Dated RentSafeTO evaluations from 2023 onward concern building/common areas. Keep the evaluation date and scoring regime; not a unit inspection or a guarantee of present condition. A blank item is not applicable or unpublished; 0 is preserved as published and can mean not evaluated." },
-  additionalUnits: { city: "brampton", field: "FULL_ADDRESS", snapshot: units as Snapshot, note: "Published second-unit, third-unit and garden-suite registration dates are distinct. Registration does not establish present compliance, occupancy approval or permission for a new project. A missing match does not mean an unregistered or illegal unit." },
-  heritage: { city: "brampton", field: "ADDRESS", snapshot: heritage as Snapshot, note: "Published heritage status at this civic address; confirm current register, bylaws and applicable alteration requirements with the City. Listed and designated statuses remain distinct." },
+const FEEDS: Record<string, { city: string; field: string; filename: string; note: string }> = {
+  rentalBuilding: { city: "toronto", field: "SITE_ADDRESS", filename: "toronto-rental-buildings.json", note: "Building-level characteristics reported by owners/managers to RentSafeTO and renewed annually. They are not unit-specific or independently measured facts." },
+  buildingEvaluations: { city: "toronto", field: "SITE ADDRESS", filename: "toronto-building-evaluations.json", note: "Dated RentSafeTO evaluations from 2023 onward concern building/common areas. Keep the evaluation date and scoring regime; not a unit inspection or a guarantee of present condition. A blank item is not applicable or unpublished; 0 is preserved as published and can mean not evaluated." },
+  additionalUnits: { city: "brampton", field: "FULL_ADDRESS", filename: "brampton-additional-units.json", note: "Published second-unit, third-unit and garden-suite registration dates are distinct. Registration does not establish present compliance, occupancy approval or permission for a new project. A missing match does not mean an unregistered or illegal unit." },
+  heritage: { city: "brampton", field: "ADDRESS", filename: "brampton-heritage.json", note: "Published heritage status at this civic address; confirm current register, bylaws and applicable alteration requirements with the City. Listed and designated statuses remain distinct." },
 };
+// Keep large public datasets as traced server assets rather than JavaScript modules.
+let snapshots: Promise<Record<string, Snapshot | null>> | undefined;
+function loadSnapshots() {
+  return snapshots ??= Promise.all(Object.entries(FEEDS).map(async ([name, feed]) => {
+    try {
+      const snapshot = JSON.parse(await readFile(join(process.cwd(), "lib/property/data", feed.filename), "utf8")) as Snapshot;
+      if (!Array.isArray(snapshot.records) || snapshot.rowCount !== snapshot.records.length || !snapshot.retrievedAt) throw new Error("Invalid public snapshot");
+      return [name, snapshot] as const;
+    } catch {
+      return [name, null] as const;
+    }
+  })).then(entries => Object.fromEntries(entries));
+}
 const indexes = new Map<string, Map<string, Row[]>>();
-function matchesFor(name: string, address: string): Row[] {
+function matchesFor(name: string, snapshot: Snapshot, address: string): Row[] {
   const feed = FEEDS[name];
   let index = indexes.get(name);
   if (!index) {
     index = new Map();
-    for (const record of feed.snapshot.records) {
+    for (const record of snapshot.records) {
       const value = text(record[feed.field]);
       if (!value) continue;
       const key = civicStreetKey(value);
@@ -34,34 +45,39 @@ function matchesFor(name: string, address: string): Row[] {
   }
   return (index.get(civicStreetKey(address)) ?? []).filter(r => sameStreet(address, String(r[feed.field])));
 }
-function result(name: string, status: Layer["status"], data: unknown = null, extra = ""): Layer {
+function snapshotResult(name: string, snapshot: Snapshot | null, status: Layer["status"], data: unknown = null, extra = ""): Layer {
   const feed = FEEDS[name];
-  const age = Date.now() - new Date(feed.snapshot.retrievedAt).getTime();
-  const value = layer(status, data, RICH_SOURCES[name], `${feed.note} Snapshot retrieved ${feed.snapshot.retrievedAt.slice(0, 10)}; refresh is manual.${age > 31 * 86_400_000 ? " Snapshot is over 31 days old; verify current source records." : ""}${extra ? " " + extra : ""}`, feed.snapshot.sourceUpdatedAt);
+  if (!snapshot) return layer(status, data, RICH_SOURCES[name], `${feed.note} Source snapshot unavailable.`);
+  const age = Date.now() - new Date(snapshot.retrievedAt).getTime();
+  const value = layer(status, data, RICH_SOURCES[name], `${feed.note} Snapshot retrieved ${snapshot.retrievedAt.slice(0, 10)}; refresh is manual.${age > 31 * 86_400_000 ? " Snapshot is over 31 days old; verify current source records." : ""}${extra ? " " + extra : ""}`, snapshot.sourceUpdatedAt);
   // A lookup time is not a source retrieval time. The compiled snapshot has its own vintage.
-  value.retrievedAt = feed.snapshot.retrievedAt;
+  value.retrievedAt = snapshot.retrievedAt;
   return value;
 }
 const clean = (value: unknown): string | null => {
   const v = text(value);
   return v && !/^(n\/a|na|none|not available|-+)$/i.test(v) ? v.slice(0, 500) : null;
 };
-export function richAddressLayers(address: string | null, city: string | null, province: string | null): Record<string, Layer> {
+export async function richAddressLayers(address: string | null, city: string | null, province: string | null): Promise<Record<string, Layer>> {
+  const snapshots = await loadSnapshots();
   const output: Record<string, Layer> = {};
   for (const [name, feed] of Object.entries(FEEDS)) {
+    const snapshot = snapshots[name];
+    const result = (status: Layer["status"], data: unknown = null, extra = "") => snapshotResult(name, snapshot, status, data, extra);
     if (cityKey(city ?? "") !== feed.city || provinceKey(province ?? "") !== "ontario") {
-      output[name] = result(name, "not_supported"); continue;
+      output[name] = result("not_supported"); continue;
     }
-    if (!address) { output[name] = result(name, "skipped"); continue; }
-    const matches = matchesFor(name, address);
-    if (!matches.length) { output[name] = result(name, "no_match", null, "No published exact civic-address match was found in the selected snapshot."); continue; }
+    if (!address) { output[name] = result("skipped"); continue; }
+    if (!snapshot) { output[name] = result("unavailable"); continue; }
+    const matches = matchesFor(name, snapshot, address);
+    if (!matches.length) { output[name] = result("no_match", null, "No published exact civic-address match was found in the selected snapshot."); continue; }
     const buildingIds = new Set(matches.map(r => String(r.RSN)));
     if (["rentalBuilding", "buildingEvaluations"].includes(name) && buildingIds.size > 1) {
-      output[name] = result(name, "ambiguous", null, "Multiple building IDs match this address; no building was guessed."); continue;
+      output[name] = result("ambiguous", null, "Multiple building IDs match this address; no building was guessed."); continue;
     }
     let data: unknown;
     if (name === "rentalBuilding") {
-      if (matches.length !== 1) { output[name] = result(name, "ambiguous"); continue; }
+      if (matches.length !== 1) { output[name] = result("ambiguous"); continue; }
       const r = matches[0];
       data = { buildingId: String(r.RSN), address: text(r.SITE_ADDRESS), matchMethod: "exact_normalized_civic_address", scope: "building", reportingBasis: "owner_manager_registration", yearBuilt: publishedYear(r.YEAR_BUILT), yearRegistered: publishedYear(r.YEAR_REGISTERED), storeys: number(r.CONFIRMED_STOREYS) ?? number(r.NO_OF_STOREYS), dwellingUnits: number(r.CONFIRMED_UNITS) ?? number(r.NO_OF_UNITS), heatingType: clean(r.HEATING_TYPE), airConditioningType: clean(r.AIR_CONDITIONING_TYPE), elevators: number(r.NO_OF_ELEVATORS), elevatorStatus: clean(r.ELEVATOR_STATUS), parkingType: clean(r.PARKING_TYPE), visitorParking: clean(r.VISITOR_PARKING), barrierFreeEntrance: clean(r.BARRIER_FREE_ACCESSIBILTY_ENTR), barrierFreeUnits: number(r.NO_BARRIER_FREE_ACCESSBLE_UNITS), balconies: clean(r.BALCONIES), laundryRoom: clean(r.LAUNDRY_ROOM), nonSmokingBuilding: clean(r.NON_SMOKING_BUILDING) ?? clean(r["NON-SMOKING_BUILDING"]), separateHydroMeters: clean(r.SEPARATE_HYDRO_METER_EACH_UNIT), separateGasMeters: clean(r.SEPARATE_GAS_METERS_EACH_UNIT), separateWaterMeters: clean(r.SEPARATE_WATER_METERS_EA_UNIT), amenities: clean(r.AMENITIES_AVAILABLE), facilities: clean(r.FACILITIES_AVAILABLE), petsAllowed: clean(r.PETS_ALLOWED), petRestrictions: clean(r.PET_RESTRICTIONS) };
     } else if (name === "buildingEvaluations") {
@@ -72,11 +88,12 @@ export function richAddressLayers(address: string | null, city: string | null, p
     } else {
       data = { scope: "published_heritage_register", matchMethod: "exact_normalized_civic_address", records: matches.slice(0, 25).map(r => ({ recordId: String(r.OBJECTID), address: text(r.ADDRESS), propertyName: clean(r.PROPERTY_NAME), publishedStatus: clean(r.HERITAGE_STATUS) })) };
     }
-    output[name] = result(name, "available", data);
+    output[name] = result("available", data);
     output[name].truncated = matches.length > 25;
   }
   return output;
 }
-export function richCoverage() {
-  return Object.entries(FEEDS).map(([name, feed]) => ({ layer: name, geography: `${feed.city === "toronto" ? "Toronto" : "Brampton"}, ON`, delivery: "compiled_public_snapshot", source: RICH_SOURCES[name], records: feed.snapshot.rowCount, retrievedAt: feed.snapshot.retrievedAt, sourceUpdatedAt: feed.snapshot.sourceUpdatedAt, refresh: "manual; python3 scripts/property/refresh-rich-snapshots.py then deploy", note: feed.note }));
+export async function richCoverage() {
+  const snapshots = await loadSnapshots();
+  return Object.entries(FEEDS).map(([name, feed]) => ({ layer: name, geography: `${feed.city === "toronto" ? "Toronto" : "Brampton"}, ON`, delivery: "compiled_public_snapshot", source: RICH_SOURCES[name], status: snapshots[name] ? "loaded" : "unavailable", records: snapshots[name]?.rowCount ?? null, retrievedAt: snapshots[name]?.retrievedAt ?? null, sourceUpdatedAt: snapshots[name]?.sourceUpdatedAt ?? null, refresh: "manual; python3 scripts/property/refresh-rich-snapshots.py then deploy", note: feed.note }));
 }
