@@ -1,14 +1,17 @@
 import { fetchJson, rows } from "./http";
 import { cityKey, fold, layer, sameStreet, streetNumber, text, type Layer, type Location, type PropertyRequest, type Source } from "./model";
+import { nationalAddress } from "./national";
 
 export const GEOCODER: Source = { id: "nrcan-geolocator", name: "Natural Resources Canada Geolocator", url: "https://geolocator.api.geo.ca/", licence: "NRCan public Geolocator service; contact NRCan before bulk use", attribution: "Source: Natural Resources Canada, Geolocator API (locate)." };
 const provinces: Record<string, string> = { on: "ontario", ab: "alberta", bc: "british columbia", mb: "manitoba", ns: "nova scotia", nb: "new brunswick", qc: "quebec", sk: "saskatchewan", nl: "newfoundland and labrador", pe: "prince edward island", nt: "northwest territories", nu: "nunavut", yt: "yukon" };
-export function provinceKey(v: string): string { const f = fold(v); return provinces[f] ?? f; }
+export function provinceKey(v: string): string { const f = fold(v).replace(/\s+[a-z]\d[a-z]\s*\d[a-z]\d$/, "").trim(); return provinces[f] ?? f; }
 
 export async function geocode(input: PropertyRequest): Promise<Layer<Location>> {
-  if (input.lat !== undefined && input.lng !== undefined) return layer("available", { address: input.address ?? null, city: input.city ?? null, province: input.province ?? null, latitude: input.lat, longitude: input.lng, accuracy: "caller_supplied", provider: "caller" }, null, "Coordinates supplied by the caller; property identity has not been independently verified.");
+  if (input.lat !== undefined && input.lng !== undefined) return layer("available", { address: input.address?.split(",")[0]?.trim() ?? null, city: input.city ?? input.address?.split(",")[1]?.trim() ?? null, province: input.province ?? input.address?.split(",")[2]?.trim() ?? null, latitude: input.lat, longitude: input.lng, accuracy: "caller_supplied", provider: "caller" }, null, "Coordinates supplied by the caller; property identity has not been independently verified.");
   const address = input.address!;
   if (!streetNumber(address)) return layer("ambiguous", null, GEOCODER, "Supply a civic number, street, and municipality. Unit-level matching is not yet supported.");
+  const stored = await nationalAddress(input, provinceKey);
+  if (stored) return stored;
   const url = new URL(GEOCODER.url);
   url.searchParams.set("q", [address, input.city, input.province].filter(Boolean).join(", "));
   url.searchParams.set("keys", "locate");
@@ -34,6 +37,10 @@ export async function geocode(input: PropertyRequest): Promise<Layer<Location>> 
     if (distinct.length !== 1) return layer(distinct.length ? "ambiguous" : "no_match", null, GEOCODER, "No unique civic-address match. Include the city and province, or provide verified lat and lng.");
     const hit = distinct[0];
     const name = String(hit.name);
+    // The federal service can normalize hyphens and Saint abbreviations before
+    // a second exact register lookup supplies the published building point.
+    const registered = await nationalAddress({ ...input, address: name, city: name.split(",")[1]?.trim(), province: text(hit.province) ?? undefined }, provinceKey);
+    if (registered) return registered;
     return layer("available", { address: name.split(",")[0], city: name.split(",")[1]?.trim() ?? null, province: text(hit.province), latitude: Number(hit.lat), longitude: Number(hit.lng), accuracy: "street_interpolated", provider: GEOCODER.id }, GEOCODER, "Street interpolation is approximate; verify the location before parcel, zoning, or due-diligence decisions.");
   } catch { return layer("unavailable", null, GEOCODER, "Geocoder unavailable. Retry, or supply verified coordinates and city."); }
 }

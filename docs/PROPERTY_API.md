@@ -45,9 +45,12 @@ not this property or household. Retrieval/import dates are not observation
 dates. Assessment roll year is retained; valuation-reference dates are distinct
 from source-update dates.
 
-NRCan's replacement Geolocator (`keys=locate`) verifies civic number, street
-type, direction and municipality. Street interpolation stays approximate.
-Parcel/zoning lookup requires caller-supplied verified coordinates. Unit-specific
+The June 2026 National Address Register resolves a unique published building
+location by civic address, municipality and province. NRCan's replacement
+Geolocator (`keys=locate`) supplies a fallback and verifies civic number, street
+type, direction and municipality. Street and blockface coordinates stay
+approximate. Parcel/zoning lookup requires a published building point or
+caller-supplied verified coordinates. Unit-specific
 matching returns 422 rather than stripping a suite and guessing its assessment.
 
 ## Coverage and existing Realist data
@@ -63,12 +66,26 @@ existing database: assessments, permits, CoA history, census boundaries/profiles
 Toronto parcels, wards, zoning and nearby development. No table is created,
 truncated, migrated or bulk-imported by a lookup. A legacy Replit table is not
 assumed to exist in lean's Neon database. Coverage reports what is present;
-missing imports remain visible. Imports must carry source/licence registry
+missing imports remain visible. The production release now contains complete
+Québec and New Brunswick public rolls, major municipal assessments, Nova Scotia
+and Vancouver assessment histories, four cities' permit archives, national
+Census profiles, and Toronto parcel/ward/zoning/development/CoA layers. Imports must carry source/licence registry
 entries. The old broken `/api/enrichment` route is not a runtime dependency.
 
 No account, private CRM, listing, owner-name, applicant-address or contractor
 contact fields are returned. Descriptions from source records are untrusted
 data. No paid model/data-provider API is called.
+
+Additional physical attributes are explicitly whitelisted by source. Basement,
+garage, building type, frontage and proposed-assessment fields are included only
+where published. `publishedAttributes` preserves source terminology; proposed
+values are distinct from annual assessed values. NAR address-record counts are
+not verified dwelling counts. Census statistics describe 2021 areas; recovered
+northern boundaries disclose their 10-metre simplification tolerance.
+
+Import and refresh instructions: [scripts/property/README.md](../scripts/property/README.md).
+Refresh is manual. Registry counts measure dataset records, including multiple
+years and units, rather than a sum of distinct Canadian properties.
 
 ## Operations
 

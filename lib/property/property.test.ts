@@ -20,6 +20,8 @@ describe("property request and civic identity", () => {
     expect(sameStreet("15 Deermeade Pl SE", "15 DEERMEADE PLACE SOUTHEAST")).toBe(true);
     expect(sameStreet("15 Deermeade Pl SE", "15 Deermeade Road SE")).toBe(false);
     expect(sameStreet("100 Queen St W", "100 Queen Street East")).toBe(false);
+    expect(sameStreet("47 Ch St-Isidore", "47 Chemin Saint Isidore")).toBe(true);
+    expect(sameStreet("90 St John St W", "90 Saint John Street West")).toBe(true);
     expect(number(null)).toBeNull(); expect(number(" ")).toBeNull(); expect(number("0")).toBe(0);
   });
 });
@@ -31,6 +33,11 @@ describe("federal geocoding", () => {
     expect(result.status).toBe("available"); expect(result.data?.accuracy).toBe("street_interpolated");
     const url = mockFetch.mock.calls[0][0] as URL;
     expect(url.hostname).toBe("geolocator.api.geo.ca"); expect(url.searchParams.get("keys")).toBe("locate");
+  });
+  it("accepts a province followed by a postal code and keeps city with supplied coordinates", async () => {
+    mockFetch.mockResolvedValue(respond([hit]));
+    expect((await geocode({ address: "15 Deermeade Pl SE, Calgary, AB T2J 5J8" })).status).toBe("available");
+    expect((await geocode({ address: "90 Ash Crescent, Toronto, ON", lat: 43.6, lng: -79.4 })).data).toMatchObject({ address: "90 Ash Crescent", city: "Toronto", province: "ON", accuracy: "caller_supplied" });
   });
   it("rejects a street centroid, wrong municipality, different street and competing cities", async () => {
     mockFetch.mockResolvedValueOnce(respond([{ ...hit, tag: ["INTERPOLATED_CENTROID"] }]));

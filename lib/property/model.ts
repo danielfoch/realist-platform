@@ -53,7 +53,13 @@ const aliases: Record<string, string> = { st: "street", ave: "avenue", av: "aven
 export function streetKey(address: string): string {
   return fold(address.split(",")[0]).replace(/[.]/g, "").replace(/\b\w+\b/g, (w) => aliases[w] ?? w).replace(/\s+/g, " ").trim();
 }
-export function sameStreet(a: string, b: string): boolean { return streetKey(a) === streetKey(b); }
+function civicStreetKey(address: string): string {
+  const tokens = fold(address.split(",")[0]).replace(/[-'’]/g, " ").replace(/\./g, "").split(/\s+/);
+  // St John / St-Denis means Saint; the suffix in Queen St W means Street.
+  const directions = /^(n|s|e|w|ne|nw|se|sw|north|south|east|west|northeast|northwest|southeast|southwest|o|ouest)$/;
+  return streetKey(tokens.map((word, i) => word === "st" && tokens[i + 1] && !directions.test(tokens[i + 1]) ? "saint" : word === "ste" ? "sainte" : word).join(" "));
+}
+export function sameStreet(a: string, b: string): boolean { return civicStreetKey(a) === civicStreetKey(b); }
 export function streetNumber(address: string): string | null { return address.trim().match(/^(\d+[a-z]?)\s/i)?.[1] ?? null; }
 export function hasUnit(address: string): boolean { return /\b(unit|suite|apt|apartment|app)\b|#|^\d+\s*-\s*\d+/.test(fold(address)); }
 export function cityKey(city: string): string { return fold(city).replace(/^(city of|ville de)\s+/, ""); }
@@ -68,4 +74,19 @@ export function importedAddressKey(address: string): string | null {
   return `${m[1]} ${words.join(" ")}`;
 }
 
-export interface Location { address: string | null; city: string | null; province: string | null; latitude: number; longitude: number; accuracy: string; provider: string; }
+/** Query published abbreviations too; every candidate is still strictly verified. */
+export function importedAddressKeys(address: string): string[] {
+  let variants = [streetKey(address)];
+  for (const [short, full] of Object.entries(aliases)) {
+    const pattern = new RegExp(`\\b${full}\\b`, "g");
+    const extra = variants.map(v => v.replace(pattern, short));
+    variants = [...new Set([...variants, ...extra])].slice(0, 128);
+  }
+  return [...new Set([importedAddressKey(address), ...variants.map(importedAddressKey)].filter((v): v is string => Boolean(v)))];
+}
+
+export interface Location {
+  address: string | null; city: string | null; province: string | null;
+  latitude: number; longitude: number; accuracy: string; provider: string;
+  addressRegister?: { buildingId: string; publishedAddressRecords: number; postalCodes: string[]; buildingUsageCodes: string[]; csduid: string | null };
+}
