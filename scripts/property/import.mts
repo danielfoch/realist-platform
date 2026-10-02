@@ -127,7 +127,7 @@ async function socrataFeed(key: string) {
   if (end.rowsUpdatedAt !== metadata.rowsUpdatedAt) throw new Error("Source changed during pagination; rerun to obtain a stable snapshot");
   const sourceValue = feed.kind === "assessment" ? key === "ns" ? "ns-pvsc" : key : "calgary";
   const actual = Number((await query(`SELECT count(*) AS count FROM ${table} WHERE source=$1`, [sourceValue]))[0].count);
-  await register(key === "ns" ? "ns-pvsc" : key, table, SOURCES[key] ?? { name: "New Brunswick Property Assessment Map", url: "https://open.canada.ca/data/en/dataset/fefafa4a-ceb1-0109-5169-e5ac5e79979d", licence: "Open Government Licence – New Brunswick", attribution: "Contains information licensed under the Open Government Licence – New Brunswick. Source: Service New Brunswick, Property Assessment Map." }, feed.province, actual);
+  await register(key === "ns" ? "ns-pvsc" : key, table, SOURCES[key] ?? { name: "New Brunswick Property Assessment Map", url: "https://open.canada.ca/data/en/dataset/fefafa4a-ceb1-0109-5169-e5ac5e79979d", licence: "Open Government Licence – New Brunswick", attribution: "Contains information licensed under the Open Government Licence – New Brunswick. Source: Service New Brunswick, Property Assessment Map." }, ["ns", "nb"].includes(key) ? feed.province : `${feed.city}, ${feed.province}`, actual);
   await checkpoint(key, "complete", offset, rejected, { offset, hostedRows: actual }, count, sourceUpdatedAt);
   console.log(JSON.stringify({ key, status: "complete", processed: offset, hosted: actual, rejected }));
 }
@@ -216,7 +216,7 @@ async function csvFeed(key: string) {
   const actual = Number((await query(`SELECT count(*) AS count FROM ${table} WHERE source=$1`, [feed.source]))[0].count);
   const source = SOURCES[`${feed.source}-permits`] ?? (coa ? SOURCES["toronto-variance"] : { name: "Montréal construction permits", url: feed.url, licence: "CC-BY 4.0", attribution: "Source: Ville de Montréal, permis de construction (CC-BY 4.0)." });
   const registry = coa ? "toronto_coa_applications" : `${feed.source}-permits`;
-  await register(registry, table, source, feed.province, actual);
+  await register(registry, table, source, `${feed.city}, ${feed.province}`, actual);
   await checkpoint(key, "complete", processed, rejected, { sha256, hostedRows: actual }, processed);
   console.log(JSON.stringify({ key, status: "complete", processed, rejected, hosted: actual }));
 }
@@ -372,7 +372,7 @@ async function vancouverTax() {
   if (!processed || rejected === processed) throw new Error("Vancouver CSV schema unrecognized");
   await flush();
   const actual = Number((await query("SELECT count(*) AS count FROM assessment_history WHERE source=$1", [key]))[0].count);
-  await register(key, "assessment_history", { name: "Vancouver property tax and assessment history", url: "https://opendata.vancouver.ca/explore/dataset/property-tax-report/", licence: "Open Government Licence – Vancouver", attribution: "Contains information licensed under the Open Government Licence – Vancouver." }, "BC", actual);
+  await register(key, "assessment_history", { name: "Vancouver property tax and assessment history", url: "https://opendata.vancouver.ca/explore/dataset/property-tax-report/", licence: "Open Government Licence – Vancouver", attribution: "Contains information licensed under the Open Government Licence – Vancouver." }, "Vancouver, BC", actual);
   await checkpoint(key, "complete", processed, rejected, { sha256, latestYear: latest, hostedRows: actual }, processed);
   console.log(JSON.stringify({ key, status: "complete", processed, rejected, hosted: actual }));
 }

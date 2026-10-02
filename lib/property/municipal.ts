@@ -1,5 +1,5 @@
 import { fetchJson, literal, rows, socrata } from "./http";
-import { cityKey, date, layer, number, sameStreet, streetKey, streetNumber, text, type Layer, type Row, type Source } from "./model";
+import { cityKey, date, layer, number, publishedYear, sameStreet, streetKey, streetNumber, text, type Layer, type Row, type Source } from "./model";
 
 export const SOURCES: Record<string, Source> = {
   calgary: { id: "calgary-assessment", name: "Calgary current property assessment", url: "https://data.calgary.ca/d/4bsw-nn7w", licence: "City of Calgary Open Data Terms of Use", attribution: "Contains information licensed under the Open Data Terms of Use of The City of Calgary." },
@@ -30,10 +30,10 @@ function base(address: string, city: string): Assessment {
 }
 const squareMetres = (v: unknown): number | null => { const n = number(v); return n === null ? null : Math.round(n / 10.7639104167 * 10) / 10; };
 export function mapAssessment(city: string, r: Row): Assessment {
-  if (city === "calgary") return { ...base(String(r.address), "Calgary"), rollNumber: text(r.roll_number), rollYear: number(r.roll_year), assessedValue: number(r.assessed_value), yearBuilt: number(r.year_of_construction), lotAreaM2: number(r.land_size_sm), landUse: text(r.land_use_designation) };
-  if (city === "winnipeg") return { ...base(String(r.full_address), "Winnipeg"), rollNumber: text(r.roll_number), rollYear: number(r.current_assessment_year), assessedValue: number(r.total_assessed_value), yearBuilt: number(r.year_built), floorAreaM2: squareMetres(r.total_living_area), lotAreaM2: squareMetres(r.assessed_land_area), dwellingUnits: number(r.dwelling_units), landUse: text(r.zoning) };
+  if (city === "calgary") return { ...base(String(r.address), "Calgary"), rollNumber: text(r.roll_number), rollYear: number(r.roll_year), assessedValue: number(r.assessed_value), yearBuilt: publishedYear(r.year_of_construction), lotAreaM2: number(r.land_size_sm), landUse: text(r.land_use_designation) };
+  if (city === "winnipeg") return { ...base(String(r.full_address), "Winnipeg"), rollNumber: text(r.roll_number), rollYear: number(r.current_assessment_year), assessedValue: number(r.total_assessed_value), yearBuilt: publishedYear(r.year_built), floorAreaM2: squareMetres(r.total_living_area), lotAreaM2: squareMetres(r.assessed_land_area), dwellingUnits: number(r.dwelling_units), landUse: text(r.zoning) };
   if (city === "edmonton") return { ...base([r.house_number, r.street_name].filter(Boolean).join(" "), "Edmonton"), rollNumber: text(r.account_number), assessedValue: number(r.assessed_value), landUse: text(r.tax_class) ?? text(r.mill_class_1) };
-  return { ...base([r.address_num, r.address_direction, r.address_street, r.address_suffix].filter(Boolean).join(" "), String(r.address_city)), rollNumber: text(r.aan), yearBuilt: number(r.year_built), floorAreaM2: squareMetres(r.square_foot_living_area), dwellingUnits: number(r.living_units), bedrooms: number(r.bedrooms), bathrooms: number(r.bathrooms), landUse: text(r.style) };
+  return { ...base([r.address_num, r.address_direction, r.address_street, r.address_suffix].filter(Boolean).join(" "), String(r.address_city)), rollNumber: text(r.aan), yearBuilt: publishedYear(r.year_built), floorAreaM2: squareMetres(r.square_foot_living_area), dwellingUnits: number(r.living_units), bedrooms: number(r.bedrooms), bathrooms: number(r.bathrooms), landUse: text(r.style) };
 }
 
 export async function assessmentAtAddress(address: string | null, city: string | null, province: string | null): Promise<Layer<Assessment>> {

@@ -1,4 +1,4 @@
-import { number, text, type Row } from "../model";
+import { number, publishedYear, text, type Row } from "../model";
 
 /** Explicit public physical-property whitelist. Never copy a complete source row. */
 export function physicalAttributes(source: string, r: Row): Row {
@@ -17,6 +17,6 @@ export function physicalAttributes(source: string, r: Row): Row {
   };
   if (source === "ns") return { underConstruction: text(r.under_construction), constructionGrade: text(r.grade), finishedBasement: text(r.finished_basement), garage: text(r.garage) };
   if (source === "nb") return { propertyDescription: text(r.descript), publishedTaxLevy: number(r.tax_levy), taxPeriodNote: "Levy as published by Service New Brunswick; verify the applicable tax period with the source." };
-  if (source === "vancouver-tax") return { reportYear: number(r.report_year), majorImprovementYear: number(r.big_improvement_year), propertyPostalCode: text(r.property_postal_code), propertyId: text(r.pid), legalType: text(r.legal_type), zoningClassification: text(r.zoning_classification), publishedTaxLevy: number(r.tax_levy), taxPeriodNote: "Levy as published in the property tax report; verify the applicable tax period with the source." };
+  if (source === "vancouver-tax") return { reportYear: publishedYear(r.report_year), majorImprovementYear: publishedYear(r.big_improvement_year), propertyPostalCode: text(r.property_postal_code), propertyId: text(r.pid), legalType: text(r.legal_type), zoningClassification: text(r.zoning_classification), publishedTaxLevy: number(r.tax_levy), taxPeriodNote: "Levy as published in the property tax report; verify the applicable tax period with the source." };
   return {};
 }

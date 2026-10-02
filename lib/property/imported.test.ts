@@ -44,7 +44,7 @@ describe("existing Realist open-data imports", () => {
   });
   it("rejects a record in a same-named municipality in another province", async () => {
     await testDb.sql.exec(`INSERT INTO assessment_units(source,address,municipality_name,loose_address_key,total_value) VALUES ('qc-mamh','40 Main Street','Richmond','40 main street',200000);`);
-    expect((await importedLayers("40 Main Street", "Richmond", null, "BC")).assessment.status).toBe("no_match");
+    expect((await importedLayers("40 Main Street", "Richmond", null, "BC")).assessment.status).toBe("not_supported");
     expect((await importedLayers("40 Main Street", "Richmond", null, "QC")).assessment.data).toMatchObject({ assessedValue: 200000 });
   });
   it("keeps account dwelling totals without summing duplicate NS building rows or guessing physical facts", async () => {

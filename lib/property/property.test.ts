@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requestSchema, number, sameStreet } from "./model";
+import { requestSchema, number, publishedYear, sameStreet } from "./model";
 import { geocode } from "./geocode";
 import { assessmentAtAddress, permitsAtAddress, torontoVariances } from "./municipal";
 const mockFetch = vi.fn();
@@ -23,6 +23,7 @@ describe("property request and civic identity", () => {
     expect(sameStreet("47 Ch St-Isidore", "47 Chemin Saint Isidore")).toBe(true);
     expect(sameStreet("90 St John St W", "90 Saint John Street West")).toBe(true);
     expect(number(null)).toBeNull(); expect(number(" ")).toBeNull(); expect(number("0")).toBe(0);
+    expect(publishedYear("0")).toBeNull(); expect(publishedYear("1981.0")).toBe(1981);
   });
 });
 describe("federal geocoding", () => {

@@ -43,6 +43,10 @@ export const number = (v: unknown): number | null => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
+export const publishedYear = (v: unknown): number | null => {
+  const n = number(v);
+  return n !== null && Number.isInteger(n) && n >= 1000 && n <= 2100 ? n : null;
+};
 export function date(v: unknown): string | null {
   if (v instanceof Date) return v.toISOString();
   return text(v);

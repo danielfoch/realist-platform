@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { pointInGeometry, haversineMeters, type AreaGeometry } from "@/lib/geo/geometry";
-import { cityKey, date, importedAddressKey, importedAddressKeys, layer, number, sameStreet, text, type Layer, type Location, type Row, type Source } from "./model";
+import { cityKey, date, importedAddressKey, importedAddressKeys, layer, number, publishedYear, sameStreet, text, type Layer, type Location, type Row, type Source } from "./model";
 import { SOURCES } from "./municipal";
 import { provinceKey } from "./geocode";
 
@@ -78,6 +78,12 @@ async function addressLayer(inv: Inventory, name: "assessment" | "permits" | "va
   const cityFilter = name === "variance" ? sql`` : sql`AND translate(lower(regexp_replace(${sql.identifier(municipalityColumn)}, '^(City of|Ville de) ', '', 'i')), 'àâäéèêëîïôöùûüç', 'aaaeeeeiioouuuc') = ${cityKey(city)}`;
   const provinceCodes: Record<string, string> = { ontario: "ON", alberta: "AB", "british columbia": "BC", manitoba: "MB", "nova scotia": "NS", "new brunswick": "NB", quebec: "QC", saskatchewan: "SK", "newfoundland and labrador": "NL", "prince edward island": "PE", yukon: "YT", "northwest territories": "NT", nunavut: "NU" };
   const code = province ? provinceCodes[provinceKey(province)] : null;
+  if (code && name !== "variance") {
+    const c = cityKey(city);
+    const assessmentScope = (code === "QC" && inv.sources.some(s => s.key === "qc_assessment_roll")) || (code === "NS" && inv.sources.some(s => ["ns-pvsc", "ns-pvsc-values", "municipal_assessment_rolls"].includes(String(s.key)))) || (code === "NB" && inv.sources.some(s => s.key === "nb")) || [["calgary", "AB", "calgary"], ["edmonton", "AB", "edmonton"], ["winnipeg", "MB", "winnipeg"], ["vancouver", "BC", "vancouver-tax"]].some(([city, p, key]) => c === city && code === p && inv.sources.some(s => s.key === key || s.key === "municipal_assessment_rolls"));
+    const permitScope = [["calgary", "AB"], ["vancouver", "BC"], ["toronto", "ON"], ["montreal", "QC"]].some(([city, p]) => c === city && code === p && inv.sources.some(s => s.key === `${city}-permits` || s.key === "building_permits"));
+    if (!(name === "assessment" ? assessmentScope : permitScope)) return layer("not_supported", null, null, "No completed public import for this municipality/province and layer. Other layers may still return.");
+  }
   const provinceFilter = !province ? sql`` : sql`AND COALESCE(to_jsonb(${sql.identifier(table)})->>'province', CASE source WHEN 'qc-mamh' THEN 'QC' WHEN 'ns-pvsc' THEN 'NS' WHEN 'ns-pvsc-values' THEN 'NS' WHEN 'calgary' THEN 'AB' WHEN 'edmonton' THEN 'AB' WHEN 'winnipeg' THEN 'MB' WHEN 'vancouver' THEN 'BC' WHEN 'vancouver-tax' THEN 'BC' WHEN 'montreal' THEN 'QC' WHEN 'nb' THEN 'NB' WHEN 'toronto' THEN 'ON' WHEN 'toronto-coa' THEN 'ON' END) = ${code ?? "unknown"}`;
   const records = (await getDb().execute(sql`SELECT ${columns} FROM ${sql.identifier(table)} WHERE loose_address_key IN (${sql.join(importedAddressKeys(address).map(k => sql`${k}`), sql`, `)}) ${cityFilter} ${provinceFilter} ${name === "permits" ? sql`ORDER BY issued_date DESC NULLS LAST` : name === "assessment" ? sql`ORDER BY CASE source WHEN 'ns-pvsc-values' THEN 0 WHEN 'ns-pvsc' THEN 2 ELSE 1 END` : sql``} LIMIT 51`)).rows;
   if (name === "assessment" && records.length >= 51 && !records.some(r => r.source === "ns-pvsc-values")) return layer("ambiguous", null, null, "Imported record candidate limit reached.");
@@ -103,8 +109,8 @@ async function addressLayer(inv: Inventory, name: "assessment" | "permits" | "va
   }
   const data = name === "assessment" ? {
     address: matches[0].address, city: matches[0].municipality_name, rollNumber: String(matches[0].matricule).split("/")[0],
-    rollYear: number(matches[0].roll_year), assessedValue: number(matches[0].total_value), landValue: number(matches[0].land_value), buildingValue: number(matches[0].building_value), yearBuilt: number(matches[0].year_built), floorAreaM2: number(matches[0].floor_area_m2), lotAreaM2: number(matches[0].lot_area_m2), frontageM: number(matches[0].frontage_m), dwellingUnits: number(matches[0].dwellings), currency: "CAD", valuationKind: "municipal_assessment", marketValueEstimate: null,
-    bedrooms: number(matches[0].bedrooms), bathrooms: number(matches[0].bathrooms), landUse: text(matches[0].land_use), storeys: number(matches[0].storeys), lotNumber: text(matches[0].lot_number), yearBuiltEstimated: typeof matches[0].year_built_estimated === "boolean" ? matches[0].year_built_estimated : null, valuationReferenceDate: date(matches[0].market_ref_date), publishedAttributes: matches[0].attributes ?? {},
+    rollYear: publishedYear(matches[0].roll_year), assessedValue: number(matches[0].total_value), landValue: number(matches[0].land_value), buildingValue: number(matches[0].building_value), yearBuilt: publishedYear(matches[0].year_built), floorAreaM2: number(matches[0].floor_area_m2), lotAreaM2: number(matches[0].lot_area_m2), frontageM: number(matches[0].frontage_m), dwellingUnits: number(matches[0].dwellings), currency: "CAD", valuationKind: "municipal_assessment", marketValueEstimate: null,
+    bedrooms: number(matches[0].bedrooms), bathrooms: number(matches[0].bathrooms), landUse: text(matches[0].land_use), storeys: number(matches[0].storeys), lotNumber: text(matches[0].lot_number), yearBuiltEstimated: ["qc-mamh", "calgary"].includes(String(matches[0].source)) && typeof matches[0].year_built_estimated === "boolean" ? matches[0].year_built_estimated : null, valuationReferenceDate: date(matches[0].market_ref_date), publishedAttributes: matches[0].attributes ?? {},
   } : name === "permits" ? { permits: matches.slice(0, 25).map((r, i) => ({ permitNumber: r.permit_number, issuedDate: date(r.issued_date), status: r.status, workType: r.work_type, description: text(r.description)?.slice(0, 1000) ?? null, estimatedProjectValue: number(r.estimated_value), source: sources[i] })) } : { applications: matches.slice(0, 25).map(r => ({ fileNumber: /^(SYS:|ROW:)/.test(String(r.reference_file)) ? null : r.reference_file, status: r.status, decision: r.decision, receivedDate: date(r.in_date), hearingDate: date(r.hearing_date), description: text(r.description)?.slice(0, 1000) ?? null })) };
   const result = layer("available", data, source, "Matched by civic address and municipality; assessment values are not market-value estimates. importedAt is not the source observation date.");
   result.importedAt = date(matches[0].imported_at);
