@@ -12,6 +12,7 @@ import { publicMultiplexSchema } from "./multiplex";
 import { UNDERWRITING_OPENAPI } from "./openapi";
 import { GET as chartPng } from "@/app/api/underwriting/chart.png/route";
 import { writeFileSync } from "node:fs";
+import robots from "@/app/robots";
 
 const token = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("@/lib/auth/throttle", () => ({ takeToken: token, clientIp: () => "test-client" }));
@@ -102,6 +103,7 @@ describe("public underwriting", () => {
     expect(UNDERWRITING_OPENAPI.security).toEqual([]);
     expect(UNDERWRITING_OPENAPI.paths["/api/underwriting"].post.requestBody.content["application/json"].schema.required).toContain("price");
     expect(UNDERWRITING_OPENAPI.paths["/api/underwriting"].post.requestBody.content["application/json"].schema.required).toContain("monthlyRent");
+    expect(robots().rules).toMatchObject([{ allow: ["/", "/api/underwriting", "/api/property"], disallow: expect.arrayContaining(["/api/", "/account"]) }]);
   });
   it("bounds multiplex coverage and disallows arbitrary assumption objects", () => {
     expect(publicMultiplexSchema.safeParse({ address: "90 Ash Crescent, Toronto", lat: 51, lng: -114 }).success).toBe(false);

@@ -10,6 +10,7 @@ export const PUBLIC_HEADERS = {
   "Access-Control-Expose-Headers": "Retry-After",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
+  "X-Robots-Tag": "noindex",
 };
 export const DISCOVERY = {
   name: "Realist public underwriting", apiVersion: "1.0", authentication: "none",
