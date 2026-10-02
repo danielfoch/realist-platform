@@ -12,3 +12,5 @@ export * from "./schema/community";
 export * from "./schema/leads";
 export * from "./schema/analyses";
 export * from "./schema/auth";
+
+export * from "./schema/property";
