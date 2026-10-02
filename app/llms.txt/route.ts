@@ -1,0 +1,4 @@
+import { PUBLIC_BASE } from "@/lib/public-underwriting/service";
+export function GET() {
+  return new Response(`# Realist\n\nPublic Canadian real estate tools. No credentials required for these APIs.\n\n- [Deal underwriting instructions](${PUBLIC_BASE}/api/underwriting/skill): Rental financials, offer-price targets, sensitivity charts, editable report and Toronto multiplex feasibility.\n- [Underwriting OpenAPI](${PUBLIC_BASE}/api/underwriting/openapi.json)\n- [Underwriting MCP](${PUBLIC_BASE}/api/underwriting/mcp): Public stateless Streamable HTTP.\n- [Property evidence instructions](${PUBLIC_BASE}/api/property/skill): Published Canadian address, assessment, permit and geographic evidence.\n`, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300", "Access-Control-Allow-Origin": "*" } });
+}

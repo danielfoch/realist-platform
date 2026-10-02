@@ -6,7 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        // Explicit public tool surfaces must also be fetchable by LLM web clients.
+        allow: ["/", "/api/underwriting", "/api/property"],
         disallow: ["/api/", "/multiplex/r/", "/login", "/account", "/admin", "/unsubscribe", "/a/"],
       },
     ],

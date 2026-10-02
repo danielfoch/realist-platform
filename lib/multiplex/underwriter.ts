@@ -533,6 +533,7 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
   userId?: string | null;
   sessionId?: string | null;
   persist?: boolean;
+  useAiNarrative?: boolean;
 } = {}) {
   const workingInput = { ...input };
   const site = await resolveSite(
@@ -575,7 +576,7 @@ export async function executeMultiplexUnderwriter(input: UnderwriteRequest, opts
     address: workingInput.address,
     site,
     underwrite,
-  });
+  }, { useAi: opts.useAiNarrative });
   const result = { ...underwrite, report, reportSource };
 
   if (opts.persist === false) {

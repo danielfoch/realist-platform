@@ -208,8 +208,8 @@ export interface ReportInput {
   underwrite: any;
 }
 
-export async function writeMultiplexReport(input: ReportInput): Promise<{ report: MultiplexReport; source: "ai" | "template" }> {
-  if (!reportWriterConfigured()) {
+export async function writeMultiplexReport(input: ReportInput, options: { useAi?: boolean } = {}): Promise<{ report: MultiplexReport; source: "ai" | "template" }> {
+  if (options.useAi === false || !reportWriterConfigured()) {
     return { report: templateReport(input), source: "template" };
   }
 
