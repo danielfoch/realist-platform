@@ -19,7 +19,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const province = location.data?.province ?? input.province ?? input.address?.split(",")[2]?.trim() ?? null;
   const conservationResult = conservationLayer(location.data);
   const imported = await importedLayers(address, city, location.data, province);
-  const rich = richAddressLayers(address, city, province);
+  const rich = await richAddressLayers(address, city, province);
   const fresh = (value: Layer): boolean => value.status === "available" && Boolean(value.importedAt) && Date.now() - new Date(value.importedAt!).getTime() < 31 * 86_400_000;
   const [assessment, permits, variance, conservation] = await Promise.all([
     fresh(imported.assessment) || imported.assessment.status === "ambiguous" ? imported.assessment : assessmentAtAddress(address, city, province),
@@ -63,7 +63,7 @@ export async function coverage() {
       { cities: ["Toronto"], layers: ["permits", "variance"], sources: [SOURCES["toronto-permits"], SOURCES["toronto-variance"]] },
       conservationCoverage(),
     ],
-    publicSnapshots: richCoverage(),
+    publicSnapshots: await richCoverage(),
     imported: { databaseStatus: imported.available ? "reachable" : "unavailable", tables: [...imported.tables], sources: imported.sources, imports: imported.imports ?? [] },
     limits: { requestsPerClientPerMinute: 30, requestsSitewidePerMinute: 120, upstreamTimeoutSeconds: 12, sourceCacheSeconds: 3600, batch: false, unitSpecificMatching: false },
     note: "Configured adapters are not proof of a matching record or source uptime. Imported layers require existing tables, imported rows and source/licence attribution. Registry row counts measure records in the named dataset, not distinct properties; histories include multiple years. Refresh is manual. No MLS, owner contact details, sold-price feed or AVM is exposed.",

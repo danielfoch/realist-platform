@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 import { LEGACY_REDIRECTS } from "./lib/seo/redirects";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/api/property": ["./lib/property/data/*.json"],
+    "/api/property/coverage": ["./lib/property/data/*.json"],
+  },
   async headers() {
     return [
       {
