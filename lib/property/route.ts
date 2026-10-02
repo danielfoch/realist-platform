@@ -6,10 +6,10 @@ import { enrichProperty } from "./service";
 export const PUBLIC_HEADERS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Expose-Headers": "Retry-After", "X-Content-Type-Options": "nosniff" };
 export const DOC = {
   name: "Homies property enrichment", apiVersion: "1.0", authentication: "none",
-  starterPrompt: "Enrich a property for me.",
+  starterPrompt: "Create a property forensics report for me.",
   instructions: "Ask for a Canadian civic address and city if missing, then GET /api/property with URL-encoded address. Optional city, province, lat and lng. Read field availability and source information in layers.",
   example: "/api/property?address=15%20Deermeade%20Pl%20SE%2C%20Calgary%2C%20AB",
-  coverage: "/api/property/coverage", openapi: "/api/property/openapi.json", skill: "/api/property/skill",
+  coverage: "/api/property/coverage", openapi: "/api/property/openapi.json", skill: "/api/property/skill", report: "/api/property/report",
 };
 function reply(data: unknown, status = 200, headers: Record<string, string> = {}) { return Response.json(data, { status, headers: { ...PUBLIC_HEADERS, "Cache-Control": "no-store", ...headers } }); }
 export async function propertyGet(request: Request): Promise<Response> {

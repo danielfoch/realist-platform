@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { pointInGeometry, haversineMeters, type AreaGeometry } from "@/lib/geo/geometry";
 import { cityKey, date, importedAddressKey, importedAddressKeys, layer, number, publishedYear, sameStreet, text, type Layer, type Location, type Row, type Source } from "./model";
 import { SOURCES } from "./municipal";
+import { censusProfileConsistent } from "./census-quality";
 import { provinceKey } from "./geocode";
 
 const TABLES = ["data_layers", "assessment_units", "building_permits", "census_da_boundaries", "census_da_profiles", "toronto_parcels", "municipal_wards", "toronto_zoning_polygons", "development_applications", "coa_applications", "property_import_runs", "national_addresses", "assessment_history", "ns_property_land", "development_application_sites"] as const;
@@ -53,6 +54,7 @@ async function spatial(inv: Inventory, name: "parcel" | "ward" | "zoning" | "nei
     const profile = (await getDb().execute(sql`SELECT profile, census_year, imported_at FROM census_da_profiles WHERE dauid = ${String(r.dauid)} LIMIT 1`)).rows[0];
     if (!profile) return layer("no_match", null, source);
     const p = profile.profile as Row;
+    if (!censusProfileConsistent(p)) return layer("unavailable", null, source, "Imported Census profile failed consistency checks; values withheld pending a verified characteristic mapping. The matched area geometry is not proof that the profile fields are correct.");
     data = { ...p, dauid: r.dauid, censusYear: number(profile.census_year), incomeReferenceYear: 2020, geographyLevel: "dissemination_area", boundarySimplificationM: number(r.simplification_m) ?? 0, note: "Neighbourhood census statistics describe the area, not the subject household or property." };
     r.imported_at = profile.imported_at;
   }

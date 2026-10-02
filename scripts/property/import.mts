@@ -16,6 +16,7 @@ import { createCsvStreamParser } from "../../lib/property/ingest/csv";
 import { bboxOfGeometry, type AreaGeometry } from "../../lib/geo/geometry";
 import { parseParcelRow } from "../../lib/property/ingest/parcels";
 import { mtm10ToLatLng, isWithinToronto } from "../../lib/property/ingest/torontoMtm";
+import { censusScalars, censusTypes, censusPeriods, CENSUS_MAPPING_VERSION, validateCensusLabels } from "../../lib/property/ingest/census";
 import { physicalAttributes } from "../../lib/property/ingest/attributes";
 
 const args = process.argv.slice(2);
@@ -275,12 +276,12 @@ async function censusBoundaryArchive() {
   await checkpoint(key, "complete", actual, 0, { archive: true, sha256, hostedRows: actual }, actual);
   console.log(JSON.stringify({ key, status: "complete", hosted: actual }));
 }
-const censusScalars: Record<string, string> = { "1": "population", "4": "totalPrivateDwellings", "5": "dwellingsOccupiedByUsualResidents", "6": "populationDensityPerKm2", "7": "landAreaKm2", "57": "avgHouseholdSize", "243": "medianHouseholdIncome", "252": "avgHouseholdIncome", "1414": "householdsByTenureTotal", "1415": "ownerHouseholds", "1416": "renterHouseholds", "1488": "medianDwellingValue", "1489": "avgDwellingValue", "1494": "medianRentedShelterCost", "1495": "avgRentedShelterCost" };
-const censusTypes: Record<string, string> = { "42": "singleDetached", "43": "semiDetached", "44": "rowHouse", "45": "duplexApartment", "46": "apartmentUnderFiveStoreys", "47": "apartmentFivePlusStoreys", "48": "otherSingleAttached", "49": "movableDwelling" };
-const censusPeriods: Record<string, string> = { "1441": "1960 or before", "1442": "1961 to 1980", "1443": "1981 to 1990", "1444": "1991 to 2000", "1445": "2001 to 2005", "1446": "2006 to 2010", "1447": "2011 to 2015", "1448": "2016 to 2021" };
 async function censusProfiles() {
   const key = "census_da_profiles", profiles = new Map<string, Row>();
-  const fields = [...Object.keys(censusScalars), ...Object.keys(censusTypes), ...Object.keys(censusPeriods), "41", "1440"];
+  const metadataFile = path.join(cache, "census-characteristic-1.3.xml");
+  await download("https://api.statcan.gc.ca/census-recensement/profile/sdmx/rest/codelist/STC_CP/CL_CHARACTERISTIC/1.3", metadataFile);
+  validateCensusLabels(await fs.readFile(metadataFile, "utf8"));
+  const fields = [...Object.keys(censusScalars), ...Object.keys(censusTypes), ...Object.keys(censusPeriods), "41", "1426"];
   // Only housing, income and population characteristics; never the entire SDMX flow.
   await checkpoint(key, "running", 0, 0, { characteristics: fields.length });
   let processed = 0, rejected = 0;
@@ -296,12 +297,14 @@ async function censusProfiles() {
     const id = r.alt_geo_code || r.ref_area.slice(9);
     if (!/^\d{8}$/.test(id)) { rejected++; return; }
     const profile = profiles.get(id) ?? Object.fromEntries([...Object.values(censusScalars).map(k => [k, null]), ["dwellingMix", {}], ["constructionPeriods", {}]]);
+    if (r.dataflow !== "STC_CP:DF_DA(1.3)") throw new Error("Census dataflow version changed; no profile published");
+    profile.mappingVersion = CENSUS_MAPPING_VERSION;
     const value = /^(x|f|\.\.|\.\.\.)$/i.test(r.flag) ? null : number(r.obs_value);
     if (censusScalars[r.characteristic]) profile[censusScalars[r.characteristic]] = value;
     else if (censusTypes[r.characteristic]) (profile.dwellingMix as Row)[censusTypes[r.characteristic]] = value;
     else if (censusPeriods[r.characteristic]) (profile.constructionPeriods as Row)[censusPeriods[r.characteristic]] = value;
     else if (r.characteristic === "41") profile.dwellingsByTypeTotal = value;
-    else if (r.characteristic === "1440") profile.constructionPeriodsTotal = value;
+    else if (r.characteristic === "1426") profile.constructionPeriodsTotal = value;
     profiles.set(id, profile); processed++;
     });
     console.log(JSON.stringify({ key, characteristicsProcessed: Math.min(start + 3, fields.length), totalCharacteristics: fields.length, profiles: profiles.size, observations: processed }));

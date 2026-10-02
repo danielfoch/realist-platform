@@ -1,0 +1,502 @@
+<Codelist xmlns:ns0="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure" xmlns:ns1="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/common" id="CL_CHARACTERISTIC" version="1.3"><ns0:Code id="1">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">1</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">1</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Population, 2021</ns1:Name>
+          <ns1:Name xml:lang="fr">Population, 2021</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="4">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">4</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">4</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">4</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Total private dwellings</ns1:Name>
+          <ns1:Name xml:lang="fr">Total des logements privés</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="5">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">5</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">5</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">5</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Private dwellings occupied by usual residents</ns1:Name>
+          <ns1:Name xml:lang="fr">Logements privés occupés par des résidents habituels</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="6">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">6</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">6</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">6</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Population density per square kilometre</ns1:Name>
+          <ns1:Name xml:lang="fr">Densité de la population au kilomètre carré</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="7">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">7</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">7</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">7</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Land area in square kilometres</ns1:Name>
+          <ns1:Name xml:lang="fr">Superficie des terres en kilomètres carrés</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="56">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">57</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">57</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">57</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Average household size</ns1:Name>
+          <ns1:Name xml:lang="fr">Taille moyenne des ménages privés</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="229">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">243</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">243</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">243</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Median total income of household in 2020 ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Revenu total médian des ménages en 2020 ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="228" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="238">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">252</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">252</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">252</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Average total income of household in 2020 ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Revenu total moyen des ménages en 2020 ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="237" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1400">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1414</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1414</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1414</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Total - Private households by tenure - 25% sample data</ns1:Name>
+          <ns1:Name xml:lang="fr">Total - Ménages privés selon le mode d'occupation - Données-échantillon (25 %)</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="1401">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1415</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1415</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1415</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Owner</ns1:Name>
+          <ns1:Name xml:lang="fr">Propriétaire</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1400" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1402">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1416</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1416</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1416</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Renter</ns1:Name>
+          <ns1:Name xml:lang="fr">Locataire</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1400" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1474">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1488</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1488</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1488</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Median value of dwellings ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Valeur médiane des logements ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1468" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1475">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1489</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1489</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1489</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Average value of dwellings ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Valeur moyenne des logements ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1468" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1480">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1494</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1494</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1494</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Median monthly shelter costs for rented dwellings ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Frais de logement mensuels médians pour les logements occupés par un ménage locataire ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1476" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1481">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1495</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1495</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1495</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Average monthly shelter costs for rented dwellings ($)</ns1:Name>
+          <ns1:Name xml:lang="fr">Frais de logement mensuels moyens pour les logements occupés par un ménage locataire ($)</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1476" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="42">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">42</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">42</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">42</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Single-detached house</ns1:Name>
+          <ns1:Name xml:lang="fr">Maison individuelle non attenante</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="43">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">43</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">43</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">43</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Semi-detached house</ns1:Name>
+          <ns1:Name xml:lang="fr">Maison jumelée</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="44">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">44</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">44</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">44</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Row house</ns1:Name>
+          <ns1:Name xml:lang="fr">Maison en rangée</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="45">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">45</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">45</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">45</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Apartment or flat in a duplex</ns1:Name>
+          <ns1:Name xml:lang="fr">Appartement ou plain-pied dans un duplex</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="46">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">46</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">46</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">46</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Apartment in a building that has fewer than five storeys</ns1:Name>
+          <ns1:Name xml:lang="fr">Appartement dans un immeuble de moins de cinq étages</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="47">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">47</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">47</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">47</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Apartment in a building that has five or more storeys</ns1:Name>
+          <ns1:Name xml:lang="fr">Appartement dans un immeuble de cinq étages ou plus</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="48">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">48</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">48</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">48</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Other single-attached house</ns1:Name>
+          <ns1:Name xml:lang="fr">Autre maison individuelle attenante</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="49">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">49</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">49</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">49</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Movable dwelling</ns1:Name>
+          <ns1:Name xml:lang="fr">Logement mobile</ns1:Name>
+          <ns0:Parent>
+            <Ref id="41" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1427">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1441</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1441</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1441</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">1960 or before</ns1:Name>
+          <ns1:Name xml:lang="fr">1960 ou avant</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1428">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1442</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1442</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1442</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">1961 to 1980</ns1:Name>
+          <ns1:Name xml:lang="fr">1961 à 1980</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1429">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1443</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1443</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1443</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">1981 to 1990</ns1:Name>
+          <ns1:Name xml:lang="fr">1981 à 1990</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1430">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1444</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1444</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1444</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">1991 to 2000</ns1:Name>
+          <ns1:Name xml:lang="fr">1991 à 2000</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1431">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1445</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1445</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1445</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">2001 to 2005</ns1:Name>
+          <ns1:Name xml:lang="fr">2001 à 2005</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1432">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1446</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1446</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1446</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">2006 to 2010</ns1:Name>
+          <ns1:Name xml:lang="fr">2006 à 2010</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1433">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1447</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1447</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1447</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">2011 to 2015</ns1:Name>
+          <ns1:Name xml:lang="fr">2011 à 2015</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="1434">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1448</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1448</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1448</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">2016 to 2021</ns1:Name>
+          <ns1:Name xml:lang="fr">2016 à 2021</ns1:Name>
+          <ns0:Parent>
+            <Ref id="1426" />
+          </ns0:Parent>
+        </ns0:Code>
+        <ns0:Code id="41">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="fr">41</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">41</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="en">41</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Total - Occupied private dwellings by structural type of dwelling - 100% data</ns1:Name>
+          <ns1:Name xml:lang="fr">Total - Logements privés occupés par type de construction résidentielle - Données intégrales (100 %)</ns1:Name>
+        </ns0:Code>
+        <ns0:Code id="1426">
+          <ns1:Annotations>
+            <ns1:Annotation id="ORDER">
+              <ns1:AnnotationTitle>ORDER</ns1:AnnotationTitle>
+              <ns1:AnnotationType>ORDER</ns1:AnnotationType>
+              <ns1:AnnotationText xml:lang="en">1440</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="fr">1440</ns1:AnnotationText>
+              <ns1:AnnotationText xml:lang="es">1440</ns1:AnnotationText>
+            </ns1:Annotation>
+          </ns1:Annotations>
+          <ns1:Name xml:lang="en">Total - Occupied private dwellings by period of construction - 25% sample data</ns1:Name>
+          <ns1:Name xml:lang="fr">Total - Logements privés occupés selon la période de construction - Données-échantillon (25 %)</ns1:Name>
+        </ns0:Code>
+        </Codelist>

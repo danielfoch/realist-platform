@@ -2,6 +2,13 @@
 import { pgTable, text, varchar, integer, bigint, bigserial, real, doublePrecision, jsonb, timestamp, date, boolean, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+export const propertyPublicSnapshots = pgTable("property_public_snapshots", {
+  key: text("key").primaryKey(), payload: jsonb("payload").notNull(), publishedAt: timestamp("published_at").notNull().defaultNow(),
+});
+export const propertyRefreshRuns = pgTable("property_refresh_runs", {
+  key: text("key").primaryKey(), token: text("token"), leaseUntil: timestamp("lease_until"), lastAttemptAt: timestamp("last_attempt_at"), lastSuccessAt: timestamp("last_success_at"), status: text("status").notNull(), errorCode: text("error_code"),
+});
+
 export const dataLayers = pgTable("data_layers", {
   key: text("key").primaryKey(),
   name: text("name").notNull(),

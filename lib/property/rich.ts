@@ -1,9 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { loadSnapshot, type LoadedSnapshot as Snapshot, type Dataset } from "./snapshots";
 import { cityKey, civicStreetKey, layer, number, publishedYear, sameStreet, text, type Layer, type Row, type Source } from "./model";
 import { provinceKey } from "./geocode";
 
-interface Snapshot { retrievedAt: string; sourceUpdatedAt: string | null; rowCount: number; records: Row[]; }
 export const RICH_SOURCES: Record<string, Source> = {
   rentalBuilding: { id: "toronto:rental-buildings", name: "Toronto apartment-building registration", url: "https://open.toronto.ca/dataset/apartment-building-registration/", licence: "Open Government Licence – Toronto", attribution: "Contains information licensed under the Open Government Licence – Toronto. Source: City of Toronto." },
   buildingEvaluations: { id: "toronto:building-evaluations", name: "Toronto RentSafeTO building evaluations, 2023 onward", url: "https://open.toronto.ca/dataset/apartment-building-evaluation/", licence: "Open Government Licence – Toronto", attribution: "Contains information licensed under the Open Government Licence – Toronto. Source: City of Toronto." },
@@ -17,22 +15,13 @@ const FEEDS: Record<string, { city: string; field: string; filename: string; not
   heritage: { city: "brampton", field: "ADDRESS", filename: "brampton-heritage.json", note: "Published heritage status at this civic address; confirm current register, bylaws and applicable alteration requirements with the City. Listed and designated statuses remain distinct." },
 };
 // Keep large public datasets as traced server assets rather than JavaScript modules.
-let snapshots: Promise<Record<string, Snapshot | null>> | undefined;
 function loadSnapshots() {
-  return snapshots ??= Promise.all(Object.entries(FEEDS).map(async ([name, feed]) => {
-    try {
-      const snapshot = JSON.parse(await readFile(join(process.cwd(), "lib/property/data", feed.filename), "utf8")) as Snapshot;
-      if (!Array.isArray(snapshot.records) || snapshot.rowCount !== snapshot.records.length || !snapshot.retrievedAt) throw new Error("Invalid public snapshot");
-      return [name, snapshot] as const;
-    } catch {
-      return [name, null] as const;
-    }
-  })).then(entries => Object.fromEntries(entries));
+  return Promise.all(Object.entries(FEEDS).map(async ([name, feed]) => [name, await loadSnapshot(feed.filename.replace(".json", "") as Dataset)] as const)).then(entries => Object.fromEntries(entries));
 }
-const indexes = new Map<string, Map<string, Row[]>>();
+const indexes = new Map<string, { vintage: string; index: Map<string, Row[]> }>();
 function matchesFor(name: string, snapshot: Snapshot, address: string): Row[] {
   const feed = FEEDS[name];
-  let index = indexes.get(name);
+  let index = indexes.get(name)?.vintage === snapshot.retrievedAt ? indexes.get(name)!.index : undefined;
   if (!index) {
     index = new Map();
     for (const record of snapshot.records) {
@@ -41,7 +30,7 @@ function matchesFor(name: string, snapshot: Snapshot, address: string): Row[] {
       const key = civicStreetKey(value);
       index.set(key, [...(index.get(key) ?? []), record]);
     }
-    indexes.set(name, index);
+    indexes.set(name, { vintage: snapshot.retrievedAt, index });
   }
   return (index.get(civicStreetKey(address)) ?? []).filter(r => sameStreet(address, String(r[feed.field])));
 }
@@ -49,7 +38,7 @@ function snapshotResult(name: string, snapshot: Snapshot | null, status: Layer["
   const feed = FEEDS[name];
   if (!snapshot) return layer(status, data, RICH_SOURCES[name], `${feed.note} Source snapshot unavailable.`);
   const age = Date.now() - new Date(snapshot.retrievedAt).getTime();
-  const value = layer(status, data, RICH_SOURCES[name], `${feed.note} Snapshot retrieved ${snapshot.retrievedAt.slice(0, 10)}; refresh is manual.${age > 31 * 86_400_000 ? " Snapshot is over 31 days old; verify current source records." : ""}${extra ? " " + extra : ""}`, snapshot.sourceUpdatedAt);
+  const value = layer(status, data, RICH_SOURCES[name], `${feed.note} Snapshot retrieved ${snapshot.retrievedAt.slice(0, 10)}; ${snapshot.delivery === "automatic_database_snapshot" ? "automatic daily refresh with last-good retention" : "compiled fallback; see coverage for automatic refresh health"}.${age > 31 * 86_400_000 ? " Snapshot is over 31 days old; verify current source records." : ""}${extra ? " " + extra : ""}`, snapshot.sourceUpdatedAt);
   // A lookup time is not a source retrieval time. The compiled snapshot has its own vintage.
   value.retrievedAt = snapshot.retrievedAt;
   return value;
@@ -95,5 +84,5 @@ export async function richAddressLayers(address: string | null, city: string | n
 }
 export async function richCoverage() {
   const snapshots = await loadSnapshots();
-  return Object.entries(FEEDS).map(([name, feed]) => ({ layer: name, geography: `${feed.city === "toronto" ? "Toronto" : "Brampton"}, ON`, delivery: "compiled_public_snapshot", source: RICH_SOURCES[name], status: snapshots[name] ? "loaded" : "unavailable", records: snapshots[name]?.rowCount ?? null, retrievedAt: snapshots[name]?.retrievedAt ?? null, sourceUpdatedAt: snapshots[name]?.sourceUpdatedAt ?? null, refresh: "manual; python3 scripts/property/refresh-rich-snapshots.py then deploy", note: feed.note }));
+  return Object.entries(FEEDS).map(([name, feed]) => ({ layer: name, geography: `${feed.city === "toronto" ? "Toronto" : "Brampton"}, ON`, delivery: snapshots[name]?.delivery ?? "unavailable", source: RICH_SOURCES[name], status: snapshots[name] ? "loaded" : "unavailable", records: snapshots[name]?.rowCount ?? null, retrievedAt: snapshots[name]?.retrievedAt ?? null, sourceUpdatedAt: snapshots[name]?.sourceUpdatedAt ?? null, refresh: "daily scheduled refresh; last good snapshot retained on failure", note: feed.note }));
 }
