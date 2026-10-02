@@ -11,7 +11,7 @@ export async function geocode(input: PropertyRequest): Promise<Layer<Location>> 
   const address = input.address!;
   if (!streetNumber(address)) return layer("ambiguous", null, GEOCODER, "Supply a civic number, street, and municipality. Unit-level matching is not yet supported.");
   const stored = await nationalAddress(input, provinceKey);
-  if (stored) return stored;
+  if (stored && (stored.status !== "available" || (stored.data?.latitude !== null && stored.data?.longitude !== null))) return stored;
   const url = new URL(GEOCODER.url);
   url.searchParams.set("q", [address, input.city, input.province].filter(Boolean).join(", "));
   url.searchParams.set("keys", "locate");
@@ -34,13 +34,13 @@ export async function geocode(input: PropertyRequest): Promise<Layer<Location>> 
       return typeof r.lat === "number" && typeof r.lng === "number" && r.lat >= 41 && r.lat <= 84 && r.lng >= -142 && r.lng <= -52;
     });
     const distinct = [...new Map(candidates.map(r => [fold(String(r.name)), r])).values()];
-    if (distinct.length !== 1) return layer(distinct.length ? "ambiguous" : "no_match", null, GEOCODER, "No unique civic-address match. Include the city and province, or provide verified lat and lng.");
+    if (distinct.length !== 1) return stored ?? layer(distinct.length ? "ambiguous" : "no_match", null, GEOCODER, "No unique civic-address match. Include the city and province, or provide verified lat and lng.");
     const hit = distinct[0];
     const name = String(hit.name);
     // The federal service can normalize hyphens and Saint abbreviations before
     // a second exact register lookup supplies the published building point.
     const registered = await nationalAddress({ ...input, address: name, city: name.split(",")[1]?.trim(), province: text(hit.province) ?? undefined }, provinceKey);
-    if (registered) return registered;
-    return layer("available", { address: name.split(",")[0], city: name.split(",")[1]?.trim() ?? null, province: text(hit.province), latitude: Number(hit.lat), longitude: Number(hit.lng), accuracy: "street_interpolated", provider: GEOCODER.id }, GEOCODER, "Street interpolation is approximate; verify the location before parcel, zoning, or due-diligence decisions.");
-  } catch { return layer("unavailable", null, GEOCODER, "Geocoder unavailable. Retry, or supply verified coordinates and city."); }
+    if (registered && (registered.status !== "available" || (registered.data?.latitude !== null && registered.data?.longitude !== null))) return registered;
+    return layer("available", { address: name.split(",")[0], city: name.split(",")[1]?.trim() ?? null, province: text(hit.province), latitude: Number(hit.lat), longitude: Number(hit.lng), accuracy: "street_interpolated", provider: GEOCODER.id, ...((registered?.data?.addressRegister ?? stored?.data?.addressRegister) ? { addressRegister: registered?.data?.addressRegister ?? stored?.data?.addressRegister } : {}) }, GEOCODER, "Street interpolation is approximate; verify the location before parcel, zoning, or due-diligence decisions.");
+  } catch { return stored ?? layer("unavailable", null, GEOCODER, "Geocoder unavailable. Retry, or supply verified coordinates and city."); }
 }

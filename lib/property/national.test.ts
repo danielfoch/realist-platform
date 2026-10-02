@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { useTestDb } from "@/lib/test/db";
 import { nationalAddress } from "./national";
-import { provinceKey } from "./geocode";
+import { geocode, provinceKey } from "./geocode";
 let testDb: Awaited<ReturnType<typeof useTestDb>>;
 beforeAll(async () => {
   testDb = await useTestDb();
@@ -39,5 +39,20 @@ describe("published national building coordinates", () => {
   it("labels a blockface as approximate when building coordinates are unpublished", async () => {
     await testDb.sql.exec("UPDATE national_locations SET latitude=NULL,longitude=NULL WHERE location_id='A'");
     expect((await nationalAddress(input, provinceKey))?.data?.accuracy).toBe("blockface_representative");
+  });
+  it("retains published address facts when no coordinate or location row is published", async () => {
+    await testDb.sql.exec("DELETE FROM national_locations WHERE location_id='A'");
+    const result = await nationalAddress(input, provinceKey);
+    expect(result?.status).toBe("available");
+    expect(result?.data).toMatchObject({ latitude: null, longitude: null, accuracy: "coordinates_not_published", addressRegister: { publishedAddressRecords: 2 } });
+  });
+  it("preserves the registered address when the coordinate fallback is unavailable", async () => {
+    const provider = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Provider unavailable"));
+    try {
+      const result = await geocode(input);
+      expect(result.status).toBe("available");
+      expect(result.data).toMatchObject({ latitude: null, longitude: null, addressRegister: { buildingId: "A", publishedAddressRecords: 2, source: { id: "statcan-nar-202606" } } });
+      expect(provider).toHaveBeenCalledOnce();
+    } finally { provider.mockRestore(); }
   });
 });

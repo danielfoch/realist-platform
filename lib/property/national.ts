@@ -15,22 +15,22 @@ export async function nationalAddress(input: PropertyRequest, provinceKey: (v: s
     const registered = await getDb().execute(sql`SELECT row_count FROM data_layers WHERE key = 'national_address_register' AND row_count > 0 LIMIT 1`);
     if (!registered.rows.length) return null;
     const key = streetKey(address), c = cityKey(city), p = codes[provinceKey(province)];
-    const result = await getDb().execute(sql`SELECT l.location_id, l.latitude, l.longitude, l.blockface_latitude, l.blockface_longitude, l.csduid,
+    const result = await getDb().execute(sql`SELECT a.location_id, l.latitude, l.longitude, l.blockface_latitude, l.blockface_longitude, l.csduid,
       count(*) AS published_address_records,
       array_remove(array_agg(DISTINCT to_jsonb(a)->>'postal_code'),NULL) AS postal_codes,
       array_remove(array_agg(DISTINCT to_jsonb(a)->>'building_usage'),NULL) AS building_usage_codes
-      FROM national_addresses a JOIN national_locations l ON l.location_id = a.location_id
+      FROM national_addresses a LEFT JOIN national_locations l ON l.location_id = a.location_id
       WHERE a.province = ${p} AND (a.street_key = ${key} OR a.mailing_street_key = ${key})
       AND (a.city_key = ${c} OR a.city_fr_key = ${c} OR a.mailing_city_key = ${c})
-      GROUP BY l.location_id,l.latitude,l.longitude,l.blockface_latitude,l.blockface_longitude,l.csduid LIMIT 51`);
+      GROUP BY a.location_id,l.latitude,l.longitude,l.blockface_latitude,l.blockface_longitude,l.csduid LIMIT 51`);
     if (!result.rows.length) return null;
     if (result.rows.length !== 1) return layer("ambiguous", null, NAR_SOURCE, "More than one published building location uses this civic address; no location guessed.");
     const r = result.rows[0], building = number(r.latitude) !== null && number(r.longitude) !== null;
-    const latitude = number(building ? r.latitude : r.blockface_latitude), longitude = number(building ? r.longitude : r.blockface_longitude);
-    if (latitude === null || longitude === null || latitude < 41 || latitude > 84 || longitude < -142 || longitude > -52) return null;
+    let latitude = number(building ? r.latitude : r.blockface_latitude), longitude = number(building ? r.longitude : r.blockface_longitude);
+    if (latitude === null || longitude === null || latitude < 41 || latitude > 84 || longitude < -142 || longitude > -52) { latitude = null; longitude = null; }
     const municipality = String(r.csduid) === "3520005" ? "Toronto" : city;
-    return layer("available", { address, city: municipality, province: p, latitude, longitude, accuracy: building ? "source_building_point" : "blockface_representative", provider: NAR_SOURCE.id,
-      addressRegister: { buildingId: String(r.location_id), publishedAddressRecords: Number(r.published_address_records), postalCodes: r.postal_codes as string[], buildingUsageCodes: r.building_usage_codes as string[], csduid: r.csduid ? String(r.csduid) : null },
-    }, NAR_SOURCE, building ? "Published building coordinate matched by civic address, municipality and province. Reference period June 2026; verify position near boundaries. Published address-record count is not a verified dwelling count." : "Blockface representative coordinate is approximate and must not select a parcel or zoning permission.", "2026-06-26");
+    return layer("available", { address, city: municipality, province: p, latitude, longitude, accuracy: latitude === null ? "coordinates_not_published" : building ? "source_building_point" : "blockface_representative", provider: NAR_SOURCE.id,
+      addressRegister: { buildingId: r.location_id ? String(r.location_id) : null, publishedAddressRecords: Number(r.published_address_records), postalCodes: r.postal_codes as string[], buildingUsageCodes: r.building_usage_codes as string[], csduid: r.csduid ? String(r.csduid) : null, source: NAR_SOURCE, referenceDate: "2026-06-26" },
+    }, NAR_SOURCE, latitude === null ? "Published address record matched; this release has no usable coordinate. Latitude/longitude remain null and spatial joins are skipped." : building ? "Published building coordinate matched by civic address, municipality and province. Reference period June 2026; verify position near boundaries. Published address-record count is not a verified dwelling count." : "Blockface representative coordinate is approximate and must not select a parcel or zoning permission.", "2026-06-26");
   } catch { return null; }
 }

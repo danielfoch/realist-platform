@@ -33,7 +33,7 @@ async function spatial(inv: Inventory, name: "parcel" | "ward" | "zoning" | "nei
   const key = { parcel: "toronto_parcels", ward: "toronto_wards", zoning: "toronto_zoning", neighbourhood: "census_da_profiles" }[name];
   const source = sourceFor(inv, key);
   if (!source) return layer("not_loaded", null, null, "This spatial layer has no completed, attributed import.");
-  if (!location) return layer("skipped", null, null, "No resolved coordinates.");
+  if (!location || location.latitude === null || location.longitude === null) return layer("skipped", null, null, "No resolved coordinates.");
   if (name !== "neighbourhood" && cityKey(location.city ?? "") !== "toronto") return layer("not_supported", null, null, "Imported spatial layer is scoped to Toronto.");
   // Interpolated road points cannot select a parcel; accept a published building point or verified caller coordinates.
   if (["parcel", "zoning"].includes(name) && !["caller_supplied", "source_building_point"].includes(location.accuracy)) return layer("skipped", null, null, "Supply verified property coordinates for parcel or zoning lookup; street or blockface interpolation is insufficient.");
@@ -132,7 +132,7 @@ async function development(inv: Inventory, location: Location | null): Promise<L
   const table = siteSource && inv.tables.has("development_application_sites") ? "development_application_sites" : "development_applications";
   const absent = ready(inv, table);
   if (absent) return absent;
-  if (!location) return layer("skipped");
+  if (!location || location.latitude === null || location.longitude === null) return layer("skipped", null, null, "No resolved coordinates.");
   if (cityKey(location.city ?? "") !== "toronto") return layer("not_supported");
   const { latitude: lat, longitude: lng } = location;
   const records = (await getDb().execute(sql`SELECT source, application_number, address, status, application_type, description, date_submitted, lat, lng, imported_at FROM ${sql.identifier(table)} WHERE lat BETWEEN ${lat - 0.008} AND ${lat + 0.008} AND lng BETWEEN ${lng - 0.012} AND ${lng + 0.012} AND date_submitted >= now() - interval '36 months' ORDER BY date_submitted DESC LIMIT 201`)).rows;

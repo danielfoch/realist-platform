@@ -48,7 +48,9 @@ from source-update dates.
 The June 2026 National Address Register resolves a unique published building
 location by civic address, municipality and province. NRCan's replacement
 Geolocator (`keys=locate`) supplies a fallback and verifies civic number, street
-type, direction and municipality. Street and blockface coordinates stay
+type, direction and municipality. A published address without a usable position
+retains its address metadata with null coordinates; spatial layers are skipped.
+Street and blockface coordinates stay
 approximate. Parcel/zoning lookup requires a published building point or
 caller-supplied verified coordinates. Unit-specific
 matching returns 422 rather than stripping a suite and guessing its assessment.

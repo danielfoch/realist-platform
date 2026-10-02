@@ -91,6 +91,6 @@ export function importedAddressKeys(address: string): string[] {
 
 export interface Location {
   address: string | null; city: string | null; province: string | null;
-  latitude: number; longitude: number; accuracy: string; provider: string;
-  addressRegister?: { buildingId: string; publishedAddressRecords: number; postalCodes: string[]; buildingUsageCodes: string[]; csduid: string | null };
+  latitude: number | null; longitude: number | null; accuracy: string; provider: string;
+  addressRegister?: { buildingId: string | null; publishedAddressRecords: number; postalCodes: string[]; buildingUsageCodes: string[]; csduid: string | null; source?: Source; referenceDate?: string };
 }
