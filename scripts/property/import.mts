@@ -16,7 +16,10 @@ import { createCsvStreamParser } from "../../lib/property/ingest/csv";
 import { bboxOfGeometry, type AreaGeometry } from "../../lib/geo/geometry";
 import { parseParcelRow } from "../../lib/property/ingest/parcels";
 import { mtm10ToLatLng, isWithinToronto } from "../../lib/property/ingest/torontoMtm";
+import { CENSUS_MAPPING_VERSION, validateCensusLabels } from "../../lib/property/ingest/census";
 import { physicalAttributes } from "../../lib/property/ingest/attributes";
+import { CensusCandidate, CENSUS_FIELDS } from "../../lib/property/ingest/census-candidate";
+import { gzipSync } from "node:zlib";
 
 const args = process.argv.slice(2);
 const write = args.includes("--write");
@@ -275,40 +278,35 @@ async function censusBoundaryArchive() {
   await checkpoint(key, "complete", actual, 0, { archive: true, sha256, hostedRows: actual }, actual);
   console.log(JSON.stringify({ key, status: "complete", hosted: actual }));
 }
-const censusScalars: Record<string, string> = { "1": "population", "4": "totalPrivateDwellings", "5": "dwellingsOccupiedByUsualResidents", "6": "populationDensityPerKm2", "7": "landAreaKm2", "57": "avgHouseholdSize", "243": "medianHouseholdIncome", "252": "avgHouseholdIncome", "1414": "householdsByTenureTotal", "1415": "ownerHouseholds", "1416": "renterHouseholds", "1488": "medianDwellingValue", "1489": "avgDwellingValue", "1494": "medianRentedShelterCost", "1495": "avgRentedShelterCost" };
-const censusTypes: Record<string, string> = { "42": "singleDetached", "43": "semiDetached", "44": "rowHouse", "45": "duplexApartment", "46": "apartmentUnderFiveStoreys", "47": "apartmentFivePlusStoreys", "48": "otherSingleAttached", "49": "movableDwelling" };
-const censusPeriods: Record<string, string> = { "1441": "1960 or before", "1442": "1961 to 1980", "1443": "1981 to 1990", "1444": "1991 to 2000", "1445": "2001 to 2005", "1446": "2006 to 2010", "1447": "2011 to 2015", "1448": "2016 to 2021" };
 async function censusProfiles() {
-  const key = "census_da_profiles", profiles = new Map<string, Row>();
-  const fields = [...Object.keys(censusScalars), ...Object.keys(censusTypes), ...Object.keys(censusPeriods), "41", "1440"];
+  const key = "census_da_profiles", candidate = new CensusCandidate();
+  const prepareFile = option("census-candidate-file", "");
+  const metadataFile = path.join(cache, "census-characteristic-1.3.xml");
+  await download("https://api.statcan.gc.ca/census-recensement/profile/sdmx/rest/codelist/STC_CP/CL_CHARACTERISTIC/1.3", metadataFile);
+  validateCensusLabels(await fs.readFile(metadataFile, "utf8"));
+  const fields = CENSUS_FIELDS;
   // Only housing, income and population characteristics; never the entire SDMX flow.
-  await checkpoint(key, "running", 0, 0, { characteristics: fields.length });
-  let processed = 0, rejected = 0;
+  if (!prepareFile) await checkpoint(key, "running", 0, 0, { characteristics: fields.length });
+  let processed = 0; const rejected = 0;
   const hashes: Row = {};
   for (let start = 0; start < fields.length; start += 3) {
     const extracts = await Promise.all(fields.slice(start, start + 3).map(async field => {
       const url = `https://api.statcan.gc.ca/census-recensement/profile/sdmx/rest/data/STC_CP,DF_DA/A5..1.${field}.1?format=csv`;
       const file = path.join(cache, `census-2021-characteristic-${field}.csv`);
-      const sha256 = await download(url, file); hashes[field] = sha256; return file;
+      const sha256 = await download(url, file); hashes[field] = sha256; return { file, field };
     }));
-    for (const file of extracts) await streamCsv(file, async r => {
-    if (!r.ref_area?.startsWith("2021S0512") || r.gender !== "1" || r.statistic !== "1") { rejected++; return; }
-    const id = r.alt_geo_code || r.ref_area.slice(9);
-    if (!/^\d{8}$/.test(id)) { rejected++; return; }
-    const profile = profiles.get(id) ?? Object.fromEntries([...Object.values(censusScalars).map(k => [k, null]), ["dwellingMix", {}], ["constructionPeriods", {}]]);
-    const value = /^(x|f|\.\.|\.\.\.)$/i.test(r.flag) ? null : number(r.obs_value);
-    if (censusScalars[r.characteristic]) profile[censusScalars[r.characteristic]] = value;
-    else if (censusTypes[r.characteristic]) (profile.dwellingMix as Row)[censusTypes[r.characteristic]] = value;
-    else if (censusPeriods[r.characteristic]) (profile.constructionPeriods as Row)[censusPeriods[r.characteristic]] = value;
-    else if (r.characteristic === "41") profile.dwellingsByTypeTotal = value;
-    else if (r.characteristic === "1440") profile.constructionPeriodsTotal = value;
-    profiles.set(id, profile); processed++;
+    for (const {file, field} of extracts) await streamCsv(file, async r => {
+    candidate.add(field, r); processed++;
     });
-    console.log(JSON.stringify({ key, characteristicsProcessed: Math.min(start + 3, fields.length), totalCharacteristics: fields.length, profiles: profiles.size, observations: processed }));
+    console.log(JSON.stringify({ key, characteristicsProcessed: Math.min(start + 3, fields.length), totalCharacteristics: fields.length, profiles: candidate.profiles.size, observations: processed }));
   }
   const sha256 = createHash("sha256").update(JSON.stringify(hashes)).digest("hex");
-  if (profiles.size < 50_000) throw new Error(`Incomplete nationwide Census response: ${profiles.size} DAs; source retained for inspection`);
-  const records = [...profiles].map(([dauid, profile]) => ({ dauid, census_year: 2021, profile }));
+  const records = candidate.finish();
+  if (prepareFile) {
+    const payload = { preparedAt: new Date().toISOString(), mappingVersion: CENSUS_MAPPING_VERSION, sha256, hashes, characteristics: fields.length, observations: processed, rejected, records };
+    await fs.writeFile(prepareFile, gzipSync(JSON.stringify(payload)), { mode: 0o600 });
+    console.log(JSON.stringify({ key, status: "candidate_validated_no_database_write", profiles: records.length, characteristics: fields.length, observations: processed, file: prepareFile })); return;
+  }
   for (let offset = 0; offset < records.length; offset += 1000) { await upsert("census_da_profiles", records.slice(offset, offset + 1000), ["dauid"], ["dauid", "census_year", "profile"]); await checkpoint(key, "running", Math.min(offset + 1000, records.length), rejected, { sha256, characteristics: fields.length }, records.length); }
   await register(key, "census_da_profiles", { name: "2021 Census housing, income and population profiles", url: "https://www12.statcan.gc.ca/wds-sdw/2021profile-profil2021-eng.cfm", licence: "Statistics Canada Open Licence", attribution: "Source: Statistics Canada, Census of Population, 2021. Adapted under the Statistics Canada Open Licence." }, "CA", records.length);
   await checkpoint(key, "complete", records.length, rejected, { sha256, characteristics: fields.length, sourceObservations: processed, hostedRows: records.length }, records.length);
@@ -470,6 +468,7 @@ async function torontoData(kind: keyof typeof torontoSources) {
 }
 async function main() {
   if (mode === "status") { console.log(JSON.stringify(await query("SELECT * FROM property_import_runs ORDER BY key"), null, 2)); return; }
+  if (mode === "census-profiles" && option("census-candidate-file", "")) return censusProfiles();
   if (!write) throw new Error("Use --write to authorize additive database imports");
   if (mode === "migrate") {
     const schema = await fs.readFile(new URL("./schema.sql", import.meta.url), "utf8");
