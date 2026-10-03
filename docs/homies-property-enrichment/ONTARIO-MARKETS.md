@@ -636,3 +636,80 @@ Primary guidance: [City catalogue](https://explore.guelph.ca/search),
 [termite guidance](https://guelph.ca/living/house-and-home/termites/),
 [Official Plan](https://guelph.ca/plans-and-strategies/official-plan/),
 [permit-record access](https://guelph.ca/city-government/building-permits-inspections/building-services-record-request/).
+
+
+### Niagara Falls and regional Niagara (2026-10-03 source audit)
+
+The selected expansion connects 22 inspected feeds with 266,639 overlapping
+source rows: 11 regional civic/boundary/heritage/settlement/servicing/environment
+references and 11 Niagara Falls civic/permit/planning/heritage/zoning/plan/CIP
+sources. The regional feeds cover Fort Erie, Grimsby, Lincoln, Niagara Falls,
+Niagara-on-the-Lake, Pelham, Port Colborne, St. Catharines, Thorold, Wainfleet,
+Welland and West Lincoln. This is partial coverage of all twelve, with municipal
+core feeds connected for Niagara Falls in this batch. Counts are source
+observations, not distinct properties, unique data points or database imports.
+
+The complete inspected Region 2.0 grant, exact individual live CKAN package
+GUID/resource/licence and canonical public item/root/typed child must agree
+before a record or count query. Region item terms are blank; public access
+alone is insufficient. Municipal boundary attribution also credits Ontario,
+whose original catalogue and full grant are independently validated. Falls
+items refer to the City-owned full Hub licence page, actually version 1.0;
+the older CKAN version/URL is not used as the operative grant. Full grants
+and source fixtures are retained, and changed rights/schema fail closed.
+
+Civic matching preserves suffix, street type, direction, active regional
+lifecycle, qualifier and municipality. Falls AV, CR and PY abbreviations are
+queried and strictly checked against full civic components. A precise source
+point and one matching licensed regional polygon precede property queries.
+Shared points beyond 20 metres remain ambiguous. Exact-address regional
+heritage candidates beyond 100 metres or with unusable geometry remain
+ambiguous. Coordinate-only lookups skip address histories and regional
+address-based heritage. All selected attribute queries exclude owner, contact,
+roll/PIN and editing-user fields. Queries return at most 50 observations and
+show truncation, unknown source-update dates, nested statuses and no-match
+limits.
+
+Completed-permit records preserve raw status and dates without establishing
+final inspections, occupancy or legal units. Planning application polygons
+intersect the subject point, retain proposal/file text, and do not establish
+current activity, approval, current zoning or nearby development. Full history,
+current decisions, conditions and appeals remain unsearched.
+
+79-200 zoning references are separate from the three historical former-township
+maps: Crowland 1538 (1958), Humberstone 70-69 and Willoughby 395 (1966). The
+service identifier B0395 does not mean By-law B03/95. A City-hosted November
+2025 applicant report describes consolidation under 2025-102 and repeal of
+Willoughby 395 (1966); this does not verify the enacted instrument, parcel
+applicability or appeal effects. Current consolidation, written rules,
+exceptions, holdings/removals and later amendments require City confirmation.
+Current plan and secondary-plan policies are also unverified. On this audit,
+City guidance described Northwest 2026-078/079 as signed September 9, 2026
+and still in its appeal period until October 5; later current-status claims
+require a fresh check.
+
+Since March 31, 2025 the Niagara Official Plan belongs to the twelve local
+municipalities. Regional urban/rural/growth reference polygons do not establish
+current local in-force policies. The Other Wetlands metadata remains explicitly
+DRAFT; preserve that source label. Woodland/wetland/watershed references do not
+screen current NPCA regulation, full parcel conditions, flood safety, water
+quality or environmental clearance. Rough sanitary catchments do not establish
+actual connections, capacity or servicing eligibility. Brownfield CIP membership
+does not establish contamination, remediation, funding, eligibility or approval.
+
+Ten sources are withheld without counts/records: six St. Catharines core
+sources whose linked licence page returns an index rather than the complete
+grant; the partial Falls boundary (the licensed Region polygon is used);
+current NPCA regulation; a provincial natural-system proxy with unresolved
+lineage/rights; and a draft watercourse source requiring further audit. A
+complete City Welland Hub grant has been found, but exact selected dataset
+bindings are the next audit. No Niagara market is marked complete.
+
+Primary guidance: [Region catalogue](https://niagaraopendata.ca/dataset/),
+[Region grant](https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region),
+[Falls grant](https://open.niagarafalls.ca/pages/terms-of-use),
+[current City zoning](https://niagarafalls.ca/building-planning-and-business/planning-and-development/zoning/),
+[City-hosted 2025 applicant report](https://webpublic.niagarafalls.ca/Files/Planning/Applications/322/planning-justification-report.pdf),
+[current secondary-plan guidance](https://niagarafalls.ca/building-planning-and-business/planning-and-development/long-range-plans-and-studies/secondary-plans/),
+[Niagara plan transfer](https://www.niagararegion.ca/official-plan/default.aspx),
+[NPCA permits](https://npca.ca/services/permits).

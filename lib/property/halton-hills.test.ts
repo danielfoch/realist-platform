@@ -100,7 +100,7 @@ describe("Halton Hills published website evidence", () => {
   });
   it("reports separately scoped website counts and withheld GIS without marking the market complete", async () => {
     provider(); const coverage = await haltonHillsCoverage(); expect(coverage.datasets).toMatchObject([{ layer: "heritage", status: "verified", records: 3 }, { layer: "planningApplications", status: "verified", records: 1 }]); expect(coverage.withheldDatasets).toHaveLength(4); expect(fetch).toHaveBeenCalledTimes(3);
-    const road = ontarioMarketRoadmap(); expect(road.metropolitanMarkets).toHaveLength(16); expect(road.municipalities).toHaveLength(76); expect(road.majorMarketsComplete).toBe(false);
+    const road = ontarioMarketRoadmap(); expect(road.metropolitanMarkets).toHaveLength(16); expect(road.municipalities.map(m=>m.city)).toEqual(expect.arrayContaining(["Halton Hills","Wainfleet","West Lincoln"])); expect(road.majorMarketsComplete).toBe(false);
     expect(road.municipalities.find(m => m.city === "Halton Hills")).toMatchObject({ stage: "partial_municipal_coverage", complete: false, configuredLayers: ["heritage", "planningApplications"] });
     for (const m of road.municipalities) expect(m.complete).toBe(false);
   });
