@@ -1,12 +1,12 @@
 /** Only fixed, government/open-data providers are called. Never fetch a caller-supplied URL. */
-const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "services5.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "map.oshawa.ca", "maps.durham.ca", "ww8.yorkmaps.ca", "utility.arcgis.com", "api.milton.ca", "mapping.burlington.ca", "maps.oakville.ca", "www.haltonhills.ca", "map.haltonhills.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca", "api.cityofkingston.ca", "www.cityofkingston.ca", "www.cambridge.ca", "www.regionofwaterloo.ca", "gismaps.guelph.ca", "services9.arcgis.com", "niagaraopendata.ca", "www.ontario.ca", "data.ontario.ca", "arcgisweb.welland.ca", "mappmycity.ca", "opendata.citywindsor.ca", "gispublic.barrie.ca", "www.barrie.ca"]);
-export async function fetchBytes(url: URL, timeoutMs = 8000): Promise<Uint8Array> {
+const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "services5.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "map.oshawa.ca", "maps.durham.ca", "ww8.yorkmaps.ca", "utility.arcgis.com", "api.milton.ca", "mapping.burlington.ca", "maps.oakville.ca", "www.haltonhills.ca", "map.haltonhills.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca", "api.cityofkingston.ca", "www.cityofkingston.ca", "www.cambridge.ca", "www.regionofwaterloo.ca", "gismaps.guelph.ca", "services9.arcgis.com", "niagaraopendata.ca", "www.ontario.ca", "data.ontario.ca", "arcgisweb.welland.ca", "mappmycity.ca", "opendata.citywindsor.ca", "gispublic.barrie.ca", "www.barrie.ca", "maps1.brampton.ca", "services3.arcgis.com"]);
+export async function fetchBytes(url: URL, timeoutMs = 8000, cacheSeconds = 3600): Promise<Uint8Array> {
   if (url.protocol !== "https:" || !HOSTS.has(url.hostname)) throw new Error("Unsupported provider");
   const response = await fetch(url, {
     redirect: "error",
     headers: { Accept: "application/json, text/csv, application/octet-stream", "User-Agent": "Homies property enrichment / Realist (hello@realist.ca)" },
     signal: AbortSignal.timeout(timeoutMs),
-    next: { revalidate: 3600 },
+    next: { revalidate: cacheSeconds },
   });
   if (!response.ok || !response.body) throw new Error(`Source unavailable (HTTP ${response.status})`);
   const reader = response.body.getReader();
@@ -23,8 +23,8 @@ export async function fetchBytes(url: URL, timeoutMs = 8000): Promise<Uint8Array
   } finally { await reader.cancel(); }
   return Buffer.concat(chunks);
 }
-export async function fetchText(url: URL, timeoutMs = 8000): Promise<string> { return new TextDecoder("utf-8", { fatal:true }).decode(await fetchBytes(url,timeoutMs)); }
-export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> { return JSON.parse(await fetchText(url,timeoutMs)); }
+export async function fetchText(url: URL, timeoutMs = 8000, cacheSeconds = 3600): Promise<string> { return new TextDecoder("utf-8", { fatal:true }).decode(await fetchBytes(url,timeoutMs,cacheSeconds)); }
+export async function fetchJson(url: URL, timeoutMs = 8000, cacheSeconds = 3600): Promise<unknown> { return JSON.parse(await fetchText(url,timeoutMs,cacheSeconds)); }
 export function rows(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value) || value.some(v => !v || typeof v !== "object" || Array.isArray(v))) throw new Error("Invalid source response");
   return value;

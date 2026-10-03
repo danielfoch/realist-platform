@@ -178,3 +178,9 @@ or schema writes.
 For a future Homies-domain alias, forward `/api/property/:path*` from the Homies
 landing app to these Realist routes and update the skill/OpenAPI server URL.
 The native Homies harness has not been edited.
+
+### Brampton municipal expansion and Peterborough audit
+
+Brampton now has fifteen bounded municipal adapters in addition to the separate registration/heritage snapshots. `permitActivities` joins dated process/status observations by exact folder ID from complete address-matched permits; it skips truncated or ambiguous parent permit sets. Seven planning application layers, heritage details, wards, Brampton Plan land-use and MTSA references retain their separate source scope and legal limits. Review the [source and matching notes](property-forensics.md) and `/api/property/coverage` for current counts, dates, gaps and count filters. Activity rows are neither distinct properties nor permits.
+
+Peterborough has a metadata-only reuse audit: its City GIS and native 2025 rental dashboard records/counts are withheld until anonymous merged redistribution rights are established. Official CPP appeal and existing-zoning guidance appears in the hosted skill and property-report gaps. Both markets remain incomplete in `ontarioMarkets`.
