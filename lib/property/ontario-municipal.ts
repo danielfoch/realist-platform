@@ -10,19 +10,20 @@ import { oshawaRegistrationCoverage, oshawaRegistrations } from "./oshawa-regist
 
 const aliases: Record<string, Market> = { mississauga:"Mississauga", london:"London", oshawa:"Oshawa", ottawa:"Ottawa", nepean:"Ottawa", kanata:"Ottawa", orleans:"Ottawa", gloucester:"Ottawa", "stittsville":"Ottawa" };
 export function ontarioMarket(city: string | null, province: string | null): Market | null { return provinceKey(province ?? "") === "ontario" ? aliases[cityKey(city ?? "")] ?? null : null; }
-const bounds: Record<Market, [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2], Oshawa:[43.84,44.1,-78.97,-78.78] };
-function validPoint(market: Market, lat: unknown, lng: unknown): lat is number {
+const bounds: Record<MunicipalFeed["market"], [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2], Oshawa:[43.84,44.1,-78.97,-78.78], "Durham Region":[43.75,44.65,-79.4,-78.3] };
+function validPoint(market: MunicipalFeed["market"], lat: unknown, lng: unknown): lat is number {
   const [south,north,west,east] = bounds[market]; return typeof lat === "number" && typeof lng === "number" && lat > south && lat < north && lng > west && lng < east;
 }
-function precise(market: Market, l: Location | null): l is Location & { latitude:number; longitude:number } { return Boolean(l && validPoint(market,l.latitude,l.longitude) && ["source_building_point","source_civic_address_point","caller_supplied"].includes(l.accuracy)); }
+function precise(market: MunicipalFeed["market"], l: Location | null): l is Location & { latitude:number; longitude:number } { return Boolean(l && validPoint(market,l.latitude,l.longitude) && ["source_building_point","source_civic_address_point","caller_supplied"].includes(l.accuracy)); }
 async function get(url: string, params: Record<string,string> = {}): Promise<Row> {
   const u = new URL(url); Object.entries({ f:"json",...params }).forEach(([k,v])=>u.searchParams.set(k,v));
   const r = await fetchJson(u) as Row; if (!r || typeof r !== "object" || Array.isArray(r) || r.error) throw new Error("Municipal source unavailable"); return r;
 }
-export async function municipalMetadata(f: MunicipalFeed) {
+export async function municipalMetadata(f: MunicipalFeed, context?:Map<string,Promise<Row>>) {
   if (f.disabledReason) throw new Error("Reuse not enabled");
-  const [item,m] = await Promise.all([get(`https://www.arcgis.com/sharing/rest/content/items/${f.item}`),get(f.url)]);
-  if (!validMunicipalItem(item,f) || m.geometryType !== f.geometry || !Object.keys(f.fields).every(k=>rows(m.fields).some(x=>x.name === k)) || !rows(m.fields).some(x=>x.name === f.oid && x.type === "esriFieldTypeOID")) throw new Error("Municipal publisher, rights or schema changed");
+  const read=(url:string)=>{if(!context)return get(url);const pending=context.get(url)??get(url);context.set(url,pending);return pending;};
+  const [item,m] = await Promise.all([read(`https://www.arcgis.com/sharing/rest/content/items/${f.item}`),read(f.url)]);
+  if (!validMunicipalItem(item,f) || m.geometryType !== f.geometry || (f.expectedLayerName && m.name!==f.expectedLayerName) || !Object.keys(f.fields).every(k=>rows(m.fields).some(x=>x.name === k)) || !rows(m.fields).some(x=>x.name === f.oid && x.type === "esriFieldTypeOID")) throw new Error("Municipal publisher, rights or schema changed");
   return { sourceUpdatedAt:arcgisDate((m.editingInfo as Row | undefined)?.dataLastEditDate) };
 }
 function features(r: Row, f: MunicipalFeed): { attributes:Row; geometry:Row|null }[] {
@@ -64,11 +65,11 @@ export async function ontarioMunicipalLocation(input:PropertyRequest):Promise<La
   } catch { return null; }
 }
 
-export async function municipalPointLayer(f:MunicipalFeed, location:Location|null):Promise<Layer> {
+export async function municipalPointLayer(f:MunicipalFeed, location:Location|null, context?:Map<string,Promise<Row>>):Promise<Layer> {
   if(f.disabledReason)return layer("unavailable",null,{ ...f.source,licence:"Dataset reuse unresolved; adapter withheld" },f.disabledReason);
   if(!precise(f.market,location))return layer("skipped",null,f.source,"A verified municipal/building point or caller-supplied point in this market is required. Street interpolation and unresolved addresses are not screened.");
   try {
-    const m=await municipalMetadata(f), r=await get(f.url+"/query",{ geometry:`${location.longitude},${location.latitude}`,geometryType:"esriGeometryPoint",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:Object.keys(f.fields).join(","),returnGeometry:"false",resultRecordCount:"51",orderByFields:f.oid });
+    const m=await municipalMetadata(f,context), r=await get(f.url+"/query",{ geometry:`${location.longitude},${location.latitude}`,geometryType:"esriGeometryPoint",inSR:"4326",spatialRel:"esriSpatialRelIntersects",outFields:Object.keys(f.fields).join(","),returnGeometry:"false",resultRecordCount:"51",orderByFields:f.oid });
     const all=features(r,f);if(!all.length && r.exceededTransferLimit)throw new Error("Incomplete empty query");
     const truncated=Boolean(r.exceededTransferLimit || all.length>50);
     const historical=f.key.includes("2010");

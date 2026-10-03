@@ -14,6 +14,7 @@ import { provincialPlanningLayer, provincialPlanningCoverage } from "./provincia
 import { ontarioMunicipalLocation, ontarioMunicipalLayers, ontarioMunicipalCoverage, ontarioMarket } from "./ontario-municipal";
 import { ontarioMarketRoadmap } from "./ontario-market-roadmap";
 import { ottawaPermitCoverage } from "./ottawa-permits";
+import { durhamLocation, durhamLayers, durhamCoverage, durhamMunicipality } from "./durham";
 
 export async function enrichProperty(input: PropertyRequest) {
   // Without unit-aware assessment keys, stripping a suite number would attach another unit's facts.
@@ -21,13 +22,14 @@ export async function enrichProperty(input: PropertyRequest) {
   const queryCity = input.city ?? input.address?.split(",")[1]?.trim();
   const queryProvince = input.province ?? input.address?.split(",")[2]?.trim();
   const expectedProvince: Record<string, string> = { toronto: "ontario", brampton: "ontario", hamilton: "ontario", ancaster: "ontario", dundas: "ontario", flamborough: "ontario", glanbrook: "ontario", "stoney creek": "ontario", waterdown: "ontario", calgary: "alberta", edmonton: "alberta", winnipeg: "manitoba", vancouver: "british columbia" };
-  if (queryCity && queryProvince && (expectedProvince[cityKey(queryCity)] || ontarioMarket(queryCity,"ON")) && provinceKey(queryProvince) !== (expectedProvince[cityKey(queryCity)] ?? "ontario")) return { success: false as const, error: { code: "city_province_conflict", message: "The supplied city and province do not match. Correct the municipality before looking up this property." } };
-  const location = await hamiltonLocation(input) ?? await ontarioMunicipalLocation(input) ?? await geocode(input);
+  if (queryCity && queryProvince && (expectedProvince[cityKey(queryCity)] || ontarioMarket(queryCity,"ON") || durhamMunicipality(queryCity,"ON")) && provinceKey(queryProvince) !== (expectedProvince[cityKey(queryCity)] ?? "ontario")) return { success: false as const, error: { code: "city_province_conflict", message: "The supplied city and province do not match. Correct the municipality before looking up this property." } };
+  const location = await hamiltonLocation(input) ?? await ontarioMunicipalLocation(input) ?? await durhamLocation(input) ?? await geocode(input);
   const address = location.data?.address ?? input.address?.split(",")[0] ?? null;
   const city = location.data?.city ?? input.city ?? input.address?.split(",")[1]?.trim() ?? null;
   const province = location.data?.province ?? input.province ?? input.address?.split(",")[2]?.trim() ?? null;
   const hamiltonResult = hamiltonLayers(address, city, province, location.data);
   const ontarioResult = ontarioMunicipalLayers(address, city, province, location.data, queryCity);
+  const durhamResult = durhamLayers(city, province, location.data, queryCity);
   const planningResult = provincialPlanningLayer(location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
@@ -49,7 +51,7 @@ export async function enrichProperty(input: PropertyRequest) {
   // A live no-match or ambiguous result is never replaced by an older imported match.
   const choose = (live: Layer, stored: Layer): Layer => live.status === "not_supported" ? stored : live.status === "unavailable" && ["available", "ambiguous"].includes(stored.status) ? stored : live;
   const hamilton = await hamiltonResult;
-  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult };
+  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult };
   const available = Object.entries(layers).filter(([, v]) => v.status === "available").map(([name]) => name);
   const missing = Object.entries(layers).filter(([, v]) => v.status !== "available").map(([name, v]) => ({ layer: name, status: v.status }));
   const followUpQuestions = [
@@ -63,6 +65,7 @@ export async function enrichProperty(input: PropertyRequest) {
       ...(layers.generalizedLandUse?.status === "available" ? [{ topic: "land_use", question: "What are the current detailed zone codes, exceptions, holding provisions and permissions behind this generalized land-use classification?", evidenceLayers: ["generalizedLandUse"] }] : []),
       ...(layers.communityImprovementArea?.status === "available" ? [{ topic: "improvement_program", question: "Are any current improvement programs funded, and is this property and proposed work eligible?", evidenceLayers: ["communityImprovementArea"] }] : []),
       ...(layers.historicalOfficialPlan2010 ? [{ topic: "current_official_plan", question: "What current Official Plan 2051 designation and amendments apply to the parcel, given that the returned 2010 mapping is historical?", evidenceLayers: ["officialPlan", "historicalOfficialPlan2010"] }] : []),
+      ...(layers.durhamPlanning ? [{ topic:"durham_current_plan",question:"Which current municipal plan schedules, written policies, amendments and appeal outcomes apply to this parcel, given that the regional mapping describes the September 2024 consolidation?",evidenceLayers:["durhamPlanning","officialPlan","zoning"] },{topic:"durham_water_protection",question:"Can the source-protection authority confirm current activity-specific requirements, and can the seller document the actual water supply? Published zone mapping does not establish water safety or contamination.",evidenceLayers:["durhamPlanning"] }] : []),
       ...(trca.status === "available" ? [{ topic: "trca", question: "Can TRCA confirm the property boundaries, mapped criteria and any permits required for the planned work?", evidenceLayers: ["trca"] }] : []),
       ...(layers.development.status === "available" ? [{ topic: "nearby_development", question: "Which nearby proposals could affect the buyer’s plans, and what is their current published stage or appeal status?", evidenceLayers: ["development"] }] : []),
       ...(layers.zoning.status === "available" ? [{ topic: "zoning", question: "Can the City confirm the current parent bylaw, exceptions, holding provisions and permissions for the proposed use or work?", evidenceLayers: ["zoning"] }] : []),
@@ -88,7 +91,7 @@ export async function enrichProperty(input: PropertyRequest) {
 
 export async function coverage() {
   const imported = await inventory();
-  const [hamilton, provincialPlanning, ontarioMunicipal] = await Promise.all([hamiltonCoverage(), provincialPlanningCoverage(), ontarioMunicipalCoverage()]);
+  const [hamilton, provincialPlanning, ontarioMunicipal, durham] = await Promise.all([hamiltonCoverage(), provincialPlanningCoverage(), ontarioMunicipalCoverage(), durhamCoverage()]);
   return {
     apiVersion: "1.0", country: "CA", authentication: "none", lookup: "/api/property?address=15%20Deermeade%20Pl%20SE%2C%20Calgary%2C%20AB",
     addressRegister: NAR_SOURCE, geocoder: GEOCODER,
@@ -102,6 +105,7 @@ export async function coverage() {
       conservationCoverage(), trcaCoverage(), provincialPlanning,
       { cities: ["Hamilton", "Ancaster", "Dundas", "Flamborough", "Glanbrook", "Stoney Creek", "Waterdown"], ...hamilton },
       { cities: ["Mississauga", "London", "Ottawa", "Oshawa"], datasets: ontarioMunicipal, note: "Verified municipal feeds and explicit withheld sources. Historical Mississauga 2010 plan layers are not current planning screens; London generalized land use is not detailed zoning. Oshawa zoning labels have no rule text or verified amendment/appeal currency; its selected two-unit certificate and rental-licence CSV files are read with bounded one-hour caching, separately from daily database snapshots." },
+      durham,
     ],
     ontarioMarkets: ontarioMarketRoadmap(),
     publicSnapshots: [...await richCoverage(), ...await extendedCoverage(), ...hamilton.snapshots, await ottawaPermitCoverage()],

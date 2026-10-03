@@ -94,5 +94,5 @@ export interface Location {
   address: string | null; city: string | null; province: string | null;
   latitude: number | null; longitude: number | null; accuracy: string; provider: string;
   addressRegister?: { buildingId: string | null; publishedAddressRecords: number; postalCodes: string[]; buildingUsageCodes: string[]; csduid: string | null; source?: Source; referenceDate?: string };
-  municipalAddress?: { recordIds: string[]; community: string | null; permitAddressKeys: string[]; source: Source; sourceUpdatedAt: string | null };
+  municipalAddress?: { recordIds: string[]; community: string | null; permitAddressKeys: string[]; source: Source; sourceUpdatedAt: string | null; publishedRecords?: Row[]; publishedAddressRecordCount?: number; publishedRecordsTruncated?: boolean };
 }

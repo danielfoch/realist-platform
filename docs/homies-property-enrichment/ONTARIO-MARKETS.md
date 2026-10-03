@@ -178,8 +178,87 @@ address-list evidence without choosing an arbitrary building point. Tests cover
 exact suffix/direction, damaged CSV, date parsing, withdrawn rights, changed file
 versions, bounded results and source failures.
 
-Durham research has also identified licensed regional civic addresses and plan
-map items. The official City/Region catalogues and current licence text are
-retained in the local research handoff. Regional source adoption, municipal
-matching, the status of inherited planning policies and current amendments still
-need verification before those feeds are enabled.
+## Durham regional planning and civic batch
+
+Eighteen enabled feeds connect civic identity and regional mapping across Ajax,
+Brock, Clarington, Oshawa, Pickering, Scugog, Uxbridge and Whitby. Their source
+audit totals **269,836 published rows**: 253,571 civic rows assigned to those
+eight municipalities, 8 municipal boundaries and 16,257 planning-map rows.
+These overlap the other registries and are not distinct properties, unique data
+points or bulk-imported database rows. `/api/property/coverage` returns each
+feed's actual health/count; failed counts remain unknown. Three additional
+blended natural-heritage/aquifer layers are withheld and excluded from totals.
+
+| Enabled planning evidence | Source rows |
+| --- | ---: |
+| Urban expansion areas | 19 |
+| Urban growth centres | 4 |
+| Specific policy areas | 6 |
+| Protected major transit station areas | 8 |
+| Community areas | 75 |
+| Employment areas | 72 |
+| Prime agricultural areas | 79 |
+| Major open space areas | 144 |
+| Significant groundwater recharge areas | 9,113 |
+| York/Durham WHPA Q1–Q2 | 1 |
+| Ecologically significant recharge areas | 982 |
+| Surface water contribution areas | 5,631 |
+| Wellhead protection areas | 78 |
+| Other wellhead protection areas | 12 |
+| Intake protection zones | 30 |
+| Source protection regions | 3 |
+
+The exact public `GIS_DurhamRegion` publisher, `tFqRz8TAqe7XY7GD`
+organization, licensed item/root service, named child layer, geometry and field
+schema are checked before any query. The Region's current
+[Open Data Licence v1.0](https://www.durham.ca/regional-government/access-to-information/open-data/)
+allows reuse and excludes third-party rights it is not authorized to license.
+The three withheld sources identify conservation-authority/provincial inputs;
+originating terms or redistribution authorization remain unverified. No property
+records from them are queried or returned. Source observation dates are unknown.
+Publisher metadata requests are shared only within a lookup, and live queries
+retain the one-hour cache. Count checks limit upstream concurrency.
+
+Common community names such as Bowmanville, Courtice, Newcastle Village, Orono,
+Brooklin, Port Perry, Blackstock, Cannington, Beaverton, Sunderland and Claremont
+are bound to observed `TOWN`/`MUNICIPALITY` source values. A requested community
+must agree with the exact civic record. Directions and civic suffixes are not
+stripped. Shared unit/site points more than 20 metres apart or conflicting
+community names remain ambiguous. `UNIT` is a yes/no flag; the API preserves
+`UNIT_NUM` and `UNIT_RANGE` separately, together with postal codes, regional
+address IDs and record-edit dates. At most 50 whitelisted civic rows are shown,
+with the total and truncation visible. No individual unit is independently
+identified or verified. Oshawa retains its own civic-point and CSV adapters.
+
+`municipality` must uniquely intersect the point and agree with the requested
+municipality before `durhamPlanning` runs. The latter preserves all 19 nested
+statuses, sources and query/truncation limits. `coverageComplete=false` includes
+withheld sources and unverified current policy; `enabledQueryCoverageComplete`
+describes only the 16 enabled queries. Empty results never prove absence.
+Seven newly connected municipalities retain explicit permit, detailed zoning,
+heritage, planning-history and current municipal-plan gaps.
+
+The [Region's current planning guidance](https://www.durham.ca/doing-business/planning-and-development/envision-durham/)
+reports September 3, 2024 approval in part, December 13 approval of remaining
+northeast Pickering matters, and transfer of plan responsibilities to the eight
+municipalities on January 1, 2025. The selected service descriptions identify
+the September consolidation. Its polygons may predate the later approval, and
+municipalities can amend their inherited plans. Current written policies,
+amendments, appeals and legal schedules are unverified. Growth and agricultural
+designations do not establish zoning permission, lot-creation rights, density or
+servicing. Water-source polygons are separate from contamination, drinking-water
+test results, flood mapping, actual water connection and current activity-specific
+prohibitions. Source-protection region membership is separate from conservation
+authority regulatory jurisdiction. Uninterpreted source codes stay uninterpreted.
+
+`scripts/verify-durham.ts` pins civic/boundary IDs in all eight municipalities,
+Pickering growth-centre `1`, Cannington wellhead `43`, Uxbridge wellhead `8`,
+Port Perry source-protection region `2`, Oshawa community area `231`, and an
+interior geometry fixture from Ajax GO Station polygon `1` (published status
+`Existing`). The geometry fixture is a GIS query control, not a property identity
+or surveyed lot. A conflicting requested municipality must stop plan queries.
+Tests also exercise publisher/schema failures, complete and incomplete empties,
+unit/context limits, truncation, source outages and zero queries to withheld feeds.
+
+Next regional batches: Halton, York, Waterloo and Niagara. Each still needs its
+municipal permit, current zoning, heritage and planning audit before completion.

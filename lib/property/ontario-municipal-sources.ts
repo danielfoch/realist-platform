@@ -2,10 +2,10 @@ import type { Source, Row } from "./model";
 
 export type Market = "Mississauga" | "London" | "Ottawa" | "Oshawa";
 export interface MunicipalFeed {
-  market: Market; key: string; item: string; url: string; owner: string; org: string | null;
+  market: Market | "Durham Region"; key: string; item: string; url: string; owner: string; org: string | null;
   licenceAnchors: string[]; oid: string; geometry: "esriGeometryPoint" | "esriGeometryPolygon";
   fields: Record<string, string>; dates?: string[]; source: Source; note: string;
-  disabledReason?: string;
+  disabledReason?: string; expectedLayerName?: string;
 }
 const MS_TERMS = "https://mississauga.maps.arcgis.com/sharing/rest/content/items/961c790805c14d8da258ec91bf4117e3/data";
 const LN_TERMS = "https://london.maps.arcgis.com/sharing/rest/content/items/e31458fd0c7e41dd9f93144a9550781d/data";
