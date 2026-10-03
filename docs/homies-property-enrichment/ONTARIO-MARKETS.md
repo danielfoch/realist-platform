@@ -503,3 +503,55 @@ Development-charge mapping supplies area names/codes and raw statuses, including
 Withheld without record queries: public Interactive Zoning Map b2f9531874c94167979864d22e200e4c (null licence); Heritage Property Locator 8320264b32a34e30bfbee576ea885906 (blank licence); Temp1_Markham Parcels d91aaf9c9a724bbb8344281a101385aa (no verified grant/third-party rights). [Current building services](https://www.markham.ca/economic-development-business/building-permits) provide ePLAN public search, inspection/completion/compliance and drawing requests; no licensed complete property permit history was identified in this catalogue pass. [Planning services](https://www.markham.ca/economic-development-business/planning-development-services/planning-and-development-applications) describe current file processes, but full current municipal file history/decisions/appeals and a nearby development feed remain unconnected. These current core gaps leave Markham partial.
 
 `node --import tsx scripts/verify-markham.ts /absolute/output/path` checks all four bindings/counts and six live controls: Town Centre plan/charge, Unionville Station Lane district/Core plan, 197 Main Street Unionville, 96 Main Street North Markham district/plan, Church View proposed-charge classification and Cachet valid empty polygons. The municipal layers flow into the JSON API, printable report, one-click hosted Homies skill, seller questions and document requests. All 16 CMA anchors and 76 priority municipalities remain incomplete.
+
+
+## Vaughan and Richmond Hill municipal audit — October 3, 2026
+
+Official City map pages establish publisher context. Vaughan's old terms URL redirects to PLANit, whose warranty/risk wording does not establish commercial redistribution. Thirty-seven public Feature Service items owned by planning.gis_vaughan were inspected as metadata only; address, permit, active/closed application, parent-zone, heritage/district and plan items have blank/null licence fields. Current comprehensive-zoning and Building Standards guidance differ on 001-2021/1-88 applicability; verify current legal instruments, appeal decisions and parcel-specific transitions. The audit queries no municipal property records and does not claim catalogue or core completion.
+
+Richmond Hill's official active-application map points to a null-licence dataset; heritage data supplies convenience/warranty language without a verified redistribution grant. Fifty-six public Feature Services in cu2HFDk7AqvG7e31 were inspected as metadata only. Quarterly municipal planning summaries are identified in the official planning page, but remain a separate unconnected source. York regional feeds remain usable for both cities. See `lib/property/york-local-audits.ts` and `coverage.live[].municipalAudits` for exact references and gaps.
+
+## Kingston municipal extension — October 3, 2026
+
+Official source: https://opendatakingston.cityofkingston.ca/ . The City policy and each selected item explicitly refer to the City of Kingston Open Data Licence 1.0. The inspected September 2016 PDF grants commercial use and excludes personal/unauthorized third-party rights. The legacy item referral redirects to https://www.cityofkingston.ca/media/wtpgpkb0/gis_license_opendata.pdf ; exact current PDF SHA-256 is `5b22699109219df0904056f9358f8bb901c3315902f3539018e0bc23492cea9d`. Runtime verifies direct grant bytes, complete normalized per-item terms hash, exact referral, owner/org/access/root, child name/copyright and typed whitelist before records. Redirects, oversized/invalid responses and failed bindings return unavailable. Inspect `kingston-sources.ts` for each whitelisted child and field.
+
+| Inspected source child | Published rows |
+| --- | ---: |
+| addresses | 77,673 |
+| municipality | 1 |
+| permits | 68,473 |
+| planningApplications | 418 |
+| heritageApplications | 18 |
+| designated | 1,236 |
+| listed | 305 |
+| easement | 55 |
+| heritageDistrict | 3 |
+| parentZone | 2,450 |
+| exceptions | 829 |
+| holding | 252 |
+| formerBylawBoundary | 10 |
+| landUse | 761 |
+| secondaryPlanBoundary | 4 |
+| cataraquiNorth | 14 |
+| cataraquiWest | 14 |
+| provincialCampus | 7 |
+| rideauLandUse | 68 |
+| siteSpecificPolicy | 82 |
+| rideauSiteSpecificPolicy | 10 |
+| opa50AppealMapping | 1 |
+| floodplainOverlay | 927 |
+| airportNoiseOverlay | 1 |
+
+Total **153,612 overlapping rows in 24 source children**, not unique properties, data points or imports. Counts include repeated unit/civic and permit history records. Four upstream requests run at a time with one-hour caching and existing bounded timeout/body limits.
+
+Civic matching preserves suffixes, street type/direction and published municipal identity. Shared-address points must agree within 20 metres; 52 Faircrest Boulevard and 267 Earl Street stay ambiguous. A unique licensed City boundary confirms Kingston before property queries. National building provenance is retained only with identity, City and 20-metre point agreement. Permit/active-application/heritage-application queries use exact civic address; coordinate-only requests skip them. Multiple-address/range descriptions, nearby proposals and full decision histories are unsearched. Unit requests remain unsupported.
+
+Nested heritage sources preserve listing/designation, Part IV/V, de-listing/de-designation/demolition and easement flags/dates separately. Owner, mailing, inspector, applicant and staff contact fields are not requested or returned. Construction dates, permit fees/valuations and application meeting fields retain source text. An occupancy-date field does not establish current approval; an easement flag is not a title search. Empty/partial results do not establish absence. Source update time remains unknown where editingInfo is unpublished.
+
+The City publishes a May 31, 2025 Official Plan consolidation; current written policies, later amendments and appeals remain unverified. The new plan remains separate draft material. Legacy OPA 50 appeal mapping does not establish a still-active appeal. Zoning parent, exception/hold text and former-bylaw boundaries are reference mapping; original legal documents take precedence and former-boundary membership does not establish current applicability. Floodplain elevation units/datum are unknown and the overlay is separate from authority regulation, safety and insurance. The NEF (30) polygon supplies no measured/current noise.
+
+Nine sources are withheld without property queries: D1/D2/D3 additional-unit and J servicing overlays credit Utilities Kingston; G conversion credits MPAC/Teranet; intake/wellhead sources credit CRCA; two Draft 2 heritage/natural-heritage sources lack explicit reuse grants and are not in-force policy. Rights verification and current instruments remain to be added. The completion flag remains false.
+
+`node --import tsx scripts/verify-kingston.ts /absolute/output/path` checks grant/schema/count bindings and six positive civic properties plus two ambiguous sites. Source evidence is in Homies/outputs/kingston-research-2026-10-03 and release evidence in Homies/outputs/kingston-2026-10-03. JSON API, printable report, hosted Homies prompt, seller questions and document requests all retain source-specific scope and gaps.
+
+Additional positive controls verify full city/postal-suffix matching for 1383 Gardiners Road and 55 Cataraqui Woods Drive planning files, plus Approved heritage application observations at 244 James Street and 30 Sydenham Street. These labels remain raw source status and do not prove permission for new work. Two separately labelled synthetic interior points verify positive floodplain and NEF overlay queries; they are not property-geocoding controls.

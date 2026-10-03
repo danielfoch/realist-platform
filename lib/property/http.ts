@@ -1,6 +1,6 @@
 /** Only fixed, government/open-data providers are called. Never fetch a caller-supplied URL. */
-const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "services5.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "map.oshawa.ca", "maps.durham.ca", "ww8.yorkmaps.ca", "utility.arcgis.com", "api.milton.ca", "mapping.burlington.ca", "maps.oakville.ca", "www.haltonhills.ca", "map.haltonhills.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca"]);
-export async function fetchText(url: URL, timeoutMs = 8000): Promise<string> {
+const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "services5.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "map.oshawa.ca", "maps.durham.ca", "ww8.yorkmaps.ca", "utility.arcgis.com", "api.milton.ca", "mapping.burlington.ca", "maps.oakville.ca", "www.haltonhills.ca", "map.haltonhills.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca", "api.cityofkingston.ca", "www.cityofkingston.ca"]);
+export async function fetchBytes(url: URL, timeoutMs = 8000): Promise<Uint8Array> {
   if (url.protocol !== "https:" || !HOSTS.has(url.hostname)) throw new Error("Unsupported provider");
   const response = await fetch(url, {
     redirect: "error",
@@ -21,8 +21,9 @@ export async function fetchText(url: URL, timeoutMs = 8000): Promise<string> {
       chunks.push(value);
     }
   } finally { await reader.cancel(); }
-  return new TextDecoder("utf-8", { fatal:true }).decode(Buffer.concat(chunks));
+  return Buffer.concat(chunks);
 }
+export async function fetchText(url: URL, timeoutMs = 8000): Promise<string> { return new TextDecoder("utf-8", { fatal:true }).decode(await fetchBytes(url,timeoutMs)); }
 export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> { return JSON.parse(await fetchText(url,timeoutMs)); }
 export function rows(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value) || value.some(v => !v || typeof v !== "object" || Array.isArray(v))) throw new Error("Invalid source response");
