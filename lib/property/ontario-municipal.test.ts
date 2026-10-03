@@ -73,7 +73,7 @@ describe("Ontario municipal evidence",()=>{
     const f=feed("London","heritage");fetch.mockImplementation(provider(f,Array.from({length:51},(_,i)=>record(f,{OBJECTID:i+1})),{truncated:true}));const r=await municipalPointLayer(f,london);expect(r.truncated).toBe(true);expect(r.data).toMatchObject({coverageComplete:false});expect((r.data as Row).records).toHaveLength(50);
   });
   it("distinguishes an empty screen from an outage",async()=>{
-    const f=feed("London","heritage");fetch.mockImplementation(provider(f,[]));const r=await municipalPointLayer(f,london);expect(r.status).toBe("no_match");expect(r.data).toMatchObject({absenceEstablished:false});fetch.mockRejectedValue(new Error("offline"));expect((await municipalPointLayer(f,london)).status).toBe("unavailable");
+    const f=feed("London","heritage");fetch.mockImplementation(provider(f,[]));const r=await municipalPointLayer(f,london);expect(r.status).toBe("no_match");expect(r.data).toMatchObject({absenceEstablished:false});expect(r.note).toContain("No published polygon intersection was returned");expect(r.note).not.toContain("intersects the point");fetch.mockRejectedValue(new Error("offline"));expect((await municipalPointLayer(f,london)).status).toBe("unavailable");
   });
   it("keeps permit dates, CAD construction estimates and unit identifiers",async()=>{
     const f=feed("Mississauga","permits");fetch.mockImplementation(async(u:URL)=>{if(u.pathname.startsWith(new URL(f.url).pathname)||u.pathname.includes(f.item))return provider(f,[record(f,{ADDRESS:"1416 LIVEOAK DR",BP_NO:"BP 9ALT 17-8956",EST_CON_VALUE:38000,UNIT_NO:"2",ISSUE_DATE:1514851200000})])(u);throw new Error("other feeds unavailable");});

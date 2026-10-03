@@ -37,7 +37,7 @@ export async function conservationLayer(location: Location | null): Promise<Laye
   const caution = "Point intersections at the published building point or verified caller coordinates, not a parcel-wide search. Mapping is screening evidence: no intersection is not proof of no regulation, no wetlands or flood safety. Verify boundary proximity and current authority requirements. Some shoreline layers have no published observation date.";
   if (!location || location.latitude === null || location.longitude === null) return layer("skipped", null, CONSERVATION_SOURCE, "No resolved property coordinates.");
   if (location.province && provinceKey(location.province) !== "ontario") return layer("not_supported", null, CONSERVATION_SOURCE, "These feeds cover the Lake Simcoe watershed in Ontario.");
-  if (!["source_building_point", "caller_supplied"].includes(location.accuracy)) return layer("skipped", null, CONSERVATION_SOURCE, "Street or blockface interpolation is insufficient for constraint intersections. Supply verified property coordinates.");
+  if (!["source_building_point", "caller_supplied"].includes(location.accuracy)) return layer("skipped", null, CONSERVATION_SOURCE, "This adapter requires a published building point or verified caller coordinates. Municipal civic, street and blockface points are not used for these conservation screens.");
   // Cheap geographic guard, followed by the source's actual mapped watershed test.
   if (location.latitude < 43.8 || location.latitude > 45.0 || location.longitude < -80.3 || location.longitude > -78.8) return layer("not_supported", null, CONSERVATION_SOURCE, "Outside the Lake Simcoe source search envelope; other conservation authorities are not searched.");
   let watershed: Row[];
