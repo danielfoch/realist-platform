@@ -18,7 +18,7 @@ const record=(f:GuelphFeed,a:Row={},g:Row=point)=>({attributes:{...Object.fromEn
 function provider(records:Record<string,unknown[]>={},changes:Record<string,Row|undefined>={}){return async(u:URL)=>{
   const b=GUELPH_GRANT,p=u.pathname;
   for(const [path,k]of [[`/content/items/${b.site}`,"siteItem"],[`/content/items/${b.site}/data`,"siteData"],[`/content/items/${b.page}`,"licenceItem"],[`/content/items/${b.page}/data`,"licenceData"],[`/content/items/${b.terms}`,"termsItem"],[`/content/items/${b.terms}/data`,"termsData"],[`/community/groups/${b.group}`,"groupItem"]])if(p.endsWith(path))return {...grant[k],...changes[k]};
-  if(p.endsWith('/search')){const f=feed('planningApplications');return {total:1,results:[{id:f.item,owner:f.owner,orgId:f.org,access:'public'}],...changes.membership};}
+  if(p.endsWith('/search')){return {total:1,results:[grant.membershipItem],...changes.membership};}
   const f=p.includes('/sharing/')?GUELPH_FEEDS.find(f=>p.endsWith(f.item)):GUELPH_FEEDS.find(f=>u.href.split('?')[0]===f.url||u.href.split('?')[0]===f.url+'/query');if(!f)throw Error('Unexpected provider');
   if(p.includes('/sharing/'))return {...grant.items[f.item],...changes.item};
   if(!p.endsWith('/query'))return {name:f.expectedLayerName,geometryType:f.geometry,objectIdField:f.oid,copyrightText:f.expectedCopyright,fields:Object.entries(f.fieldTypes).map(([name,type])=>({name,type})),...changes.metadata};
@@ -34,7 +34,7 @@ describe('Guelph licensed property evidence',()=>{
   });
   it('requires exact individual City-curated membership for blank planning terms; public organisation membership alone is insufficient',async()=>{
     json.mockImplementation(provider());await expect(guelphMetadata(feed('planningApplications'))).resolves.toEqual({sourceUpdatedAt:null});
-    for(const change of [{membership:{total:0,results:[]}},{membership:{total:2}},{groupItem:{owner:'other'}},{groupItem:{access:'private'}},{item:{owner:'copy'}}]){json.mockClear().mockImplementation(provider({},change));await expect(guelphMetadata(feed('planningApplications'))).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);}
+    for(const change of [{membership:{total:0,results:[]}},{membership:{total:2}},{membership:{total:1,results:[{...grant.membershipItem,orgId:'copy'}]}},{groupItem:{owner:'other'}},{groupItem:{access:'private'}},{item:{owner:'copy'}}]){json.mockClear().mockImplementation(provider({},change));await expect(guelphMetadata(feed('planningApplications'))).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);}
   });
   it('strictly matches civic suffix, street type, direction, full components and municipality',async()=>{
     const f=feed('addresses'),a={STATUS:'Active',STREETNO:'12',FULLNAME:'KING ST W',STREETNAME:'KING ST W',ADDRESS:'12 KING ST W',PLACE:'Guelph'};json.mockImplementation(provider({addresses:[record(f,a)]}));

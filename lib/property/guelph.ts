@@ -37,7 +37,7 @@ async function metadata(f:GuelphFeed,c:Context){
   await grant(c);
   if(f.requiresCatalogueGrant){
     const b=GUELPH_GRANT,g=await read(c,`https://www.arcgis.com/sharing/rest/community/groups/${b.group}`),url=`https://www.arcgis.com/sharing/rest/search?${new URLSearchParams({q:`id:${f.item} AND group:${b.group} AND orgid:${f.org} AND access:public`,num:"1"})}`,membership=await read(c,url),items=rows(membership.results);
-    if(g.id!==b.group||g.owner!==b.groupOwner||g.title!=="City of Guelph Open Data"||g.access!=="public"||membership.total!==1||items.length!==1||items[0].id!==f.item||items[0].owner!==f.owner||items[0].orgId!==f.org||items[0].access!=="public")throw new Error("Individual City-curated dataset grant missing");
+    if(g.id!==b.group||g.owner!==b.groupOwner||g.title!=="City of Guelph Open Data"||g.access!=="public"||membership.total!==1||items.length!==1||items[0].id!==f.item||items[0].owner!==f.owner||items[0].orgId!==undefined&&items[0].orgId!==f.org||items[0].access!=="public")throw new Error("Individual City-curated dataset grant missing");
   }else if(!terms.includes("https://explore.guelph.ca/pages/open-data-license"))throw new Error("Exact referred grant missing");
   return {sourceUpdatedAt:arcgisDate((m.editingInfo as Row|undefined)?.dataLastEditDate)};
 }
