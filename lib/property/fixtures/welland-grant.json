@@ -1,0 +1,850 @@
+{
+  "https://www.arcgis.com/sharing/rest/content/items/6a037520fb6c48d294d268ed03314d47": {
+    "id": "6a037520fb6c48d294d268ed03314d47",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "City of Welland Open Data Portal",
+    "type": "Hub Site Application",
+    "url": "https://open.welland.ca",
+    "licenseInfo": "null"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6a037520fb6c48d294d268ed03314d47/data": {
+    "values": {
+      "pages": [
+        {
+          "id": "53a02312cf3b4463bc459f59839ed662",
+          "title": "About Open Data",
+          "slug": "about-open-data"
+        },
+        {
+          "id": "6e4409b659704ab8aa956ac2ff8aa3a8",
+          "title": "Connect",
+          "slug": "connect"
+        },
+        {
+          "id": "751038db8be941e59fccb827c2d66c90",
+          "title": "Terms of Use",
+          "slug": "terms-of-use"
+        }
+      ],
+      "customHostname": "open.welland.ca",
+      "defaultHostname": "open-welland.hub.arcgis.com",
+      "internalUrl": "open-welland.hub.arcgis.com"
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/751038db8be941e59fccb827c2d66c90": {
+    "id": "751038db8be941e59fccb827c2d66c90",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Terms of Use",
+    "type": "Hub Page",
+    "url": "https://opendata.arcgis.com/admin/",
+    "licenseInfo": null
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/751038db8be941e59fccb827c2d66c90/data": {
+    "values": {
+      "sites": [
+        {
+          "id": "6a037520fb6c48d294d268ed03314d47",
+          "title": "City of Welland Open Data Portal"
+        }
+      ],
+      "layout": {
+        "sections": [
+          {
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "settings": {
+                        "markdown": "<h1 id=\"open-data-terms-of-use\">Open Data Terms of Use</h1>\n<p><h2>Open Government Licence \u2013 City of Welland</h2>\n<br /></p>\n<p><h4><b>Preamble</b></h4></p>\n<p>\nThis Open Government Licence is based on, and has been adapted from, version 2.0 of the Open Government Licence \u2013 Canada, and version 1.0 of the Open Government Licence \u2013 Ontario.\n<br /><br /></p>\n<h4><b>Using Information under this licence</b></h4>\n<p>\n1.  Use of any Information indicates your acceptance of the terms below.<br />\n <br />\n2.  The Information Provider grants you a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, including for commercial purposes, subject to the terms below.\n<br /><br /></p>\n<h4><b>You are free to:</b></h4>\n<p>\nCopy, modify, publish, translate, adapt, distribute or otherwise use the Information in any medium, mode or format for any lawful purpose.<br /><br /></p>\n<h4><b>You must, where you do any of the above:</b></h4>\n<p>\n4.  Acknowledge the source of the Information by including any attribution statement specified by the Information Provider and, where possible, provide a link to this licence.<br />\n<br />\nIf the Information Provider does not provide a specific attribution statement, or if you are using Information from several Information Providers and multiple attributions are not practical for your product or application, you must use the following attribution statement:<br />\n<br />\n<i>Contains information licensed under the Open Government Licence \u2013 City of Welland.</i><br />\n <br />\n5.  The terms of this licence are important, and if you fail to comply with any of them, the rights granted to you under this licence, or any similar licence granted by the Information Provider, will end automatically.<br /><br /></p>\n<h4><b>Exemptions</b></h4>\n<p>\n6.  This licence does not grant you any right to use: <br />\n <br />\na.  Personal Information;<br />\nb.  Information or Records not accessible under the Municipal Freedom of Information and Protection of Privacy Act (Ontario);<br />\nc.  third party rights the Information Provider is not authorized to license;<br />\nd.  the names, crests, logos, or other official marks of the Information Provider; and<br />\ne.  Information subject to other intellectual property rights, including patents, trade-marks and official marks.\n<br /><br /></p>\n<h4><b>Non-endorsement</b></h4>\n<p>\n7.  This licence does not grant you any right to use the Information in a way that suggests any official status or that the Information Provider endorses you or your use of the Information.\n<br /><br /></p>\n<h4><b>No warranty</b></h4>\n<p>\n8.  The Information is licensed &quot;as is&quot;, and the Information Provider excludes all representations, warranties, obligations, and liabilities, whether express or implied, to the maximum extent permitted by law.<br />\n<br />\n9.  The Information Provider is not liable for any errors or omissions in the Information, and will not under any circumstances be liable for any direct, indirect, special, incidental, consequential, or other loss, injury or damage caused by its use or otherwise arising in connection with this licence or the Information, even if specifically advised of the possibility of such loss, injury or damage.\n<br /><br /></p>\n<h4><b>Governing Law</b></h4>\n<p>\n10.  This licence is governed by the laws of the Province of Ontario and the applicable laws of Canada.<br />\n<br />\n11.  Legal proceedings related to this licence may only be brought in the courts of Ontario.\n<br /><br /></p>\n<h4><b>Definitions</b></h4>\n<p>\n12.  In this licence, the terms below have the following meanings:<br />\n<br />\n<b>&quot;Information&quot;</b> means information resources or Records protected by copyright or other information or Records that are offered for use under the terms of this licence.<br />\n<br />\n<b>&quot;Information Provider&quot;</b> means The Corporation of the City of Welland.<br />\n<br />\n<b>&quot;Personal Information&quot;</b> has the meaning set out in section 2(1) of the Municipal Freedom of Information and Protection of Privacy Act (Ontario).<br />\n<br />\n<b>&quot;Records&quot;</b> has the meaning of &quot;record&quot; as set out in the Municipal Freedom of Information and Protection of Privacy Act (Ontario).<br />\n<br />\n<b>&quot;You&quot;</b> means the natural or legal person, or body of persons corporate or incorporate, acquiring rights under this licence.\n<br /><br /></p>\n<h4><b>Versioning</b></h4>\n<p>\n13.  This is version 2.0 of the Open Government Licence \u2013 City of Welland. The Information Provider may make changes to the terms of this licence from time to time and issue a new version of the licence. Your use of the Information will be governed by the terms of the licence in force as of the date you accessed the information.\n<br /><br /></p>"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/64e302a8d9e54b1383641187fedd239f": {
+    "id": "64e302a8d9e54b1383641187fedd239f",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Civic Address Points",
+    "type": "Feature Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Civic_Addresses_Active/MapServer/0",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use' rel='nofollow ugc' target='_blank'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Civic_Addresses_Active/MapServer": {
+    "serviceItemId": "4b3eeef7eac9474c8656f28d20e8d952",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OPENDATA_Civic_Addresses_Active"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Civic_Addresses_Active/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OPENDATA_Civic_Addresses_Active",
+    "serviceItemId": "4b3eeef7eac9474c8656f28d20e8d952",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "AddId",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "Address",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Civic_No",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "Suffix",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "StName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "CivicNoLbl",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Geometry",
+        "type": "esriFieldTypeGeometry"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/e0e30585066a4108b91def1509cbc87b": {
+    "id": "e0e30585066a4108b91def1509cbc87b",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Consolidated Zoning",
+    "type": "Map Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use' rel='nofollow ugc' target='_blank'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer": {
+    "serviceItemId": "e12104a564aa4986bf232ecc0234b1e6",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Environmental Protection Area"
+      },
+      {
+        "id": 1,
+        "name": "Environmental Control Area"
+      },
+      {
+        "id": 2,
+        "name": "Current Zoning"
+      },
+      {
+        "id": 3,
+        "name": "Old Zoning"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer/2": {
+    "id": 2,
+    "type": "Feature Layer",
+    "name": "Current Zoning",
+    "serviceItemId": "e12104a564aa4986bf232ecc0234b1e6",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "Obj_id",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Zoning",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Zone_doc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "ZoneCat",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "ZoneCatSym",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "ZoneDesc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Geometry",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Geometry.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Geometry.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Environmental Protection Area",
+    "serviceItemId": "e12104a564aa4986bf232ecc0234b1e6",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "Obj_id",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Zoning",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Zone_doc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "GeomWKB.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Environmental Control Area",
+    "serviceItemId": "e12104a564aa4986bf232ecc0234b1e6",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "Obj_id",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Zoning",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Zone_doc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "GeomWKB.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Consolidated_Zoning/MapServer/3": {
+    "id": 3,
+    "type": "Feature Layer",
+    "name": "Old Zoning",
+    "serviceItemId": "e12104a564aa4986bf232ecc0234b1e6",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Zoning",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "ZoneDoc",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/84eca664d5734e918c2f0a9cbc103ee2": {
+    "id": "84eca664d5734e918c2f0a9cbc103ee2",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Official Plan",
+    "type": "Map Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Official_Plan/MapServer",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use' rel='nofollow ugc' target='_blank'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Official_Plan/MapServer": {
+    "serviceItemId": "01ab51f4ba264197bfd9c2ce29048e63",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OfficialPlan Area Specific Policy"
+      },
+      {
+        "id": 1,
+        "name": "Official Plan Appeal Deferral Areas"
+      },
+      {
+        "id": 2,
+        "name": "Official Plan Schedule B"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Official_Plan/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OfficialPlan Area Specific Policy",
+    "serviceItemId": "01ab51f4ba264197bfd9c2ce29048e63",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "Obj_id",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "ProposedOP",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "OP_ID",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "PolicyArea",
+        "type": "esriFieldTypeSmallInteger"
+      },
+      {
+        "name": "Geometry",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Geometry.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Geometry.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Official_Plan/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Official Plan Appeal Deferral Areas",
+    "serviceItemId": "01ab51f4ba264197bfd9c2ce29048e63",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "Obj_id",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "GeomWKB.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Official_Plan/MapServer/2": {
+    "id": 2,
+    "type": "Feature Layer",
+    "name": "Official Plan Schedule B",
+    "serviceItemId": "01ab51f4ba264197bfd9c2ce29048e63",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Adopted_OP",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Other_Use",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "SiteSpec",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Geometry_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Geometry_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/0aa78d20dd6a4dac95e2e8e5bca0e8c2": {
+    "id": "0aa78d20dd6a4dac95e2e8e5bca0e8c2",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Designated Heritage Properties",
+    "type": "Feature Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Heritage_Parcels/MapServer/0",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Heritage_Parcels/MapServer": {
+    "serviceItemId": "c9ffa4cd1d704515bf03f6ecce662a8f",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OPENDATA_Heritage_Parcels"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Heritage_Parcels/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OPENDATA_Heritage_Parcels",
+    "serviceItemId": "c9ffa4cd1d704515bf03f6ecce662a8f",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Parcel_No",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "CommonName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Address",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Descr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Bylaw_No",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Year_built",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "Year_Desig",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "Image1_URL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Image2_URL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "WebsiteURL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Doc_URL",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Geometry_WKB_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Geometry_WKB_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/97e8cf84b01b4c92839c2c94c63216b9": {
+    "id": "97e8cf84b01b4c92839c2c94c63216b9",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Site Plans",
+    "type": "Feature Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_SitePlans_Parcels/MapServer/0",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_SitePlans_Parcels/MapServer": {
+    "serviceItemId": "959e5f3b6f32410e8490732d9f2fc6ea",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OPENDATA_Plan_SitePlans_Parcels"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_SitePlans_Parcels/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OPENDATA_Plan_SitePlans_Parcels",
+    "serviceItemId": "959e5f3b6f32410e8490732d9f2fc6ea",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "DateRecd",
+        "type": "esriFieldTypeDate"
+      },
+      {
+        "name": "CivicAddr",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "MajorUse",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "ConstType",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "IntendUse",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "CommonName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Status",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Parcel_No",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "GeomWKB_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/d44bffff3b054ba8b98a78289bb95037": {
+    "id": "d44bffff3b054ba8b98a78289bb95037",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Community Improvement Plan Areas",
+    "type": "Feature Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_CIP_Areas/MapServer/0",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_CIP_Areas/MapServer": {
+    "serviceItemId": "6b704ea9dbbe44ce99b39437fdc901c1",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OPENDATA_Plan_CIP_Areas"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Plan_CIP_Areas/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OPENDATA_Plan_CIP_Areas",
+    "serviceItemId": "6b704ea9dbbe44ce99b39437fdc901c1",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "CIPName",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/38410ac61039443faaa11fc87a83e017": {
+    "id": "38410ac61039443faaa11fc87a83e017",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Business Improvement Areas",
+    "type": "Feature Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_BIA/MapServer/0",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_BIA/MapServer": {
+    "serviceItemId": "ad172d9de1ec4904817c84a2994c5bb2",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "OPENDATA_BIA"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_BIA/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "OPENDATA_BIA",
+    "serviceItemId": "ad172d9de1ec4904817c84a2994c5bb2",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "BIA_Name",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/dc0f952c325647c089819e5f7ce674c2": {
+    "id": "dc0f952c325647c089819e5f7ce674c2",
+    "owner": "WellandGIS",
+    "orgId": "2Pwm1XBIwHHnXDLH",
+    "access": "public",
+    "title": "Welland Ward and Poll Boundaries",
+    "type": "Map Service",
+    "url": "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Ward_Poll/MapServer",
+    "licenseInfo": "<a href='https://open-welland.hub.arcgis.com/pages/terms-of-use' rel='nofollow ugc' target='_blank'>https://open-welland.hub.arcgis.com/pages/terms-of-use</a>"
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Ward_Poll/MapServer": {
+    "serviceItemId": "fc6d642ff59a42f39c1d54b66c687fce",
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Poll Boundaries"
+      },
+      {
+        "id": 1,
+        "name": "Ward Boundaries"
+      }
+    ]
+  },
+  "https://arcgisweb.welland.ca/serverprodpub/rest/services/OpenData/OPENDATA_Ward_Poll/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Ward Boundaries",
+    "serviceItemId": "fc6d642ff59a42f39c1d54b66c687fce",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "name": "Ward",
+        "type": "esriFieldTypeInteger"
+      },
+      {
+        "name": "Council1",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "Council2",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "name": "GeomWKB_STArea__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "GeomWKB_STLength__",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry"
+      },
+      {
+        "name": "Shape.STArea()",
+        "type": "esriFieldTypeDouble"
+      },
+      {
+        "name": "Shape.STLength()",
+        "type": "esriFieldTypeDouble"
+      }
+    ]
+  }
+}

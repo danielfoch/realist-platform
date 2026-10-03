@@ -706,8 +706,8 @@ sources whose linked licence page returns an index rather than the complete
 grant; the partial Falls boundary (the original licensed Ontario polygon is used);
 current NPCA regulation; a provincial natural-system proxy with unresolved
 lineage/rights; and a draft watercourse source requiring further audit. A
-complete City Welland Hub grant has been found, but exact selected dataset
-bindings are the next audit. No Niagara market is marked complete.
+complete City Welland Hub grant and thirteen exact selected dataset
+bindings have now been verified, as described below. No Niagara market is marked complete.
 
 Primary guidance: [Region catalogue](https://niagaraopendata.ca/dataset/),
 [Region grant](https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region),
@@ -719,3 +719,45 @@ Primary guidance: [Region catalogue](https://niagaraopendata.ca/dataset/),
 [current secondary-plan guidance](https://niagarafalls.ca/building-planning-and-business/planning-and-development/long-range-plans-and-studies/secondary-plans/),
 [Niagara plan transfer](https://www.niagararegion.ca/official-plan/default.aspx),
 [NPCA permits](https://npca.ca/services/permits).
+
+
+## Welland — source verification October 3, 2026
+
+Thirteen licensed City feeds publish **30,039 overlapping source rows**: 22,461
+civic points, 1,981 Current Zoning references, 2,014 Old Zoning references, 78
+environmental protection and 125 environmental control zoning references,
+2,608 Official Plan references across three children, 31 heritage records, 721
+site-plan records, eight CIP, six BIA and six ward references. These are source
+observations, not distinct properties, unique data points or imported rows.
+
+The full [City grant](https://open-welland.hub.arcgis.com/pages/terms-of-use)
+is bound to its exact City-owned Hub site/page, alias, AGOL item referrals and
+separately identified enterprise services/typed children. Civic full address,
+number, label, suffix, street type and direction must agree. Precise points and
+one matching original Ontario municipality polygon are required before property
+queries; that boundary feed is shared with Niagara and counted once.
+
+Current and Old Zoning are separate source references. Verify applicability
+and the City's [pre/post October 1, 2024 application transition](https://www.welland.ca/business-and-development/for-development/planning-and-zoning/comprehensive-zoning-by-law/).
+Plan mapping preserves ProposedOP, Adopted_OP and appeal/deferral labels; the
+[City's plan guidance](https://www.welland.ca/business-and-development/for-development/planning-and-zoning/official-plan/)
+labels the February 2026 plan proposed. Neither older GIS labels nor public
+page titles establish current in-force policy or appeal outcomes.
+
+Heritage/site-plan records use exact civic-address City attributes without
+returning or reusing cadastral geometry. Parcel identity remains unverified.
+Raw site-plan dates, intended uses and statuses are kept: an Active record
+received in 2000 does not establish current activity or approval. Current full
+permit history, complete planning/variance decisions and nearby proposals remain
+gaps. Supplier/2018 aerial-derived footprints are withheld; never use their
+centroids for precise identity. CIP/BIA mapping does not establish adopted
+programs, funding, eligibility, contamination, grants or levies. Environmental
+zoning overlays do not screen current NPCA regulation or parcel-wide flood risk.
+Source observation dates remain unknown when unpublished; returned records are
+bounded to 50 and incomplete nested sources stay visible. Welland remains partial.
+
+Seven positive controls cover three published civic addresses and four synthetic
+interiors of inspected non-cadastral polygons. Run the public verifier sequentially:
+`node --import tsx scripts/verify-welland.ts https://realist-lean.vercel.app /absolute/output.json`.
+Coverage includes Guelph's serialized source session; do not run another Guelph
+query or coverage verifier concurrently.
