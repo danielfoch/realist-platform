@@ -1,0 +1,17 @@
+Orillia publishes monthly permit reports through its own Permits and Inspections page. The selected source is 30 directly offered PDFs, March 2024–August 2026. Website Content standards allow public web information to be distributed, with explicit exclusions for interactive applications, code, logos and other visual assets. This adapter reuses selected factual observations only. It does not extend City permission to County-hosted City GIS or third-party document repositories.
+
+The reviewed compiled asset contains 1,181 detailed permit observations and 1,810 inspection observations. Matchable complete building addresses exist on 1,009 permit and 1,639 inspection rows. Counts are report observations, not unique permits, inspections or properties. Summary/cover tables are excluded. Detailed counts/values can differ from publisher aggregate tables; neither is silently changed to fit the other. Construction values are source work-value text, not property valuation. Historical ft/m measures remain raw and are not recast as area.
+
+The parser reads native PDF glyph runs in drawing order and assigns a complete run by its start to the typed column. This prevents an overlong fee from leaking into construction value and overlapping work-measure text from contaminating an issue date. It supports moved issue-date columns, missing OBC-category columns, differing page sizes, continuation pages and both publisher inspection sections. A heading describes the publisher's list; it does not prove a passed result or an issued occupancy certificate. Civic ranges, units, absent/incomplete addresses and column-edge observations are excluded without guessing or filling blanks down. Possibly clipped labels remain raw.
+
+The API verifies the complete current City policy text/links, each original month-to-PDF offer and the immutable asset hash before releasing rows/counts. Old observations are explicitly dated; current PDF bytes, statuses/results and full history are unverified. New offered months are reported as pending and require review. No automatic refresh or database write is configured. On rights/offer/asset failure, stored rows/counts are withheld. Test fixtures contain policy information and offered link facts in JSON, rendered with self-authored test markup; City site code/design is not copied into the repository.
+
+For a reviewed offline reproduction, the audit directory must contain the selected download-manifest.json and tmp/pdfs/YYYY-MM.pdf files. Use the bundled Python with pdfplumber:
+
+```sh
+python3 scripts/property/parse-orillia-reports.py /path/to/audit --retrieved-at ACTUAL_ISO_DOWNLOAD_TIMESTAMP
+```
+
+This command checks every selected source URL, byte size and SHA against the reviewed manifest and writes a candidate snapshot plus page audit. It never downloads, publishes or overwrites the deployed asset. Review PDF layouts and source policy/offer again before updating the asset, source pins or selected periods; then validate the adapter, public coverage, API/report and skill mirror. A changed file hash is a review trigger, not permission to adopt new bytes automatically.
+
+Current operative zoning/plan, final planning/variance decisions and conditions/appeals, complete statutory heritage, unit identity/occupancy, actual servicing/septic and original authority/source-water rights remain separate gaps. Obtain current Property Compliance files through owner/authorized-lawyer access; tax/water payments and Fire Code compliance need separate requests. Orillia remains partial in the Ontario roadmap.
