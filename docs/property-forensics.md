@@ -4,6 +4,23 @@ The public `/api/property/skill` prompt starts with “Create a property forensi
 
 ## Evidence additions
 
+York Region's October 3 extension adds six cached live feeds across Vaughan, Markham, Richmond Hill, Newmarket, Aurora, Georgina, East Gwillimbury, Whitchurch-Stouffville and King. Eleven source controls passed, including regional application and Schomberg wellhead-zone evidence at 199 Church Street, King; regional consent evidence at 15 Poplar Drive, Richmond Hill; and employment-inventory evidence at 111 Sandiford Drive, Whitchurch-Stouffville.
+
+| Scoped York feed | Published source records |
+| --- | ---: |
+| Active allowed property civic points in the nine municipalities | 424,666 |
+| Municipal boundary polygons for those municipalities | 18 |
+| Active parcel references with published SOURCE = York Region | 352,918 |
+| Regional application boundaries assigned to those municipalities | 7,073 |
+| 2025 employment-land inventory | 4,612 |
+| Wellhead-protection polygons | 83 |
+
+The 789,370 records overlap and are not unique homes, unique data points or database imports. Counts are the release baseline; read live coverage for later counts. Civic matching preserves suffix/type/direction and excludes transit, utility, park and unknown point types. Shared civic points must agree within 20 metres and share a postal community. The regional point queries require a unique agreeing municipal boundary; surrounding counties and First Nation boundaries are excluded. Parcel matches preserve municipal references, internal geometry-area units and multiple/conflicting candidates; title, PIN, surveyed area and full parcel-fabric coverage are unverified.
+
+Regional application boundaries intersect the subject point only. Complete municipal planning history and nearby proposals are unsearched. Legacy/new statuses, application types and dates remain separate, including disagreements. ESRI_OID is query context, not a promised persistent identifier; retain public regional and local file references. UNITS can contain Yes/No text, so it is not a dwelling count. Private names, contacts, team members, fees, roll/PIN values and cross-joined property constraints are excluded. York reports that regional land-use approval and regional-plan implementation responsibilities transferred to municipalities on July 1, 2024. Regional review does not establish municipal permission or work completion. Employment classifications retain their 2025 vintage; wellhead mapping does not establish water safety, contamination, actual supply or current activity-specific rules.
+
+The adapter pins the inspected York licence document's public publisher, name, type, modification epoch and size; each exact item URL/title, normalized explicit licence referral, named geometry layer, copyright and field types must also match before records are queried. The commercial reuse grant excludes unlicensed third-party rights. Five sources remain withheld: First Base Solutions building footprints, two regional heritage feeds with public-access wording only, regional-plan land-use mapping and urban structure with no verified dataset-specific reuse grant. The nine municipalities retain visible gaps for permits/inspections, current detailed zoning, heritage, local decisions/appeals and current plan amendments. All 16 CMA anchors and 76 priority municipalities remain incomplete until the full core source and live-flow audit passes.
+
 - Toronto Heritage Register Q3 2026: 12,332 civic-address records. Part IV individual designation, Part V district designation and Listed remain distinct. Published dates, bylaws and district names retained.
 - Licensed TRCA RegulationLimit_2025: live, cached point intersections with contributing criteria. Conceptual point screen; not parcel-wide mapping or proof of flood safety. Positive record 1 and valid empty-result controls checked against independent source geometry.
 - Toronto development: 26,613 application-site records. Group by application number, nearest site, approximate straight-line distance within 800 m, published status and conservative stage. Recent inactive histories (36 months) plus older non-closed/unknown records. Non-closed does not establish ongoing activity; closed does not establish built. Unlocated records and output truncation are disclosed.

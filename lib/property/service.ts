@@ -17,6 +17,7 @@ import { ottawaPermitCoverage } from "./ottawa-permits";
 import { durhamLocation, durhamLayers, durhamCoverage, durhamMunicipality } from "./durham";
 import { haltonLocation, haltonLayers, haltonCoverage, haltonMarket } from "./halton";
 import { haltonHillsLayers, haltonHillsCoverage, haltonHillsMarket } from "./halton-hills";
+import { yorkLocation, yorkLayers, yorkCoverage, yorkMunicipality } from "./york";
 
 export async function enrichProperty(input: PropertyRequest) {
   // Without unit-aware assessment keys, stripping a suite number would attach another unit's facts.
@@ -24,8 +25,8 @@ export async function enrichProperty(input: PropertyRequest) {
   const queryCity = input.city ?? input.address?.split(",")[1]?.trim();
   const queryProvince = input.province ?? input.address?.split(",")[2]?.trim();
   const expectedProvince: Record<string, string> = { toronto: "ontario", brampton: "ontario", hamilton: "ontario", ancaster: "ontario", dundas: "ontario", flamborough: "ontario", glanbrook: "ontario", "stoney creek": "ontario", waterdown: "ontario", calgary: "alberta", edmonton: "alberta", winnipeg: "manitoba", vancouver: "british columbia" };
-  if (queryCity && queryProvince && (expectedProvince[cityKey(queryCity)] || ontarioMarket(queryCity,"ON") || durhamMunicipality(queryCity,"ON") || haltonMarket(queryCity,"ON") || haltonHillsMarket(queryCity,"ON")) && provinceKey(queryProvince) !== (expectedProvince[cityKey(queryCity)] ?? "ontario")) return { success: false as const, error: { code: "city_province_conflict", message: "The supplied city and province do not match. Correct the municipality before looking up this property." } };
-  const location = await hamiltonLocation(input) ?? await ontarioMunicipalLocation(input) ?? await durhamLocation(input) ?? await haltonLocation(input) ?? await geocode(input);
+  if (queryCity && queryProvince && (expectedProvince[cityKey(queryCity)] || ontarioMarket(queryCity,"ON") || durhamMunicipality(queryCity,"ON") || haltonMarket(queryCity,"ON") || haltonHillsMarket(queryCity,"ON") || yorkMunicipality(queryCity,"ON")) && provinceKey(queryProvince) !== (expectedProvince[cityKey(queryCity)] ?? "ontario")) return { success: false as const, error: { code: "city_province_conflict", message: "The supplied city and province do not match. Correct the municipality before looking up this property." } };
+  const location = await hamiltonLocation(input) ?? await ontarioMunicipalLocation(input) ?? await durhamLocation(input) ?? await haltonLocation(input) ?? await yorkLocation(input) ?? await geocode(input);
   const address = location.data?.address ?? input.address?.split(",")[0] ?? null;
   const city = location.data?.city ?? input.city ?? input.address?.split(",")[1]?.trim() ?? null;
   const province = location.data?.province ?? input.province ?? input.address?.split(",")[2]?.trim() ?? null;
@@ -34,6 +35,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const durhamResult = durhamLayers(city, province, location.data, queryCity);
   const haltonResult = haltonLayers(address, city, province, location.data, queryCity);
   const haltonHillsResult = haltonHillsLayers(address, city, province, queryCity);
+  const yorkResult = yorkLayers(city, province, location.data, queryCity);
   const planningResult = provincialPlanningLayer(location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
@@ -57,7 +59,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const hamilton = await hamiltonResult;
   const halton = await haltonResult;
   const haltonHills = await haltonHillsResult;
-  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills };
+  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills, ...await yorkResult };
   const available = Object.entries(layers).filter(([, v]) => v.status === "available").map(([name]) => name);
   const missing = Object.entries(layers).filter(([, v]) => v.status !== "available").map(([name, v]) => ({ layer: name, status: v.status }));
   const followUpQuestions = [
@@ -73,6 +75,9 @@ export async function enrichProperty(input: PropertyRequest) {
       ...(layers.communityImprovementArea?.status === "available" ? [{ topic: "improvement_program", question: "Are any current improvement programs funded, and is this property and proposed work eligible?", evidenceLayers: ["communityImprovementArea"] }] : []),
       ...(layers.historicalOfficialPlan2010 ? [{ topic: "current_official_plan", question: "What current Official Plan 2051 designation and amendments apply to the parcel, given that the returned 2010 mapping is historical?", evidenceLayers: ["officialPlan", "historicalOfficialPlan2010"] }] : []),
       ...(layers.durhamPlanning ? [{ topic:"durham_current_plan",question:"Which current municipal plan schedules, written policies, amendments and appeal outcomes apply to this parcel, given that the regional mapping describes the September 2024 consolidation?",evidenceLayers:["durhamPlanning","officialPlan","zoning"] },{topic:"durham_water_protection",question:"Can the source-protection authority confirm current activity-specific requirements, and can the seller document the actual water supply? Published zone mapping does not establish water safety or contamination.",evidenceLayers:["durhamPlanning"] }] : []),
+      ...(layers.regionalPlanningApplications?.status==="available" ? [{topic:"york_municipal_files",question:"Can the local municipality provide the current planning decisions, conditions, amendments and appeals for these published regional file references? Regional review is separate from local approval.",evidenceLayers:["regionalPlanningApplications","planningApplications","zoning","officialPlan"]}] : []),
+      ...(layers.wellheadProtection?.status==="available" ? [{topic:"york_source_protection",question:"Which current activity-specific source-protection rules apply, and what actual water-supply and testing records can the seller provide? A mapped wellhead zone does not establish water safety or contamination.",evidenceLayers:["wellheadProtection"]}] : []),
+      ...(layers.employmentInventory2025?.status==="available" ? [{topic:"employment_land",question:"Can the City confirm current employment-land policy, zoning, servicing and actual development status, separately from the published 2025 inventory?",evidenceLayers:["employmentInventory2025","officialPlan","zoning"]}] : []),
       ...(Object.keys(halton).length || Object.keys(haltonHills).length ? [{topic:"halton_current_plans",question:"Which current municipal plan and former Halton regional-plan schedules, written policies, amendments and appeals apply to this parcel?",evidenceLayers:["officialPlan","zoning"]}] : []),
       ...(layers.zoning.source?.id==="burlington:zoning" ? [{topic:"burlington_2026_zoning",question:"Does residential By-law 09-2026 or By-law 2020 govern the proposed use, and what enacted designation, exceptions and holding provisions apply?",evidenceLayers:["zoning"]}] : []),
       ...(layers.heritageAddressEvidence?.status==="available" ? [{topic:"heritage_address",question:"Can the City confirm the exact parcel identity, current heritage register and applicable designation/alteration requirements behind the civic-address entry?",evidenceLayers:["heritageAddressEvidence","heritage"]}] : []),
@@ -101,7 +106,7 @@ export async function enrichProperty(input: PropertyRequest) {
 
 export async function coverage() {
   const imported = await inventory();
-  const [hamilton, provincialPlanning, ontarioMunicipal, durham, halton, haltonHills] = await Promise.all([hamiltonCoverage(), provincialPlanningCoverage(), ontarioMunicipalCoverage(), durhamCoverage(), haltonCoverage(), haltonHillsCoverage()]);
+  const [hamilton, provincialPlanning, ontarioMunicipal, durham, halton, haltonHills, york] = await Promise.all([hamiltonCoverage(), provincialPlanningCoverage(), ontarioMunicipalCoverage(), durhamCoverage(), haltonCoverage(), haltonHillsCoverage(), yorkCoverage()]);
   return {
     apiVersion: "1.0", country: "CA", authentication: "none", lookup: "/api/property?address=15%20Deermeade%20Pl%20SE%2C%20Calgary%2C%20AB",
     addressRegister: NAR_SOURCE, geocoder: GEOCODER,
@@ -118,6 +123,7 @@ export async function coverage() {
       durham,
       halton,
       haltonHills,
+      york,
     ],
     ontarioMarkets: ontarioMarketRoadmap(),
     publicSnapshots: [...await richCoverage(), ...await extendedCoverage(), ...hamilton.snapshots, await ottawaPermitCoverage()],
