@@ -53,7 +53,7 @@ export function date(v: unknown): string | null {
 }
 export const fold = (v: string): string => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
-const aliases: Record<string, string> = { st: "street", ave: "avenue", av: "avenue", blvd: "boulevard", boul: "boulevard", rd: "road", dr: "drive", pl: "place", ct: "court", cres: "crescent", ln: "lane", terr: "terrace", ch: "chemin", rte: "route", n: "north", s: "south", e: "east", w: "west", ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest", o: "ouest" };
+const aliases: Record<string, string> = { st: "street", ave: "avenue", av: "avenue", blvd: "boulevard", boul: "boulevard", rd: "road", dr: "drive", pl: "place", ct: "court", crt: "court", cres: "crescent", ln: "lane", terr: "terrace", ch: "chemin", rte: "route", n: "north", s: "south", e: "east", w: "west", ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest", o: "ouest" };
 export function streetKey(address: string): string {
   return fold(address.split(",")[0]).replace(/[.]/g, "").replace(/\b\w+\b/g, (w) => aliases[w] ?? w).replace(/\s+/g, " ").trim();
 }
@@ -93,4 +93,5 @@ export interface Location {
   address: string | null; city: string | null; province: string | null;
   latitude: number | null; longitude: number | null; accuracy: string; provider: string;
   addressRegister?: { buildingId: string | null; publishedAddressRecords: number; postalCodes: string[]; buildingUsageCodes: string[]; csduid: string | null; source?: Source; referenceDate?: string };
+  municipalAddress?: { recordIds: string[]; community: string | null; permitAddressKeys: string[]; source: Source; sourceUpdatedAt: string | null };
 }

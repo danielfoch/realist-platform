@@ -12,11 +12,36 @@ The public `/api/property/skill` prompt starts with “Create a property forensi
 
 ## Refresh
 
-Six public snapshots total 80,512 source records: rental buildings 3,611; evaluations 6,842; Brampton additional units 30,539; Brampton heritage 575; Toronto heritage 12,332; Toronto development 26,613. These are dataset rows, not unique homes or field counts.
+Eight public snapshots total 95,983 source records: rental buildings 3,611; evaluations 6,842; Brampton additional units 30,539; Brampton heritage 575; Toronto heritage 12,332; Toronto development 26,613; Hamilton heritage 10,273; Hamilton development 5,198. These are dataset rows, not unique homes or field counts. Counts/vintages are the 2026-10-02 release baseline; read coverage for later refreshes.
 
 `GET /api/cron/property-refresh`, daily `15 8 * * *` (08:15 UTC), uses the existing `CRON_SECRET`. `POST` uses a dedicated `PROPERTY_REFRESH_SECRET` for scoped operator verification; consumer requests require neither. No production environment bundle was downloaded.
 
 Each feed validates schema, rights, complete pagination, unique IDs and source version/count stability. A 10-minute lease prevents competing workers; atomic SQL replaces the snapshot and health together. Fetch/schema/publication failures retain the last good payload. API caches loaded snapshots for five minutes and retains traced compiled assets as a DB-outage fallback. Coverage shows actual delivery, source vintage and refresh health. National/assessment/permit bulk imports keep separate registry cadences; this daily job does not reimport them. Only two new property snapshot/health tables are bootstrapped; no platform schema push.
+
+## Hamilton extension
+
+Eight official OpenHamilton feeds are bound to the City's organisation, public item owner, exact service endpoint and explicit redistribution licence. Attribution: “Contains public sector Data made available under the City of Hamilton’s Open Data Licence”. The source catalogue is linked per dataset in the response.
+
+| Feed | Published dataset records | Delivery | Published update date |
+| --- | ---: | --- | --- |
+| Civic addresses | 274,719 | Bounded live matching | 2026-10-02 |
+| Heritage properties | 10,273 | Complete daily snapshot | 2026-09-26 |
+| Development applications | 5,198 | Complete daily snapshot | 2026-09-09 |
+| Zoning polygons | 11,859 | Live point query | 2026-09-26 |
+| Environmentally sensitive areas | 207 | Live point query | 2026-09-09 |
+| Ward boundaries | 15 | Live point query | 2025-12-03 |
+| Permits: 2017 to Present (source title) | 51,846 | Historical address query | 2024-02-05 |
+| Permits: 2008 to 2016 (source title) | 142,620 | Historical address query | 2024-01-09 |
+
+These 496,737 published records are across eight datasets, not distinct properties, field counts or bulk-imported rows. Only the 15,471 heritage/development rows are new persisted snapshot assets. Live feeds use a one-hour cache. Heritage/development snapshots participate in the existing daily 08:15 UTC job, including complete ID pagination, field allowlists, WGS84 points, before/after item/ID/edit-date checks and last-good retention. ArcGIS request batches are 100 IDs to remain within its URL gateway limit.
+
+Municipal matching checks civic number, exact street/type/direction, Ontario jurisdiction and former community. Waterdown can resolve to published Flamborough community records. Multiple communities or points spanning more than 20 metres remain ambiguous. The municipal location is labelled a civic-address point, not a surveyed parcel or verified building centroid. Permit street abbreviations that omit types/directions are accepted only if uniquely resolved by this register; community is checked independently. Unit records remain building-level evidence.
+
+Heritage includes Inventoried, Registered Non-Designated and Designated with Part IV/Part V fields. Unexplained `DATE_HERITAGE` years retain their published label; they are not claimed as construction or designation dates. Address ranges and uncertain identities remain ambiguous. Exact civic-address candidates whose heritage/civic points differ by more than 100 metres are retained as ambiguous with the separation shown; rural address points can be entrances far from a building. The current bylaw/district effective date still requires City confirmation. Development searches all published file years within 800 m and groups application numbers across sites. This feed has no stage, approval or submission-date field, so stage stays unknown and file year is not evidence of current activity.
+
+Zoning retains all returned parent bylaws, zone codes/descriptions, exception/holding fields and published date fields. Hamilton has seven bylaws; GIS is a point screen, not zoning verification or a permission conclusion. Environmental sensitivity is City natural-heritage context, separate from conservation-authority regulation, flood safety or contaminated-site records. Interpolated streets are not used for these point screens. Both permit feeds retain their separate dates, status, failures and truncation. Their titles do not establish present coverage, and Closed/completed does not independently establish final inspection or occupancy.
+
+The hosted report prompt and its checked-in copy include the Hamilton workflow. The report appendix includes every new field and layer; the pre-showing brief adds zoning verification and natural-heritage document requests. No native Homies runtime changes are needed for this endpoint extension.
 
 ## Validation and pilot
 

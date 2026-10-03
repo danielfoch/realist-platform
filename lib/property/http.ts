@@ -1,5 +1,5 @@
 /** Only fixed, government/open-data providers are called. Never fetch a caller-supplied URL. */
-const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com"]);
+const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "www.arcgis.com"]);
 export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> {
   if (url.protocol !== "https:" || !HOSTS.has(url.hostname)) throw new Error("Unsupported provider");
   const response = await fetch(url, {

@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import type { Row } from "./model";
 
-export const DATASETS = ["toronto-rental-buildings", "toronto-building-evaluations", "brampton-additional-units", "brampton-heritage", "toronto-heritage", "toronto-development"] as const;
+export const DATASETS = ["toronto-rental-buildings", "toronto-building-evaluations", "brampton-additional-units", "brampton-heritage", "toronto-heritage", "toronto-development", "hamilton-heritage", "hamilton-development"] as const;
 export type Dataset = typeof DATASETS[number];
 export interface Snapshot {
   dataset: string; retrievedAt: string; sourceUpdatedAt: string | null; rowCount: number; records: Row[];
