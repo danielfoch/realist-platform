@@ -42,7 +42,7 @@ const metropolitanMarkets = [
   ["Greater Sudbury",["Greater Sudbury"]], ["Thunder Bay",["Thunder Bay"]],
 ] as const;
 const regionalMarkets = ["Chatham-Kent","Sarnia","North Bay","Timmins","Orillia","Woodstock","Stratford","Cornwall","Owen Sound","Kawartha Lakes","Orangeville","Collingwood","Wasaga Beach","Midland","Sault Ste. Marie","Tillsonburg","Norfolk County","Wainfleet","West Lincoln","Brock","Scugog","Uxbridge"];
-const existing:Record<string,string[]>={ Orillia:["orilliaPermitObservations","orilliaInspectionObservations","orilliaPropertyFiles"], Toronto:["permits","variance","parcel","zoning","ward","heritage","development","rentalBuilding","buildingEvaluations"],Brampton:["additionalUnits","heritage"],Hamilton:["addresses","permits","heritage","development","zoning","ward","environmentalSensitivity","heritageGrants","ruralSettlement","wastewaterCatchment"],Oshawa:["additionalUnits","rentalLicences"] };
+const existing:Record<string,string[]>={ Orillia:["orilliaDesignatedHeritageReference","orilliaDecisionObservations","orilliaPermitObservations","orilliaInspectionObservations","orilliaPropertyFiles"], Toronto:["permits","variance","parcel","zoning","ward","heritage","development","rentalBuilding","buildingEvaluations"],Brampton:["additionalUnits","heritage"],Hamilton:["addresses","permits","heritage","development","zoning","ward","environmentalSensitivity","heritageGrants","ruralSettlement","wastewaterCatchment"],Oshawa:["additionalUnits","rentalLicences"] };
 export function ontarioMarketRoadmap(){
   const municipalities=[...new Set([...metropolitanMarkets.flatMap(([,cities])=>[...cities]),...regionalMarkets,...NIAGARA_MUNICIPALITIES,...SIMCOE_MUNICIPALITIES])];
   return {
