@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?><xsd:schema xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:simcoe="https://opengis.simcoe.ca/geoserver/" xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="https://opengis.simcoe.ca/geoserver/">
+  <xsd:import namespace="http://www.opengis.net/gml/3.2" schemaLocation="https://opengis.simcoe.ca/geoserver/schemas/gml/3.2.1/gml.xsd"/>
+  <xsd:complexType name="Municipal_Ward_BoundaryType">
+    <xsd:complexContent>
+      <xsd:extension base="gml:AbstractFeatureType">
+        <xsd:sequence>
+          <xsd:element maxOccurs="1" minOccurs="0" name="Label" nillable="true" type="xsd:string"/>
+          <xsd:element maxOccurs="1" minOccurs="0" name="geom" nillable="true" type="gml:GeometryPropertyType"/>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:element name="Municipal_Ward_Boundary" substitutionGroup="gml:AbstractFeature" type="simcoe:Municipal_Ward_BoundaryType"/>
+</xsd:schema>
