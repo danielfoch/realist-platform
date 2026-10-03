@@ -20,6 +20,7 @@ export interface Source {
   url: string;
   licence: string;
   attribution: string;
+  licenceUrl?: string;
 }
 export interface Layer<T = unknown> {
   status: Status;
