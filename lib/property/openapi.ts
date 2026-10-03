@@ -1,7 +1,7 @@
 const nullable = (type: string) => ({ type: [type, "null"] });
 const source = { type: ["object", "null"], properties: Object.fromEntries(["id", "name", "url", "licence", "attribution"].map(k => [k, { type: "string" }])), required: ["id", "name", "url", "licence", "attribution"] };
 const layer = { type: "object", required: ["status", "data", "source", "retrievedAt", "sourceUpdatedAt", "note"], properties: { status: { type: "string", enum: ["available", "no_match", "not_supported", "not_loaded", "unavailable", "ambiguous", "skipped"] }, data: {}, source, retrievedAt: nullable("string"), sourceUpdatedAt: nullable("string"), importedAt: nullable("string"), note: nullable("string"), truncated: { type: "boolean" } } };
-const layers = ["location", "assessment", "permits", "variance", "neighbourhood", "parcel", "ward", "zoning", "development", "rentalBuilding", "buildingEvaluations", "additionalUnits", "heritage", "conservation", "trca", "environmentalSensitivity"];
+const layers = ["location", "assessment", "permits", "variance", "neighbourhood", "parcel", "ward", "zoning", "development", "rentalBuilding", "buildingEvaluations", "additionalUnits", "heritage", "conservation", "trca", "environmentalSensitivity", "planningApplications", "heritageGrants", "ruralSettlement", "wastewaterCatchment", "hamiltonConservation", "provincialPlanning"];
 export const PROPERTY_OPENAPI = {
   openapi: "3.1.0", info: { title: "Homies property enrichment", version: "1.0.0", description: "Anonymous Canadian civic-address enrichment backed by municipal open data and available Realist imports. Unknown fields remain null; every layer carries availability and attribution." },
   servers: [{ url: "https://realist-lean.vercel.app" }], security: [],

@@ -10,6 +10,7 @@ import { torontoHeritage, nearbyDevelopment, extendedCoverage } from "./extended
 import { refreshHealth } from "./snapshots";
 import { preShowingBrief } from "./brief";
 import { hamiltonLocation, hamiltonLayers, hamiltonCoverage } from "./hamilton";
+import { provincialPlanningLayer, provincialPlanningCoverage } from "./provincial-planning";
 
 export async function enrichProperty(input: PropertyRequest) {
   // Without unit-aware assessment keys, stripping a suite number would attach another unit's facts.
@@ -23,6 +24,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const city = location.data?.city ?? input.city ?? input.address?.split(",")[1]?.trim() ?? null;
   const province = location.data?.province ?? input.province ?? input.address?.split(",")[2]?.trim() ?? null;
   const hamiltonResult = hamiltonLayers(address, city, province, location.data);
+  const planningResult = provincialPlanningLayer(location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
   const heritageResult = torontoHeritage(address, city, province);
@@ -43,7 +45,7 @@ export async function enrichProperty(input: PropertyRequest) {
   // A live no-match or ambiguous result is never replaced by an older imported match.
   const choose = (live: Layer, stored: Layer): Layer => live.status === "not_supported" ? stored : live.status === "unavailable" && ["available", "ambiguous"].includes(stored.status) ? stored : live;
   const hamilton = await hamiltonResult;
-  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton };
+  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton };
   const available = Object.entries(layers).filter(([, v]) => v.status === "available").map(([name]) => name);
   const missing = Object.entries(layers).filter(([, v]) => v.status !== "available").map(([name, v]) => ({ layer: name, status: v.status }));
   const followUpQuestions = [
@@ -55,6 +57,12 @@ export async function enrichProperty(input: PropertyRequest) {
       ...(layers.development.status === "available" ? [{ topic: "nearby_development", question: "Which nearby proposals could affect the buyer’s plans, and what is their current published stage or appeal status?", evidenceLayers: ["development"] }] : []),
       ...(layers.zoning.status === "available" ? [{ topic: "zoning", question: "Can the City confirm the current parent bylaw, exceptions, holding provisions and permissions for the proposed use or work?", evidenceLayers: ["zoning"] }] : []),
       ...(layers.environmentalSensitivity?.status === "available" ? [{ topic: "natural_heritage", question: "What parcel-wide natural heritage studies or approvals apply to the planned work, and which conservation authority should confirm regulation?", evidenceLayers: ["environmentalSensitivity"] }] : []),
+      ...(layers.planningApplications?.status === "available" ? [{ topic: "planning_decisions", question: "Can the City provide the full planning file, decision conditions and appeal outcome, and confirm which dated observations still apply?", evidenceLayers: ["planningApplications"] }] : []),
+      ...(layers.heritageGrants?.status === "available" ? [{ topic: "heritage_grants", question: "Can the seller provide the historic grant agreement, invoices and records of the conservation work, including any continuing obligations?", evidenceLayers: ["heritageGrants"] }] : []),
+      ...(layers.ruralSettlement?.status === "available" ? [{ topic: "rural_settlement", question: "Can the City confirm the current settlement boundary, official-plan policies, servicing and any lot-creation restrictions for this parcel?", evidenceLayers: ["ruralSettlement"] }] : []),
+      ...(layers.wastewaterCatchment?.status === "available" ? [{ topic: "servicing", question: "What actual sewer or septic connection serves the property, and is capacity available for the proposed use?", evidenceLayers: ["wastewaterCatchment"] }] : []),
+      ...(layers.provincialPlanning.status === "available" ? [{ topic: "provincial_planning", question: "Can the City and Niagara Escarpment Commission verify current parcel-wide plan designations and any development-control requirements using legal maps, given the published mapping accuracy?", evidenceLayers: ["provincialPlanning"] }] : []),
+      ...(layers.hamiltonConservation ? [{ topic: "hamilton_conservation", question: "Which of Hamilton's four conservation authorities has jurisdiction over the parcel, and what current regulation or permits apply to the planned work?", evidenceLayers: ["hamiltonConservation"] }] : []),
       ...(layers.permits.status === "available" ? [{ topic: "permits", question: "Can the seller provide final inspections and occupancy approval for the work described in the permit records?", evidenceLayers: ["permits"] }] : []),
       ...(conservation.status === "available" ? [{ topic: "conservation", question: "Can the conservation authority confirm parcel-wide constraints and any permits required for the planned work?", evidenceLayers: ["conservation"] }] : []),
   ];
@@ -70,7 +78,7 @@ export async function enrichProperty(input: PropertyRequest) {
 
 export async function coverage() {
   const imported = await inventory();
-  const hamilton = await hamiltonCoverage();
+  const [hamilton, provincialPlanning] = await Promise.all([hamiltonCoverage(), provincialPlanningCoverage()]);
   return {
     apiVersion: "1.0", country: "CA", authentication: "none", lookup: "/api/property?address=15%20Deermeade%20Pl%20SE%2C%20Calgary%2C%20AB",
     addressRegister: NAR_SOURCE, geocoder: GEOCODER,
@@ -81,7 +89,7 @@ export async function coverage() {
       { province: "Nova Scotia", layers: ["dwelling characteristics"], sources: [SOURCES.ns] },
       { cities: ["Vancouver"], layers: ["permits"], sources: [SOURCES["vancouver-permits"]] },
       { cities: ["Toronto"], layers: ["permits", "variance"], sources: [SOURCES["toronto-permits"], SOURCES["toronto-variance"]] },
-      conservationCoverage(), trcaCoverage(),
+      conservationCoverage(), trcaCoverage(), provincialPlanning,
       { cities: ["Hamilton", "Ancaster", "Dundas", "Flamborough", "Glanbrook", "Stoney Creek", "Waterdown"], ...hamilton },
     ],
     publicSnapshots: [...await richCoverage(), ...await extendedCoverage(), ...hamilton.snapshots],

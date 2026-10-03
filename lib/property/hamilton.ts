@@ -1,5 +1,6 @@
 import { fetchJson, literal, rows } from "./http";
-import { cityKey, civicStreetKey, fold, hasUnit, layer, publishedYear, streetNumber, text, type Layer, type Location, type PropertyRequest, type Row } from "./model";
+import { cityKey, civicStreetKey, fold, hasUnit, layer, number, publishedYear, streetNumber, text, type Layer, type Location, type PropertyRequest, type Row } from "./model";
+import { developmentStage } from "./extended";
 import { provinceKey } from "./geocode";
 import { HAMILTON, validHamiltonItem, type HamiltonFeed } from "./hamilton-sources";
 import { loadSnapshot, type LoadedSnapshot } from "./snapshots";
@@ -115,6 +116,8 @@ const POINT_NOTES = {
   zoning: "Point intersection against published zoning polygons. Hamilton has seven zoning bylaws; preserve the parent bylaw, exceptions, holding provisions and effective-date fields. GIS is not zoning verification or permission to build. Confirm current amendments, appeals and parcel-wide zoning with the City.",
   environmentalSensitivity: "Point intersection with Hamilton's environmentally sensitive areas, not a conservation-authority regulation map, environmental site assessment, contamination record or flood-safety determination. No intersection does not establish absence of environmental constraints. Confirm parcel-wide natural heritage requirements.",
   ward: "Published ward boundary at the screened point; confirm boundary-edge cases with the City.",
+  ruralSettlement: "Point intersection with a published rural settlement boundary. Preserve BOUNDARY_STATUS: the catalogue includes official and unofficial settlements. A mapped or approved boundary does not establish lot creation, development rights, current official-plan status or servicing. Confirm current Rural Hamilton Official Plan schedules and parcel-wide requirements.",
+  wastewaterCatchment: "Point intersection with a mapped wastewater treatment plant catchment. This is servicing context, not proof of a sewer connection, available capacity, connection approval or absence of private septic. No intersection does not establish that a property is unserviced. Request actual servicing records and capacity confirmation.",
 };
 async function pointLayer(key: keyof typeof POINT_NOTES, location: Location | null): Promise<Layer> {
   const feed = HAMILTON[key];
@@ -125,10 +128,50 @@ async function pointLayer(key: keyof typeof POINT_NOTES, location: Location | nu
     const r = await get(feed.url + "/query", { where: "1=1", geometry: `${location!.longitude},${location!.latitude}`, geometryType: "esriGeometryPoint", inSR: "4326", spatialRel: "esriSpatialRelIntersects", outFields: feed.fields.join(","), returnGeometry: "false", resultRecordCount: "51" });
     const matched = features(r, feed.fields); if (r.exceededTransferLimit || matched.length >= 51) throw new Error("Point query incomplete");
     const records = matched.map(r => ({ recordId: String(r.OBJECTID), publishedFields: Object.fromEntries(feed.fields.filter(k => k !== "OBJECTID").map(k => [k, /_URL$/.test(k) ? safeCityUrl(r[k]) : /_DATE$/.test(k) ? arcgisDate(r[k]) : r[k]])) }));
-    return layer(records.length > 1 && key === "zoning" ? "ambiguous" : records.length ? "available" : "no_match", { geometryScope: location!.accuracy, matchMethod: "point_intersection", records }, feed.source, POINT_NOTES[key], m.updated);
+    return layer(records.length > 1 && ["zoning", "ruralSettlement", "wastewaterCatchment"].includes(key) ? "ambiguous" : records.length ? "available" : "no_match", { geometryScope: location!.accuracy, matchMethod: "point_intersection", records }, feed.source, POINT_NOTES[key], m.updated);
   } catch { return layer("unavailable", null, feed.source, "Hamilton licence, schema or complete query could not be verified; no absence was inferred."); }
 }
 function safeCityUrl(v: unknown): string | null { try { const u = new URL(String(v)); return u.protocol === "https:" && u.hostname === "www.hamilton.ca" ? u.href : null; } catch { return null; } }
+export function planningRecord(r: Row, location: Location) {
+  return { recordId: String(r.OBJECTID), applicationNumber: text(r.PLANNING_APPLICATION_NUMBER), applicationType: text(r.APPLICATION_TYPE), publishedStatus: text(r.APPLICATION_STATUS), stage: developmentStage(r.APPLICATION_STATUS), publishedStreetNumber: text(r.STREET_NUMBER), publishedLocation: text(r.LOCATION), publishedYearOfApplicationField: number(r.YEAR_OF_APPLICATION), publishedQuarter: text(r.YEAR_QUARTER), submittedAt: arcgisDate(r.APPLICATION_SUBMITTED_DATE), decisionAt: arcgisDate(r.DECISION_DATE), publishedAdoptedAmendedRegisteredAt: arcgisDate(r.DATE_ADOPTED_AMMEND_REGISTERED), deemedCompleteRaw: text(r.APPLICATION_DEEMED_COMPLETE), appealed: text(r.APPEALED), appealType: text(r.APPEAL_TYPE), appealAt: arcgisDate(r.APPEAL_DATE), appealDecisionAt: arcgisDate(r.APPEAL_DECISION_DATE), thirdPartyAppeal: text(r.THIRD_PARTY_APPEAL), publishedRegisteredResidentialLots: number(r.REGISTERED_NUM_RESIDENTIAL_LOT), publishedLatitude: number(r.LATITUDE), publishedLongitude: number(r.LONGITUDE), sourceGeometryLatitude: number(r.latitude), sourceGeometryLongitude: number(r.longitude), distanceM: Math.round(haversineMeters(location.latitude!, location.longitude!, Number(r.latitude), Number(r.longitude))) };
+}
+const pendingPlanningSource = { ...HAMILTON.planningApplications.source, licence: "Dataset reuse licence unverified", attribution: "City of Hamilton quarterly planning catalogue; records withheld until reuse rights are verified." };
+async function planningApplications(location: Location | null): Promise<Layer> {
+  const feed = HAMILTON.planningApplications;
+  if (!precise(location)) return layer("skipped", null, pendingPlanningSource, "A usable civic/building or caller-supplied point is required; street interpolation was not screened. Dataset reuse rights must also be verified before records are returned.");
+  try {
+    const m = await metadata(feed);
+    if (m.meta.geometryType !== "esriGeometryPoint" || !(m.meta.advancedQueryCapabilities as Row)?.supportsQueryWithDistance) throw new Error("Planning query schema changed");
+    const spatial = { where: "1=1", geometry: `${location!.longitude},${location!.latitude}`, geometryType: "esriGeometryPoint", inSR: "4326", spatialRel: "esriSpatialRelIntersects", distance: "800", units: "esriSRUnit_Meter" };
+    const [countResult, r] = await Promise.all([get(feed.url + "/query", { ...spatial, returnCountOnly: "true" }), get(feed.url + "/query", { ...spatial, outFields: feed.fields.join(","), returnGeometry: "true", outSR: "4326", resultRecordCount: "501", orderByFields: "OBJECTID" })]);
+    const count = countResult.count, candidates = features(r, feed.fields);
+    if (!Number.isInteger(count) || Number(count) < 0 || Number(count) >= 501 || r.exceededTransferLimit || candidates.length !== count || candidates.some(r => !validPoint(r.latitude, r.longitude))) throw new Error("Planning query incomplete");
+    const near = candidates.filter(r => haversineMeters(location!.latitude!, location!.longitude!, Number(r.latitude), Number(r.longitude)) <= 800).map(r => planningRecord(r, location!)).sort((a, b) => a.distanceM - b.distanceM || a.recordId.localeCompare(b.recordId));
+    const result = layer(near.length ? "available" : "no_match", { scope: "nearby_quarterly_planning_records", geometryScope: location!.accuracy, radiusM: 800, totalSpatialCandidates: count, totalNearbyRecords: near.length, distinctApplicationNumbers: new Set(near.map(r => r.applicationNumber).filter(Boolean)).size, returnedRecordLimit: 50, records: near.slice(0, 50) }, feed.source, "Quarterly-reported planning observations since 2023, including applications submitted in earlier years. Each returned row keeps its own status, decision and appeal fields; multiple quarters/statuses for one application are retained and no current status is inferred. The unexplained YEAR_OF_APPLICATION field and quarter are kept separately from the actual submitted date. Unknown stages remain unknown. Nearby records are not matched approvals on the subject parcel. Decision, adoption or registration dates do not prove final permissions, discharge of conditions or construction. Cross-check the full City file and appeal decision; the older development layer remains a separate history with unknown stages.", m.updated);
+    result.truncated = near.length > 50; return result;
+  } catch { return layer("unavailable", null, pendingPlanningSource, "Quarterly planning records are withheld: the public catalogue item did not establish an explicit dataset reuse licence, or its schema/complete radius query could not be verified. A public endpoint alone does not verify reuse rights. Consult the official source/full City file; no absence or approval was inferred."); }
+}
+async function heritageGrants(address: string | null, location: Location | null, city: string | null): Promise<Layer> {
+  const feed = HAMILTON.heritageGrants;
+  if (!address) return layer("skipped", null, feed.source);
+  try {
+    const m = await metadata(feed);
+    const r = await get(feed.url + "/query", { where: "1=1", outFields: feed.fields.join(","), returnGeometry: "false", resultRecordCount: "501" });
+    const candidates = features(r, feed.fields); if (r.exceededTransferLimit || candidates.length >= 501) throw new Error("Grants query incomplete");
+    const community = location?.municipalAddress?.community ?? (cityKey(city ?? "") === "waterdown" ? "Flamborough" : cityKey(city ?? "") !== "hamilton" ? city : null);
+    const exact = candidates.filter(r => civicStreetKey(String(r.ADDRESS)) === civicStreetKey(address) && (!community || cityKey(String(r.COMMUNITY)) === cityKey(community)));
+    const ambiguous = exact.length > 0 && (!community || new Set(exact.map(r => cityKey(String(r.COMMUNITY)))).size > 1);
+    return layer(ambiguous ? "ambiguous" : exact.length ? "available" : "no_match", { scope: "historic_heritage_conservation_grant_payments", currency: "CAD", matchMethod: "exact_civic_address_and_community_when_resolved", records: exact.map(r => ({ recordId: String(r.OBJECTID), address: text(r.ADDRESS), community: text(r.COMMUNITY), publishedYearPaid: publishedYear(r.YEAR_PAID), publishedConstructionValue: number(r.CONSTRUCTION_VALUE), grantAmount: number(r.GRANT_AMOUNT) })) }, feed.source, "Historic reported conservation-grant payments, not a current grant offer, proof of completed work, heritage designation or property value. Published construction value concerns the grant-supported work. Request the dated grant agreement, invoices and conservation work records; verify current eligibility separately.", m.updated);
+  } catch { return layer("unavailable", null, feed.source, "Heritage grant rights, schema or complete published table could not be verified."); }
+}
+function conservationReferral(): Layer {
+  return layer("not_supported", { screenPerformed: false, jurisdiction: "not_determined", authoritiesToVerify: [
+    { name: "Hamilton Conservation Authority", url: "https://conservationhamilton.ca/hca-regulation-permits/" },
+    { name: "Conservation Halton", url: "https://www.conservationhalton.ca/mapping-and-studies/" },
+    { name: "Niagara Peninsula Conservation Authority", url: "https://npca.ca/" },
+    { name: "Grand River Conservation Authority", url: "https://www.grandriver.ca/" },
+  ], cityGuidanceUrl: "https://www.hamilton.ca/sites/default/files/2026-02/pedguidelines-limit-core-areas-limit-conservation-authority-regulated-area.pdf" }, { id: "hamilton:conservation-referral", name: "Hamilton conservation-authority review guidance", url: "https://www.hamilton.ca/sites/default/files/2026-02/pedguidelines-limit-core-areas-limit-conservation-authority-regulated-area.pdf", licence: "Not applicable — official referral links only", attribution: "City of Hamilton planning guidance; no conservation-authority mapping republished." }, "Hamilton spans four conservation authorities. No authority jurisdiction, regulatory boundary, floodplain or permit determination was performed. HCA's public map terms permit personal non-commercial viewing and restrict reuse; its map data is not fetched or republished. City environmentally sensitive areas and provincial plans do not replace conservation review. Confirm the relevant authority and parcel-wide requirements through official channels.");
+}
 export function permitRecord(r: Row, sourceId: string) {
   return { recordId: `${sourceId}:${r.OBJECTID}`, permitNumber: text(r.PERMITNUMBER), address: text(r.ORIGINALADDRESS1), publishedUnit: text(r.ORIGINALADDRESS2) === "NULL" ? null : text(r.ORIGINALADDRESS2), community: text(r.ORIGINALCITY), publishedStatus: text(r.STATUSCURRENT), appliedAt: arcgisDate(r.APPLIEDDATE), issuedAt: arcgisDate(r.ISSUEDDATE), completedAt: arcgisDate(r.COMPLETEDDATE), permitClass: text(r.PERMITCLASS), workClass: text(r.WORKCLASS), description: text(r.DESCRIPTION), sourceId };
 }
@@ -157,21 +200,21 @@ async function permits(address: string | null, location: Location | null, reques
 }
 export async function hamiltonLayers(address: string | null, city: string | null, province: string | null, location: Location | null): Promise<Record<string, Layer>> {
   if (!isHamilton(city, province)) return {};
-  const [heritage, nearby, zoning, environment, ward, permit] = await Promise.all([hamiltonHeritage(address, location, city), development(location), pointLayer("zoning", location), pointLayer("environmentalSensitivity", location), pointLayer("ward", location), permits(address, location, city)]);
-  return { heritage, development: nearby, zoning, environmentalSensitivity: environment, ward, permits: permit };
+  const [heritage, nearby, zoning, environment, ward, permit, planning, grants, settlement, wastewater] = await Promise.all([hamiltonHeritage(address, location, city), development(location), pointLayer("zoning", location), pointLayer("environmentalSensitivity", location), pointLayer("ward", location), permits(address, location, city), planningApplications(location), heritageGrants(address, location, city), pointLayer("ruralSettlement", location), pointLayer("wastewaterCatchment", location)]);
+  return { heritage, development: nearby, zoning, environmentalSensitivity: environment, ward, permits: permit, planningApplications: planning, heritageGrants: grants, ruralSettlement: settlement, wastewaterCatchment: wastewater, hamiltonConservation: conservationReferral() };
 }
 export async function hamiltonCoverage() {
   const snapshots = await Promise.all((["heritage", "development"] as const).map(async key => {
     const s = await loadSnapshot(`hamilton-${key}`);
     return { layer: key, geography: "Hamilton, ON (including former communities)", source: HAMILTON[key].source, status: s ? "loaded" : "unavailable", records: s?.rowCount ?? null, sourceUpdatedAt: s?.sourceUpdatedAt ?? null, retrievedAt: s?.retrievedAt ?? null, delivery: s?.delivery ?? "unavailable", refresh: "daily scheduled refresh; last good snapshot retained on failure" };
   }));
-  const live = await Promise.all((["addresses", "zoning", "environmentalSensitivity", "ward", "permitsRecent", "permitsHistory"] as const).map(async key => {
+  const live = await Promise.all((["addresses", "zoning", "environmentalSensitivity", "ward", "permitsRecent", "permitsHistory", "planningApplications", "heritageGrants", "ruralSettlement", "wastewaterCatchment"] as const).map(async key => {
     const feed = HAMILTON[key];
     try {
       const m = await metadata(feed); const r = await get(feed.url + "/query", { where: "1=1", returnCountOnly: "true" });
       if (!Number.isInteger(r.count) || Number(r.count) < 0) throw new Error("Count invalid");
       return { layer: key, source: feed.source, status: "reachable", publishedRecords: r.count, sourceUpdatedAt: m.updated, delivery: "cached_live_queries", cacheSeconds: 3600 };
-    } catch { return { layer: key, source: feed.source, status: "unavailable", publishedRecords: null, sourceUpdatedAt: null, delivery: "cached_live_queries", cacheSeconds: 3600 }; }
+    } catch { return { layer: key, source: key === "planningApplications" ? pendingPlanningSource : feed.source, status: "unavailable", publishedRecords: null, sourceUpdatedAt: null, delivery: "cached_live_queries", cacheSeconds: 3600 }; }
   }));
   return { geography: "Hamilton, Ontario", snapshots, live, note: "Published counts measure dataset records, not distinct properties or ingested bulk rows. Permit feeds are historic despite the 2017 to Present title. Spatial layers require published civic/building or caller points; all seven zoning bylaws and former communities need City verification. Environmentally sensitive areas are not conservation-authority regulatory mapping." };
 }

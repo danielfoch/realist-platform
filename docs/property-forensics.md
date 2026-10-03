@@ -20,7 +20,7 @@ Each feed validates schema, rights, complete pagination, unique IDs and source v
 
 ## Hamilton extension
 
-Eight official OpenHamilton feeds are bound to the City's organisation, public item owner, exact service endpoint and explicit redistribution licence. Attribution: “Contains public sector Data made available under the City of Hamilton’s Open Data Licence”. The source catalogue is linked per dataset in the response.
+Eleven enabled official OpenHamilton feeds are bound to the City's organisation, public item owner, exact service endpoint and explicit redistribution licence. Attribution: “Contains public sector Data made available under the City of Hamilton’s Open Data Licence”. The source catalogue is linked per dataset in the response.
 
 | Feed | Published dataset records | Delivery | Published update date |
 | --- | ---: | --- | --- |
@@ -32,8 +32,11 @@ Eight official OpenHamilton feeds are bound to the City's organisation, public i
 | Ward boundaries | 15 | Live point query | 2025-12-03 |
 | Permits: 2017 to Present (source title) | 51,846 | Historical address query | 2024-02-05 |
 | Permits: 2008 to 2016 (source title) | 142,620 | Historical address query | 2024-01-09 |
+| Historic conservation-grant payments | 25 | Complete bounded table / exact civic community match | 2023-10-23 |
+| Rural settlement boundaries | 19 | Live point query | 2024-01-08 |
+| Wastewater catchments | 2 | Live point query | 2026-09-06 |
 
-These 496,737 published records are across eight datasets, not distinct properties, field counts or bulk-imported rows. Only the 15,471 heritage/development rows are new persisted snapshot assets. Live feeds use a one-hour cache. Heritage/development snapshots participate in the existing daily 08:15 UTC job, including complete ID pagination, field allowlists, WGS84 points, before/after item/ID/edit-date checks and last-good retention. ArcGIS request batches are 100 IDs to remain within its URL gateway limit.
+These 496,783 published records are across eleven enabled datasets, not distinct properties, field counts or bulk-imported rows. Only the 15,471 heritage/development rows are new persisted snapshot assets. Live feeds use a one-hour cache. Heritage/development snapshots participate in the existing daily 08:15 UTC job, including complete ID pagination, field allowlists, WGS84 points, before/after item/ID/edit-date checks and last-good retention. ArcGIS request batches are 100 IDs to remain within its URL gateway limit.
 
 Municipal matching checks civic number, exact street/type/direction, Ontario jurisdiction and former community. Waterdown can resolve to published Flamborough community records. Multiple communities or points spanning more than 20 metres remain ambiguous. The municipal location is labelled a civic-address point, not a surveyed parcel or verified building centroid. Permit street abbreviations that omit types/directions are accepted only if uniquely resolved by this register; community is checked independently. Unit records remain building-level evidence.
 
@@ -42,6 +45,18 @@ Heritage includes Inventoried, Registered Non-Designated and Designated with Par
 Zoning retains all returned parent bylaws, zone codes/descriptions, exception/holding fields and published date fields. Hamilton has seven bylaws; GIS is a point screen, not zoning verification or a permission conclusion. Environmental sensitivity is City natural-heritage context, separate from conservation-authority regulation, flood safety or contaminated-site records. Interpolated streets are not used for these point screens. Both permit feeds retain their separate dates, status, failures and truncation. Their titles do not establish present coverage, and Closed/completed does not independently establish final inspection or occupancy.
 
 The hosted report prompt and its checked-in copy include the Hamilton workflow. The report appendix includes every new field and layer; the pre-showing brief adds zoning verification and natural-heritage document requests. No native Homies runtime changes are needed for this endpoint extension.
+
+## Hamilton planning follow-up
+
+The grant layer reports historical payment years/amounts and the construction value of grant-supported work in CAD; it does not establish current funding eligibility, property value or completion. Municipal community is required for an unambiguous grant match. Rural settlement records retain official/unofficial boundary status; point intersection does not establish lot creation or development rights. Wastewater catchments identify the mapped treatment system; connection, capacity and septic status remain unverified.
+
+Ontario LIO Open06 supplies three explicitly OGL-licensed polygon sources: Greenbelt Designation (90 rows), Niagara Escarpment Plan Boundary (12) and Plan Designation (1,211). These 1,313 published rows are separate from Hamilton's municipal count; no bulk provincial import is added. All are preliminary point screens. The service publishes no dataset observation timestamp; sourceUpdatedAt stays null, while effective/system/geometry date fields are retained. LOCATION_ACCURACY can be within 1,000 or 10,000 metres, which cannot verify an individual lot. Niagara Escarpment Plan area is distinct from development-control area; the latter and municipal official-plan land-use are explicitly unsearched. Legal maps and current amendments require City/NEC confirmation. Nested failure statuses and incomplete coverage remain visible in the brief and full appendix.
+
+Hamilton's quarterly planning item `6b8d72b7f3414bfda2529251e021255d` publishes 1,154 observations but has **blank licenceInfo**. Its future adapter binds owner/org/service/schema/explicit licence, bounds a complete 800 m query, keeps repeated application observations and decision/appeal fields separately, and never infers a current approval. Currently it returns unavailable with reuse rights unverified and an official source link; none of these records count toward enabled totals. Do not weaken the rights check merely because the endpoint is public. Aggregate application-processing timelines are not property decisions and are excluded.
+
+Hamilton conservation coverage is an explicit unperformed review with links to HCA, Conservation Halton, NPCA and GRCA; authority jurisdiction is not inferred. [HCA mapper terms](https://conservationhamilton.ca/hca-map-tool-terms-of-use/) restrict commercial reuse, so no underlying mapper data is fetched or republished. City natural-heritage and provincial plan screens do not replace authority regulation/flood/permit review. Public parcel viewing layers were not ingested without verified third-party redistribution rights.
+
+The hosted skill and checked-in copy retain the one-click starter and full native Homies artifact workflow. They include every new field, uncertainty and targeted document request. The current Hamilton+Ontario sources total 498,096 published dataset rows (496,783 municipal plus 1,313 provincial), not distinct properties, bulk imports or source attributes. Use live coverage for changing counts.
 
 ## Validation and pilot
 

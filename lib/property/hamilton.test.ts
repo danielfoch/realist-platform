@@ -116,3 +116,49 @@ describe("Hamilton source boundaries and incomplete coverage", () => {
     changes = true; await expect(fetchSnapshot("hamilton-development")).rejects.toThrow("changed during refresh");
   });
 });
+
+describe("Hamilton richer planning and servicing evidence", () => {
+  it("preserves contradictory quarterly observations without asserting a current approval", async () => {
+    const feed = HAMILTON.planningApplications;
+    const base = { ...Object.fromEntries(feed.fields.map(k => [k, null])), OBJECTID: 10, PLANNING_APPLICATION_NUMBER: "UHOPA-17-001", APPLICATION_STATUS: "Appealed", APPEALED: "Yes", APPLICATION_SUBMITTED_DATE: Date.UTC(2017, 11, 6), YEAR_OF_APPLICATION: 2023, YEAR_QUARTER: "Q1", DECISION_DATE: Date.UTC(2023, 1, 8), APPEAL_DATE: Date.UTC(2023, 2, 9), latitude: location.latitude, longitude: location.longitude };
+    const provider = fakeProvider(feed, [base, { ...base, OBJECTID: 11, YEAR_QUARTER: "Q2", APPLICATION_STATUS: "Approved" }]);
+    mockFetch.mockImplementation(async (u: URL) => u.href.startsWith(feed.url) && !u.pathname.endsWith("/query") ? respond({ geometryType: "esriGeometryPoint", fields: feed.fields.map(name => ({ name })), advancedQueryCapabilities: { supportsQueryWithDistance: true } }) : provider(u));
+    const result = (await hamiltonLayers(null, "Hamilton", "ON", location)).planningApplications;
+    expect(result.status).toBe("available");
+    expect(result.data).toMatchObject({ distinctApplicationNumbers: 1, totalNearbyRecords: 2, records: [{ stage: "appealed", publishedQuarter: "Q1", submittedAt: "2017-12-06T00:00:00.000Z", publishedYearOfApplicationField: 2023, appealAt: "2023-03-09T00:00:00.000Z" }, { stage: "approved", publishedQuarter: "Q2" }] });
+    expect(result.note).toContain("no current status is inferred");
+    mockFetch.mockImplementation(async (u: URL) => u.href.startsWith(feed.url) && u.pathname.endsWith("/query") ? respond({ count: 501, exceededTransferLimit: true, features: [] }) : u.href.startsWith(feed.url) ? respond({ geometryType: "esriGeometryPoint", fields: feed.fields.map(name => ({ name })), advancedQueryCapabilities: { supportsQueryWithDistance: true } }) : provider(u));
+    expect((await hamiltonLayers(null, "Hamilton", "ON", location)).planningApplications.status).toBe("unavailable");
+  });
+  it("matches historic grant payments by civic address and former community, preserving project value", async () => {
+    const feed = HAMILTON.heritageGrants;
+    const r = { OBJECTID: 7, ADDRESS: "19 Victoria Street", COMMUNITY: "Dundas", YEAR_PAID: "2015", CONSTRUCTION_VALUE: 16800, GRANT_AMOUNT: 5000 };
+    mockFetch.mockImplementation(fakeProvider(feed, [r, { ...r, OBJECTID: 8, COMMUNITY: "Hamilton" }]));
+    const result = (await hamiltonLayers("19 Victoria St", "Dundas", "ON", null)).heritageGrants;
+    expect(result.status).toBe("available"); expect(result.data).toMatchObject({ currency: "CAD", records: [{ recordId: "7", publishedYearPaid: 2015, publishedConstructionValue: 16800, grantAmount: 5000 }] });
+    expect(result.note).toContain("not a current grant offer");
+  });
+  it("keeps unofficial rural boundaries, catchment-only scope and unperformed authority review explicit", async () => {
+    const feed = HAMILTON.ruralSettlement;
+    mockFetch.mockImplementation(fakeProvider(feed, [{ OBJECTID: 1, NAME: "Settlement", BOUNDARY_STATUS: "Unofficial", OMB_APPROVAL_DATE: null, ADD_DATE: null }]));
+    const result = await hamiltonLayers(null, "Hamilton", "ON", location);
+    expect(result.ruralSettlement.data).toMatchObject({ records: [{ publishedFields: { BOUNDARY_STATUS: "Unofficial" } }] });
+    expect(result.hamiltonConservation).toMatchObject({ status: "not_supported", data: { screenPerformed: false, jurisdiction: "not_determined" } });
+    expect(result.hamiltonConservation.note).toContain("not fetched or republished");
+    mockFetch.mockImplementation(fakeProvider(HAMILTON.wastewaterCatchment, [{ OBJECTID: 1, SYSTEM: "Dundas" }]));
+    const wastewater = (await hamiltonLayers(null, "Hamilton", "ON", location)).wastewaterCatchment;
+    expect(wastewater.status).toBe("available"); expect(wastewater.note).toContain("not proof of a sewer connection");
+  });
+});
+
+describe("Hamilton planning publication rights", () => {
+  it("withholds quarterly observations when the actual catalogue licence is blank", async () => {
+    const feed = HAMILTON.planningApplications;
+    const provider = fakeProvider(feed, []);
+    mockFetch.mockImplementation(async (u: URL) => u.pathname.endsWith(feed.item) ? respond({ ...item(feed), licenseInfo: "" }) : provider(u));
+    const result = (await hamiltonLayers(null, "Hamilton", "ON", location)).planningApplications;
+    expect(result.status).toBe("unavailable"); expect(result.data).toBeNull();
+    expect(result.source?.licence).toBe("Dataset reuse licence unverified");
+    expect(mockFetch.mock.calls.filter(([u]) => (u as URL).href.startsWith(feed.url + "/query"))).toHaveLength(0);
+  });
+});
