@@ -565,3 +565,74 @@ Each typed endpoint is bound to its exact public publisher/item URL and complete
 Exact civic identities preserve suffixes, directions, street types and City labels. Shared civic points must agree within 20 metres, then both City and regional boundaries must be unique and match. Permit/address histories are skipped on coordinate-only requests. City polygon references are subject-point screens, not parcel-wide findings. Source dates stay unknown where editingInfo is unpublished; raw recorded dates remain separate.
 
 Current detailed zoning is unconnected. Kitchener explicitly excludes zoning/parcels/assessment from its open-data licence and has prior-plan/2026 adoption applicability questions. Waterloo has a separate Erb Street community-planning-permit regime. Cambridge publishes a 2026 plan consolidation and new Phase 1 zoning regime; its 2012 land-use reference does not establish current rights. Full current heritage, decisions/conditions/appeals, nearby development, servicing capacity and conservation-authority regulation remain incomplete. Ten selected records/viewers are withheld; never query or count them. Model HGL/future zones do not prove pressure, a connection or water capacity; historic environmental inventories and subwatershed ranks are not safety/clearance findings.
+
+### Guelph (2026-10-03 source audit)
+
+The official catalogue audit inspected 311 public dataset/service/site entries,
+282 application/map entries and all three City Hub catalogue groups. Eleven
+selected licensed feeds return **144,376 overlapping source rows**: civic points
+53,847; City boundary 1; property references 43,267; building footprints 38,944;
+2023 zoning references 3,414; legacy zoning 3,811; former termite mapping 443;
+published planning files 308; registered 61M plans 144; watercourses 71; parks 126.
+These counts are dataset rows, not distinct homes, unique data points or imports.
+
+Each exact publisher/item URL, named typed child, complete licence referral and
+schema is checked before records or counts. The inspected City licence/default
+terms are bound to the exact City-owned site and licence/terms Pages. The blank
+Active Development Planning item additionally requires exact individual
+membership of the City-owned curated data group; public access and organization
+membership alone do not establish reuse. The City terms require serial requests
+and at most five per second. The adapter coordinates an exclusive renewable
+lease across workers through the existing `property_refresh_runs` table, spaces
+source requests by at least 250 ms after completion, and fails closed when the
+lease or database is unavailable. It creates no schema or bulk import. The
+property/report/coverage function budgets accommodate bounded serial queries.
+
+Exact active civic points preserve suffix, street type and direction; civic
+components must agree. Shared points beyond 20 metres remain ambiguous and a
+unique City boundary must confirm Guelph before property queries. No unit,
+PIN, roll, owner, surveyor or editor identifiers are queried. Property/building
+polygons are reference evidence, with shape measures of unverified units;
+they do not verify surveyed dimensions, interior floor area, age, title or units.
+The 61M plan feed preserves registration dates separately and needs the actual
+registered instruments. Watercourses and parks are subject-point references,
+not nearby amenities, flood safety, setbacks, natural-heritage clearance or GRCA
+regulation. Source update dates remain unknown if editingInfo is unpublished.
+
+The source titled Active Development Planning includes old digitized files and
+Undetermined statuses. Preserve raw file/type/status/description/application
+fields without claiming present activity, full history, current decisions,
+conditions, appeals or nearby proposals. Coordinate-only requests skip exact
+address histories. Empty, failed, ambiguous and truncated responses remain
+visible; no-match does not establish absence.
+
+2023-20790 zoning/code/site-specific/parking/holding references are separate from
+legacy mapping. Current written rules, unconsolidated 2024-21024 ADU amendments,
+March 2026 partial appeal settlements and Stone/Edinburgh CPP By-law 2025-21064
+are not verified by those labels. The current Official Plan legal schedules,
+policies and later amendments remain unconnected; the City describes its online
+consolidation as February 2024. Current City confirmation is required.
+
+Termite_Data publishes 2021 activity/year observations for former areas. This
+is historical evidence; do not expand raw A/N/Y labels into present infestation,
+eradication, treatment, risk or absence. The City describes a separate
+Regent/Grove outbreak identified in 2025 and City-managed during 2026. Reusable
+machine-readable geometry for that current area was not verified. Keep the
+current-area gap visible even when the historical map has no match, and request
+current City confirmation plus property-specific inspection/treatment records.
+
+Seven sources remain withheld from queries and counts: GPAS permit search,
+underlying heritage and adjustment services lacking individual curated-dataset
+grants, proposed zoning/flood overlays, separate CPP geometry and the current
+termite image. City-curated viewers/packages do not establish their underlying
+dataset reuse. The hosted Homies skill and printable report retain these gaps
+and ask for the applicable current instruments and complete files. Guelph
+remains partial municipal coverage within the all-major-markets goal.
+
+Primary guidance: [City catalogue](https://explore.guelph.ca/search),
+[licence](https://explore.guelph.ca/pages/open-data-license),
+[traffic/default terms](https://explore.guelph.ca/pages/terms-of-use),
+[current zoning guidance](https://guelph.ca/city-government/by-laws-and-policies/zoning-by-law/),
+[termite guidance](https://guelph.ca/living/house-and-home/termites/),
+[Official Plan](https://guelph.ca/plans-and-strategies/official-plan/),
+[permit-record access](https://guelph.ca/city-government/building-permits-inspections/building-services-record-request/).
