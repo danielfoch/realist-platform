@@ -1,0 +1,3257 @@
+{
+  "https://www.arcgis.com/sharing/rest/content/items/7c5a1ebb6eb648e0be1e7bf1ff4f2e94": {
+    "id": "7c5a1ebb6eb648e0be1e7bf1ff4f2e94",
+    "title": "City Of Barrie Open Data",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Hub Site Application",
+    "url": "https://opendata.barrie.ca"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/7c5a1ebb6eb648e0be1e7bf1ff4f2e94/data": {
+    "values": {
+      "defaultHostname": "public-barrie.opendata.arcgis.com",
+      "customHostname": "opendata.barrie.ca",
+      "layout": {
+        "cards": [
+          "<p class=\"lead text-justify\">\nThis Open GIS Data Portal provides residents, visitors, business owners and investors a means to easily find, access and view information through the use of maps and mapping technology. Simply search for a specific dataset below or explore the data categories. To learn more about how to use the Open GIS Data Portal view this <a href=\"https://youtu.be/wDMj0Zmrhfk\" target = \"_blank\">tutorial</a>.</p>\n<br />\n<p style=\"text-align:center\">By downloading data from this site you are agreeing to the terms of the <a href=\"https://www.barrie.ca/Online%20Services/PublishingImages/OpenData_Images/COB_DataLicense.pdf\" target = \"_blank\">Open Data License</a>.</p>"
+        ]
+      }
+    },
+    "catalogV2": {
+      "schemaVersion": 1,
+      "title": "Default Site Catalog",
+      "scopes": {
+        "item": {
+          "targetEntity": "item",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "a11c96895c544153a8a0d94a27c71fc1",
+                    "3ea69cc64836464a9b0e24064ca19e11"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "event": {
+          "targetEntity": "event",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "a11c96895c544153a8a0d94a27c71fc1",
+                    "3ea69cc64836464a9b0e24064ca19e11"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "collections": [
+        {
+          "label": null,
+          "key": "site",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$site"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": true
+          }
+        },
+        {
+          "label": null,
+          "key": "dataset",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$dataset"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": null,
+          "key": "document",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$document"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": null,
+          "key": "appAndMap",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$app",
+                        "$map"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        }
+      ]
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/community/groups/3ea69cc64836464a9b0e24064ca19e11": {
+    "id": "3ea69cc64836464a9b0e24064ca19e11",
+    "title": "City Of Barrie Open Data Content",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/18ab33558c764594a8b59e34e9474bea": {
+    "id": "18ab33558c764594a8b59e34e9474bea",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "City Boundary",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/1",
+    "description": "<font size='4'><span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;'>Polygon Feature showing the area </span><span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;'>of the City of Barrie and it's boundary. Relevant fields include shape length and shape area.</span></font><div><span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;'><font size='4'><br /></font></span></div><div><p><font size='4'><span style='mso-bidi-font-family:Calibri;\nmso-bidi-theme-font:minor-latin'>The City of Barrie is situated in the heart of\nCentral Ontario, a premier waterfront community on Lake Simcoe, conveniently\nlocated an hour north of Toronto.<span style='mso-spacerun:yes'>  </span>Visit </span><span><a href='https://www.barrie.ca/' rel='nofollow ugc'><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'>barrie.ca</span></a></span><span style='mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin'>\nfor more information or contact Service Barrie at 705-726-4242 or </span><span><a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'>ServiceBarrie@barrie.ca</span></a></span></font><span style='mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin'></span></p><span style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size:17px;'></span></div>",
+    "licenseInfo": "<span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'><font size='4'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font></span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:18ab33558c764594a8b59e34e9474bea": {
+    "total": 1,
+    "results": [
+      {
+        "id": "18ab33558c764594a8b59e34e9474bea",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/1",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 3,
+        "name": "Wards (Nov 2026)",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 0,
+        "name": "Wards",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 1,
+        "name": "City Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "City Boundary",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/2a33295b41df4d2e87fda301fff140cc": {
+    "id": "2a33295b41df4d2e87fda301fff140cc",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Active Issued Permits 2018 to Present",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/1",
+    "description": "<p><span style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px;'>Point feature layer contains records of all&nbsp;active issued permits in the City of Barrie opened between 2018 and Present.</span></p><div style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px;'>&nbsp;</div><div style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px;'><span style='font-family:inherit;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.&nbsp; Visit&nbsp;</span><a style='color:rgb(0, 97, 155); font-family:inherit; text-decoration-line:none;' target='_blank' href='https://www.barrie.ca/' rel='nofollow ugc noopener noreferrer'><span style='font-family:inherit;'>barrie.ca</span></a><span style='font-family:inherit;'>&nbsp;for more information or contact Service Barrie at 705-726-4242 or&nbsp;</span><a style='color:rgb(0, 97, 155); font-family:inherit; text-decoration-line:none;' href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span style='font-family:inherit;'>ServiceBarrie@barrie.ca</span></a></div>",
+    "licenseInfo": "<span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:large;'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:2a33295b41df4d2e87fda301fff140cc": {
+    "total": 1,
+    "results": [
+      {
+        "id": "2a33295b41df4d2e87fda301fff140cc",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/1",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "City of Barrie",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Active Building Permits 2018 - Present",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 1,
+        "name": "Issued Building Permits 2018 - Present",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Issued Building Permits 2018 - Present",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "RECORD_ID",
+        "type": "esriFieldTypeString",
+        "alias": "RECORD_ID",
+        "length": 30,
+        "domain": null
+      },
+      {
+        "name": "Full_Address",
+        "type": "esriFieldTypeString",
+        "alias": "Full_Address",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Sub_Type",
+        "type": "esriFieldTypeString",
+        "alias": "Sub_Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PARENT_RECORD_ID",
+        "type": "esriFieldTypeString",
+        "alias": "PARENT_RECORD_ID",
+        "length": 30,
+        "domain": null
+      },
+      {
+        "name": "Description",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 4000,
+        "domain": null
+      },
+      {
+        "name": "RECORD_STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "RECORD_STATUS",
+        "length": 30,
+        "domain": null
+      },
+      {
+        "name": "Date_Status",
+        "type": "esriFieldTypeString",
+        "alias": "Date_Status",
+        "length": 10,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/36129fd1cbad4fc6a003cec10dd01c56": {
+    "id": "36129fd1cbad4fc6a003cec10dd01c56",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Active Permit Applications 2018 to Present",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/0",
+    "description": "<p><span style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px;'>Point feature layer contains records of all&nbsp;active permit applications in the City of Barrie opened between 2018 and Present.</span></p><div><br />&nbsp;</div><div><span style='font-family:inherit; font-size:16px;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.&nbsp; Visit&nbsp;</span><a style='color:rgb(0, 97, 155); font-family:inherit; text-decoration-line:none;' target='_blank' href='https://www.barrie.ca/' rel='nofollow ugc noopener noreferrer'><span style='font-family:inherit; font-size:16px;'>barrie.ca</span></a><span style='font-family:inherit; font-size:16px;'>&nbsp;for more information or contact Service Barrie at 705-726-4242 or&nbsp;</span><a style='color:rgb(0, 97, 155); font-family:inherit; text-decoration-line:none;' href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span style='font-family:inherit; font-size:16px;'>ServiceBarrie@barrie.ca</span></a><br />&nbsp;</div>",
+    "licenseInfo": "<span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:large;'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:36129fd1cbad4fc6a003cec10dd01c56": {
+    "total": 1,
+    "results": [
+      {
+        "id": "36129fd1cbad4fc6a003cec10dd01c56",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/0",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/APLI/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Active Building Permits 2018 - Present",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "Sub_Type",
+        "type": "esriFieldTypeString",
+        "alias": "Sub_Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "RECORD_STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "RECORD_STATUS",
+        "length": 30,
+        "domain": null
+      },
+      {
+        "name": "Date_Opened",
+        "type": "esriFieldTypeString",
+        "alias": "Date_Opened",
+        "length": 10,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/1da609ba85a247f5ae3a20286a34a168": {
+    "id": "1da609ba85a247f5ae3a20286a34a168",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Registered Two Unit Houses",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/3",
+    "description": "<p><span style=''>Registered Two Unit Houses feature layer, showing registered secondary suite locations in Barrie.</span></p><p>The City of Barrie is situated in the heart of\nCentral Ontario, a premier waterfront community on Lake Simcoe, conveniently\nlocated an hour north of Toronto.  Visit <a href='https://www.barrie.ca/' rel='nofollow ugc'>barrie.ca</a>\nfor more information or contact Service Barrie at 705-726-4242 or <a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a><br /></p><p><span style=''></span></p>",
+    "licenseInfo": "<span style='line-height: 115%; font-family: Calibri, sans-serif;'><font size='4'>© Copyright City of Barrie. The City of Barrie does not warrant the\naccuracy, completeness, content, or currency of the information provided.</font></span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:1da609ba85a247f5ae3a20286a34a168": {
+    "total": 1,
+    "results": [
+      {
+        "id": "1da609ba85a247f5ae3a20286a34a168",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/3",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "In Force Zoning By-Law",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 1,
+        "name": "Site Plan Control",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 2,
+        "name": "Site Plans",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 4,
+        "name": "Planning Applications",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 3,
+        "name": "Registered Two Unit Houses",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/3": {
+    "id": 3,
+    "type": "Feature Layer",
+    "name": "Registered Two Unit Houses",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "ADDR_FULL_LINE_BARRIE",
+        "type": "esriFieldTypeString",
+        "alias": "ADDR_FULL_LINE_BARRIE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "UNIT_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "UNIT_TYPE",
+        "length": 20,
+        "domain": null
+      },
+      {
+        "name": "UNIT_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "UNIT_NUMBER",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "REGISTRATION_STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "REGISTRATION_STATUS",
+        "length": 30,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/136f398c5e4a4dc18538b046c447a93a": {
+    "id": "136f398c5e4a4dc18538b046c447a93a",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Zoning By-Law",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/0",
+    "description": "Polygon Feature containing records of zoning by-laws in the City of Barrie. This layer is symbolized by type of zoning by-law. Relevant fields include zoning area and description of area.<div><br /></div><div><p><p><span style='mso-bidi-font-family:Calibri;\nmso-bidi-theme-font:minor-latin'>The City of Barrie is situated in the heart of\nCentral Ontario, a premier waterfront community on Lake Simcoe, conveniently\nlocated an hour north of Toronto.<span style='mso-spacerun:yes'>  </span>Visit </span><span><a href='https://www.barrie.ca/' rel='nofollow ugc'><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'>barrie.ca</span></a></span><span style='mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin'>\nfor more information or contact Service Barrie at 705-726-4242 or </span><span><a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'>ServiceBarrie@barrie.ca</span></a></span><span style='mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin'></span></p><br /></p></div>",
+    "licenseInfo": "<span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.6667px; background-color: rgb(255, 255, 255);'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:136f398c5e4a4dc18538b046c447a93a": {
+    "total": 1,
+    "results": [
+      {
+        "id": "136f398c5e4a4dc18538b046c447a93a",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/0",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "In Force Zoning By-Law",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "ZONING",
+        "type": "esriFieldTypeString",
+        "alias": "ZONING",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SPECIAL",
+        "type": "esriFieldTypeString",
+        "alias": "SPECIAL",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "HOLD",
+        "type": "esriFieldTypeString",
+        "alias": "HOLD",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "BYLAWNO",
+        "type": "esriFieldTypeString",
+        "alias": "BYLAWNO",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "DESCRIPT",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "LABEL",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "LASTUPDATE",
+        "length": 8,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/317554088034468cb0f2dac771a0393b": {
+    "id": "317554088034468cb0f2dac771a0393b",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Site Plan Control",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/1",
+    "description": "Polygon Feature showing the areas covered by site plans and control policies. Relative fields include Parcel ID and Type.<div><br /></div><div><span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:14.66px;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  With a growing population of 143,000 the City of Barrie is the 34</span><font size='-1' style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont;'>th</font><span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:14.66px;'> largest city in Canada.  Visit </span><a href='https://www.barrie.ca/' target='_blank' rel='nofollow ugc noopener noreferrer'>barrie.ca</a><span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:14.66px;'> for more information or contact Service Barrie at 705-726-4242 or </span><a href='mailto:ServiceBarrie@barrie.ca' style='font-family:Calibri, sans-serif, serif, EmojiFont; font-size:14.66px;' target='_blank' rel='nofollow ugc noopener noreferrer'>ServiceBarrie@barrie.ca</a></div>",
+    "licenseInfo": "<span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:14.6667px;'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:317554088034468cb0f2dac771a0393b": {
+    "total": 1,
+    "results": [
+      {
+        "id": "317554088034468cb0f2dac771a0393b",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/1",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Site Plan Control",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "PARCELID",
+        "type": "esriFieldTypeString",
+        "alias": "PARCELID",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "TYPE",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "BYLAWNO",
+        "type": "esriFieldTypeString",
+        "alias": "BYLAWNO",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "REFERENCE",
+        "type": "esriFieldTypeString",
+        "alias": "REFERENCE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "LASTUPDATE",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/5f3a817276b643949fff4579cb5c566b": {
+    "id": "5f3a817276b643949fff4579cb5c566b",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Planning Applications",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/4",
+    "description": "<p>This dataset represents all active planning and development applications currently under review within the City of Barrie. It provides up-to-date spatial and attribute information on development proposals that are in progress through the municipal planning approvals process.<br />Included application types:</p><p>Site Plan Applications<br />Draft Plans of Subdivision<br />Zoning By-law Amendments (Re-zoning)<br />Official Plan Amendments</p><p>The layer is intended to support public transparency, internal workflows, and stakeholder awareness by illustrating where development activity is occurring across the city. Each record typically includes key details such as application type, status, location, file number, and associated planning information.<br /><br /><span>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.&nbsp; Visit&nbsp;</span><a target='_blank' href='https://www.barrie.ca/' rel='nofollow ugc noopener noreferrer'><span>barrie.ca</span></a><span> for more information or contact Service Barrie at <strong>705-726-4242</strong> or&nbsp;</span><a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span>ServiceBarrie@barrie.ca</span></a></p>",
+    "licenseInfo": "<p><span>The information provided on this website is for general information purposes only and is subject to change without notice. The City of Barrie makes every effort to ensure that the information is accurate and up to date, but does not guarantee or warrant its quality, reliability, completeness, currency, or suitability for any particular purpose.</span></p><p><span>&nbsp;</span></p><p><span>The City of Barrie is not responsible or liable for any errors, omissions, damages, losses, or consequences arising from the use of or reliance on this information. Users of this website are solely responsible for verifying the accuracy and applicability of the information for their own needs and purposes. Please contact Service Barrie (</span><a href='mailto:service.barrie@barrie.ca' rel='nofollow ugc'><span>service.barrie@barrie.ca</span></a><span> or <strong>705-726-4242</strong>) for any questions, if required.</span></p><p><span>&nbsp;</span></p><p><span>By accessing and using this website, you agree to accept and comply with this disclaimer. The City of Barrie reserves the right to modify or amend this disclaimer, and change, restrict or discontinue access to this application and the information available within at any time without prior notice.</span></p>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:5f3a817276b643949fff4579cb5c566b": {
+    "total": 1,
+    "results": [
+      {
+        "id": "5f3a817276b643949fff4579cb5c566b",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/4",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/Planning/MapServer/4": {
+    "id": 4,
+    "type": "Feature Layer",
+    "name": "Planning Applications",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "File_No",
+        "type": "esriFieldTypeString",
+        "alias": "File No",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "Phase",
+        "type": "esriFieldTypeString",
+        "alias": "Phase",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Application_Type",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Status",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Description_Proposal",
+        "type": "esriFieldTypeString",
+        "alias": "Description Proposal",
+        "length": 2147483647,
+        "domain": null
+      },
+      {
+        "name": "Address_Location",
+        "type": "esriFieldTypeString",
+        "alias": "Address Location",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Landuse",
+        "type": "esriFieldTypeString",
+        "alias": "Landuse",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Landuse_Changed_To",
+        "type": "esriFieldTypeString",
+        "alias": "Landuse Changed To",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Applicant_Owner",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Owner",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Date_Application_Received",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Application Received",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Approval_Date",
+        "type": "esriFieldTypeDate",
+        "alias": "Approval Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "ByLaw_No_Bill_No_Motion_No",
+        "type": "esriFieldTypeString",
+        "alias": "ByLaw No Bill No Motion No",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LPAT_Appeal",
+        "type": "esriFieldTypeString",
+        "alias": "LPAT Appeal",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Registration_Date",
+        "type": "esriFieldTypeDate",
+        "alias": "Registration Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Registered_Plan",
+        "type": "esriFieldTypeString",
+        "alias": "Registered Plan",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Total_Residential_Units",
+        "type": "esriFieldTypeInteger",
+        "alias": "Total Residential Units",
+        "domain": null
+      },
+      {
+        "name": "Total_ICI_Units",
+        "type": "esriFieldTypeString",
+        "alias": "Total ICI Units",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "ICI_Gross_Floor_Area_m2",
+        "type": "esriFieldTypeString",
+        "alias": "ICI Gross Floor Area m2",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Single_Detached_Unit",
+        "type": "esriFieldTypeInteger",
+        "alias": "Single Detached Unit",
+        "domain": null
+      },
+      {
+        "name": "Semi_Detached",
+        "type": "esriFieldTypeInteger",
+        "alias": "Semi Detached",
+        "domain": null
+      },
+      {
+        "name": "Townhouse_Units",
+        "type": "esriFieldTypeInteger",
+        "alias": "Townhouse Units",
+        "domain": null
+      },
+      {
+        "name": "Multi_residential_Units",
+        "type": "esriFieldTypeInteger",
+        "alias": "Multi Residential Units",
+        "domain": null
+      },
+      {
+        "name": "URL",
+        "type": "esriFieldTypeString",
+        "alias": "URL",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/99586ad698ef42e78230ce6866286f30": {
+    "id": "99586ad698ef42e78230ce6866286f30",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan -  Map 2 - Land Use - Land Use",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/10",
+    "description": "<div><font size='3'>Official Plan polygon feature layer representing land use in the City of Barrie.  </font><span style='font-size:medium;'>Relevant fields within the layer include (but not limited to): Type, Subtype, Designation and Area.</span></div><div style='font-size:large;'><span><br /></span></div><div><font size='3'><span>The City of Barrie is situated in the heart of\nCentral Ontario, a premier waterfront community on Lake Simcoe, conveniently\nlocated an hour north of Toronto.  Visit </span><span><a href='https://www.barrie.ca/' rel='nofollow ugc'>barrie.ca</a></span><span>\nfor more information or contact Service Barrie at <b>705-726-4242</b> or </span><span><a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></font></div><div style='font-size:large;'><br /></div>",
+    "licenseInfo": "<p><span>The information provided on this website is\nfor general information purposes only and is subject to change without notice.\nThe City of Barrie makes every effort to ensure that the information is\naccurate and up to date, but does not guarantee or warrant its quality,\nreliability, completeness, currency, or suitability for any particular purpose.</span></p>\n\n<p><span>The City of Barrie is not responsible or\nliable for any errors, omissions, damages, losses, or consequences arising from\nthe use of or reliance on this information. Users of this website are solely\nresponsible for verifying the accuracy and applicability of the information for\ntheir own needs and purposes. Please contact Service Barrie (</span><span><a href='mailto:service.barrie@barrie.ca' rel='nofollow ugc'>service.barrie@barrie.ca</a></span><span>\nor <b>705-726-4242</b>) for any questions, if required.</span></p>\n\n<p>By accessing and using this website, you agree\nto accept and comply with this disclaimer. The City of Barrie reserves the\nright to modify or amend this disclaimer, and change, restrict or discontinue\naccess to this application and the information available within at any time\nwithout prior notice.</p>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:99586ad698ef42e78230ce6866286f30": {
+    "total": 1,
+    "results": [
+      {
+        "id": "99586ad698ef42e78230ce6866286f30",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/10",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Map 1 - Community Structure",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          47,
+          6
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 1,
+        "name": "Built Up Area",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 2,
+        "name": "Intensification Corridor",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 3,
+        "name": "Designated Greenfield Area",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 4,
+        "name": "Major Transit Station Area",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 5,
+        "name": "Strategic Growth Area",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 47,
+        "name": "Employment Area",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 150000,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 6,
+        "name": "Urban Growth Centre",
+        "parentLayerId": 0,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 7,
+        "name": "Map 2 - Land Use Designation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          8,
+          9,
+          10
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 8,
+        "name": "Applications Before the Ontario Municipal Board",
+        "parentLayerId": 7,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 9,
+        "name": "Waste Disposal Assessment Area",
+        "parentLayerId": 7,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 10,
+        "name": "Land Use",
+        "parentLayerId": 7,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 12,
+        "name": "Map 3 - Natural Heritage Protection Overlays",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          13,
+          14,
+          15,
+          16
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 13,
+        "name": "Special Policy Area",
+        "parentLayerId": 12,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 14,
+        "name": "Natural Linkage Area and Natural Core",
+        "parentLayerId": 12,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 15,
+        "name": "Constraint Stream Corridor Area",
+        "parentLayerId": 12,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 16,
+        "name": "Natural Heritage Resource Classification",
+        "parentLayerId": 12,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 17,
+        "name": "Map 4A - Mobility Network",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          18,
+          19
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 18,
+        "name": "Cycling Network",
+        "parentLayerId": 17,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 19,
+        "name": "Land Use (GS & NHS)",
+        "parentLayerId": 17,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 20,
+        "name": "Map 4B - Mobility Network",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          21,
+          22,
+          23,
+          24
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 21,
+        "name": "Transportation Features HOV",
+        "parentLayerId": 20,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 22,
+        "name": "Road Classification",
+        "parentLayerId": 20,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 23,
+        "name": "Freight Supportive Corridor",
+        "parentLayerId": 20,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 24,
+        "name": "Land Use (GS & NHS)",
+        "parentLayerId": 20,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 25,
+        "name": "Map 5 - Right-of-Way Widths",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          26,
+          27
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 26,
+        "name": "Road Right Of Way",
+        "parentLayerId": 25,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 27,
+        "name": "Land Use (NHS & GS)",
+        "parentLayerId": 25,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 28,
+        "name": "Map 6 - Greenspace Network",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          29,
+          30,
+          31,
+          32
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 29,
+        "name": "Waterfront",
+        "parentLayerId": 28,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 30,
+        "name": "Parks",
+        "parentLayerId": 28,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 31,
+        "name": "Unprogrammed Greenspace",
+        "parentLayerId": 28,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 32,
+        "name": "Land Use (NHS & GS)",
+        "parentLayerId": 28,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 33,
+        "name": "Map 7 - Drinking Water System Vulnerable Areas",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 34,
+        "name": "Transportation Pathway",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 35,
+        "name": "Significant Groundwater Recharge Area",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 36,
+        "name": "Highly Vulnerable Aquifer",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 37,
+        "name": "Intake Protection Zone",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 38,
+        "name": "Issue Contribution Area",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 39,
+        "name": "Wellhead Protection Areas",
+        "parentLayerId": 33,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 40,
+        "name": "Map 8 - Cultural City Features",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": [
+          41,
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "minScale": 150000,
+        "maxScale": 0,
+        "type": "Group Layer"
+      },
+      {
+        "id": 41,
+        "name": "Major Gateway",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 42,
+        "name": "Historic Streetscape Corridor",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 43,
+        "name": "Public Space Useage",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 44,
+        "name": "Treaty Land",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 45,
+        "name": "Historic Neighbourhood Boundary",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 46,
+        "name": "Land Use (NHS)",
+        "parentLayerId": 40,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/10": {
+    "id": 10,
+    "type": "Feature Layer",
+    "name": "Land Use",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "OPDESG",
+        "type": "esriFieldTypeString",
+        "alias": "Official Plan Designation",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Hectares)",
+        "domain": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "COMMUNITY_STRUCTURE",
+        "type": "esriFieldTypeString",
+        "alias": "Community Structure",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "OP_SECTION",
+        "type": "esriFieldTypeString",
+        "alias": "OP Section",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/9916e4a860b24f0ebb6e7f62692a7ad6": {
+    "id": "9916e4a860b24f0ebb6e7f62692a7ad6",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan -  Map 1 - Community Structure - Major Transit Station Area",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/4",
+    "description": "<div><font size='4'><div>Point feature layer representing major transit stations pertaining to density intensification in the City of Barrie. </div><div>Relevant fields within the layer include (but not limited to): Name, Type, Address, Density</div><div><br /></div><div><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  With a growing population of 143,000 the City of Barrie is the 34</span><font size='-1' style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'>th </font><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'>largest city in Canada.  Visit </span><a href='http://www.barrie.ca/' style='font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);' target='_blank'>barrie.ca</a><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'> for more information or contact Service Barrie at 705-726-4242 or </span><a href='mailto:ServiceBarrie@barrie.ca' style='font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);' target='_blank'>ServiceBarrie@barrie.ca</a></div></font></div><div><br /></div>",
+    "licenseInfo": "<font size='2'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:9916e4a860b24f0ebb6e7f62692a7ad6": {
+    "total": 1,
+    "results": [
+      {
+        "id": "9916e4a860b24f0ebb6e7f62692a7ad6",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/4",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/4": {
+    "id": 4,
+    "type": "Feature Layer",
+    "name": "Major Transit Station Area",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "REFERENCE",
+        "type": "esriFieldTypeString",
+        "alias": "Reference Document",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Ha)",
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 50,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/8bd5c5bc1baa443684adcd687cac8ccc": {
+    "id": "8bd5c5bc1baa443684adcd687cac8ccc",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Cultural Heritage",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/FacilitiesStreets/MapServer/0",
+    "description": "Point Feature. Contains records of cultural heritage points in the City of Barrie. Relevant fields include information on the point type, location, and description.<div><br /></div><div><p><span style='mso-bidi-font-family:Calibri;\nmso-bidi-theme-font:minor-latin'>The City of Barrie is situated in the heart of\nCentral Ontario, a premier waterfront community on Lake Simcoe, conveniently\nlocated an hour north of Toronto.<span style='mso-spacerun:yes'>  </span>Visit </span><span><a href='https://www.barrie.ca/' rel='nofollow ugc'><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'>barrie.ca</span></a></span><span style='mso-bidi-font-family:Calibri;mso-bidi-theme-font:minor-latin'>\nfor more information or contact Service Barrie at 705-726-4242 or </span><span><span style='mso-bidi-font-family:\nCalibri;mso-bidi-theme-font:minor-latin'><a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></span></p></div>",
+    "licenseInfo": "<span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'><font size='4'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font></span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:8bd5c5bc1baa443684adcd687cac8ccc": {
+    "total": 1,
+    "results": [
+      {
+        "id": "8bd5c5bc1baa443684adcd687cac8ccc",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/FacilitiesStreets/MapServer/0",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/FacilitiesStreets/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "City of Barrie",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Cultural Heritage",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 1,
+        "name": "Illumination",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 2,
+        "name": "Park Point",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 3,
+        "name": "Parking Device",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 5,
+        "name": "Traffic Counts",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 6,
+        "name": "Transit Stops",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 8,
+        "name": "Park Linear",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 9,
+        "name": "Railway",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 10,
+        "name": "Road Segment",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 12,
+        "name": "Sidewalk Walkway",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 13,
+        "name": "City Facilites",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 14,
+        "name": "Park Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 15,
+        "name": "Parking Lot",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 16,
+        "name": "Baseball Field",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 34,
+        "name": "Green Space",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 18,
+        "name": "Hard Surface",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 19,
+        "name": "Hydrology",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 20,
+        "name": "Park Structure",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 21,
+        "name": "Play Area",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 22,
+        "name": "Play Field",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 23,
+        "name": "Park Amenity",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 24,
+        "name": "Parks Control",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 25,
+        "name": "Parks Other",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 26,
+        "name": "Parks Utility",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 27,
+        "name": "Play Equipment",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 28,
+        "name": "Park Fence",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 29,
+        "name": "Park Utility Line",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 30,
+        "name": "Facility PB",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 31,
+        "name": "Open Space PB",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 32,
+        "name": "Park PB",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 35,
+        "name": "Road Intersection",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 36,
+        "name": "Buildings",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 37,
+        "name": "Tree",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/FacilitiesStreets/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Cultural Heritage",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "ASSETID",
+        "type": "esriFieldTypeString",
+        "alias": "ASSETID",
+        "length": 20,
+        "domain": null
+      },
+      {
+        "name": "PARKID",
+        "type": "esriFieldTypeString",
+        "alias": "PARKID",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "TYPE",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "DESCRIPT",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "TITLE",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "SUPPORT",
+        "type": "esriFieldTypeString",
+        "alias": "SUPPORT",
+        "length": 20,
+        "domain": null
+      },
+      {
+        "name": "YEARBUILT",
+        "type": "esriFieldTypeString",
+        "alias": "YEARBUILT",
+        "length": 4,
+        "domain": null
+      },
+      {
+        "name": "ORG",
+        "type": "esriFieldTypeString",
+        "alias": "ORG",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "TOUR",
+        "type": "esriFieldTypeString",
+        "alias": "TOUR",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TOURID",
+        "type": "esriFieldTypeString",
+        "alias": "TOURID",
+        "length": 5,
+        "domain": null
+      },
+      {
+        "name": "URL",
+        "type": "esriFieldTypeString",
+        "alias": "URL",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "URL_IMAGE",
+        "type": "esriFieldTypeString",
+        "alias": "URL_IMAGE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "LOCATION",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "OWNEDBY",
+        "type": "esriFieldTypeInteger",
+        "alias": "OWNEDBY",
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "LABEL",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "STATUS",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "LASTUPDATE",
+        "length": 8,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/ea480a4522194a30ade7cb14dac7b9c4": {
+    "id": "ea480a4522194a30ade7cb14dac7b9c4",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan -  Map 1 - Community Structure - Urban Growth Centre",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/6",
+    "description": "<div><font size='4'><div>Polygon feature layer representing areas of focus and planning in urban growth intensification initiatives in the City of Barrie. </div><div>Relevant fields within the layer include (but not limited to): Type, Description, Previous Density, Target Density and Area.</div></font></div><div><br /></div><div>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  With a growing population of 143,000 the City of Barrie is the 34th largest city in Canada.  Visit <a href='https://www.barrie.ca/' target='_blank'>barrie.ca </a>for more information or contact Service Barrie at 705-726-4242 or ServiceBarrie@barrie.ca</div><div><br /></div>",
+    "licenseInfo": "<font size='2'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:ea480a4522194a30ade7cb14dac7b9c4": {
+    "total": 1,
+    "results": [
+      {
+        "id": "ea480a4522194a30ade7cb14dac7b9c4",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/6",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/6": {
+    "id": 6,
+    "type": "Feature Layer",
+    "name": "Urban Growth Centre",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "REFERENCE",
+        "type": "esriFieldTypeString",
+        "alias": "Reference Document",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Ha)",
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 50,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/0f5f63b39c0e449098574c5076cfd299": {
+    "id": "0f5f63b39c0e449098574c5076cfd299",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan -  Map 1 - Community Structure - Built-up Area",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/1",
+    "description": "<div><font size='4'><div>Polygon feature layer representing built-up/urbanized areas in the City of Barrie. </div><div>Relevant fields within the layer include (but not limited to): Description, Type and Area </div><div><br /></div><div><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  With a growing population of 143,000 the City of Barrie is the 34</span><font size='-1' style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'>th </font><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'>largest city in Canada.  Visit </span><a href='http://www.barrie.ca/' style='font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);' target='_blank'>barrie.ca</a><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);'> for more information or contact Service Barrie at 705-726-4242 or </span><a href='mailto:ServiceBarrie@barrie.ca' style='font-family: Calibri, sans-serif, serif, EmojiFont; font-size: 14.66px; background-color: rgb(255, 255, 255);' target='_blank'>ServiceBarrie@barrie.ca</a></div></font></div><div><br /></div>",
+    "licenseInfo": "<font size='2'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:0f5f63b39c0e449098574c5076cfd299": {
+    "total": 1,
+    "results": [
+      {
+        "id": "0f5f63b39c0e449098574c5076cfd299",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/1",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/1": {
+    "id": 1,
+    "type": "Feature Layer",
+    "name": "Built Up Area",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "REFERENCE",
+        "type": "esriFieldTypeString",
+        "alias": "Reference Document",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Ha)",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/4902c7fd1aff42fb892a9d4e51428b95": {
+    "id": "4902c7fd1aff42fb892a9d4e51428b95",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Map Service",
+    "title": "Address Points",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressVW/MapServer",
+    "description": "<font face='Avenir Next W01, Avenir Next W00, Avenir Next, Avenir, Helvetica Neue, Helvetica, Arial, sans-serif' size='3'>Point feature layer containing City of Barrie address records.</font><br /><div><span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;'><font size='3'><br /></font></span></div><div><font size='3'><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  </span><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'>Visit </span><a href='http://www.barrie.ca/' style='font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);' target='_blank'>barrie.ca</a><span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'> for more information or contact Service Barrie at 705-726-4242 or </span><a href='mailto:ServiceBarrie@barrie.ca' style='font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);' target='_blank'>ServiceBarrie@barrie.ca</a></font><span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif; font-size: 17px;'><br /></span></div>",
+    "licenseInfo": "<span style='color: rgb(33, 33, 33); font-family: Calibri, sans-serif, serif, EmojiFont; background-color: rgb(255, 255, 255);'><font size='4'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</font></span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:4902c7fd1aff42fb892a9d4e51428b95": {
+    "total": 1,
+    "results": [
+      {
+        "id": "4902c7fd1aff42fb892a9d4e51428b95",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressVW/MapServer",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressVW/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "City of Barrie",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Address VW",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AddressVW/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Address VW",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "ADDRESSID",
+        "type": "esriFieldTypeInteger",
+        "alias": "ADDRESSID",
+        "domain": null
+      },
+      {
+        "name": "PARCELID",
+        "type": "esriFieldTypeString",
+        "alias": "PARCELID",
+        "length": 40,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "STATUS",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "ADDRNUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "ADDRNUMBER",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "SSTRNAME",
+        "type": "esriFieldTypeString",
+        "alias": "SSTRNAME",
+        "length": 40,
+        "domain": null
+      },
+      {
+        "name": "SSTRSUFF",
+        "type": "esriFieldTypeString",
+        "alias": "SSTRSUFF",
+        "length": 12,
+        "domain": null
+      },
+      {
+        "name": "SSTRDIR",
+        "type": "esriFieldTypeString",
+        "alias": "SSTRDIR",
+        "length": 1,
+        "domain": null
+      },
+      {
+        "name": "FULLADDR",
+        "type": "esriFieldTypeString",
+        "alias": "FULLADDR",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "UNITNUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "UNITNUMBER",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "Easting",
+        "type": "esriFieldTypeString",
+        "alias": "Easting",
+        "length": 200,
+        "domain": null
+      },
+      {
+        "name": "Northing",
+        "type": "esriFieldTypeString",
+        "alias": "Northing",
+        "length": 200,
+        "domain": null
+      },
+      {
+        "name": "Longitude",
+        "type": "esriFieldTypeString",
+        "alias": "Longitude",
+        "length": 200,
+        "domain": null
+      },
+      {
+        "name": "Latitude",
+        "type": "esriFieldTypeString",
+        "alias": "Latitude",
+        "length": 200,
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "LASTUPDATE",
+        "length": 8,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/5fa5e6a45cff494592cc0ff99924833f": {
+    "id": "5fa5e6a45cff494592cc0ff99924833f",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Wards",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/0",
+    "description": "<font size='4' style='font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif;'>Polygon Feature containing records of ward boundaries in the City of Barrie. Relevant fields include ward number and councilor.<br /><br /></font><p style='margin-top:0px; margin-bottom:1.5rem; font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px;'><font size='4' style='font-family:inherit;'><span style='font-family:inherit;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.<span style='font-family:inherit;'>  </span>Visit </span><span style='font-family:inherit;'><a href='https://www.barrie.ca/' style='color:rgb(0, 121, 193); text-decoration-line:none; font-family:inherit;' rel='nofollow ugc'><span style='font-family:inherit;'>barrie.ca</span></a></span><span style='font-family:inherit;'> for more information or contact Service Barrie at 705-726-4242 or </span><span style='font-family:inherit;'><span style='font-family:inherit;'><a href='mailto:ServiceBarrie@barrie.ca' style='color:rgb(0, 121, 193); text-decoration-line:none; font-family:inherit;' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></span></font></p>",
+    "licenseInfo": "<span style='color:rgb(33, 33, 33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:large;'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:5fa5e6a45cff494592cc0ff99924833f": {
+    "total": 1,
+    "results": [
+      {
+        "id": "5fa5e6a45cff494592cc0ff99924833f",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/0",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Wards",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "WARD_NO",
+        "type": "esriFieldTypeInteger",
+        "alias": "Ward Number",
+        "domain": null
+      },
+      {
+        "name": "COUNCILLOR",
+        "type": "esriFieldTypeString",
+        "alias": "Councillor",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "EMAIL",
+        "type": "esriFieldTypeString",
+        "alias": "Email Address",
+        "length": 60,
+        "domain": null
+      },
+      {
+        "name": "URL_IMAGE",
+        "type": "esriFieldTypeString",
+        "alias": "Website Image",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "URL",
+        "type": "esriFieldTypeString",
+        "alias": "Website",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PHONE",
+        "type": "esriFieldTypeString",
+        "alias": "Phone Number",
+        "length": 20,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/7780d93fcff74a82900e0f0c35d08aff": {
+    "id": "7780d93fcff74a82900e0f0c35d08aff",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Wards (Nov 2026)",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/3",
+    "description": "<p><span style='font-size:large;'><font style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(74, 74, 74); font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px; text-transform:none; word-spacing:0px;'>Polygon Feature containing records of ward boundaries in the City of Barrie. Relevant fields include ward number and councilor. These boundaries will take effect in November 2026. See </font></span><a target='_blank' href='https://www.barrie.ca/government-news/2026-municipal-election' rel='nofollow ugc noopener noreferrer'>https://www.barrie.ca/government-news/2026-municipal-election</a> <span style='font-size:18px;'>for more information.</span><br /><br />&nbsp;</p><p style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(74, 74, 74); font-family:&quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; margin:0px 0px 1.5rem; text-align:start; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px; text-transform:none; word-spacing:0px;'><span style='font-family:inherit; font-size:large;'><font style='border:0px solid currentcolor; box-sizing:border-box; font-family:inherit; line-height:1.5;'><span style='border:0px solid currentcolor; box-sizing:border-box; line-height:1.5;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.&nbsp; Visit&nbsp;</span></font></span><a style='border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 121, 193); font-family:inherit; line-height:1.5; text-decoration:none;' target='_blank' href='https://www.barrie.ca/' rel='nofollow ugc noopener noreferrer'><span style='font-family:inherit; font-size:large;'><font style='border:0px solid currentcolor; box-sizing:border-box; font-family:inherit; line-height:1.5;'><span style='border:0px solid currentcolor; box-sizing:border-box; line-height:1.5;'>barrie.ca</span></font></span></a><span style='font-family:inherit; font-size:large;'><font style='border:0px solid currentcolor; box-sizing:border-box; font-family:inherit; line-height:1.5;'><span style='border:0px solid currentcolor; box-sizing:border-box; line-height:1.5;'>&nbsp;for more information or contact Service Barrie at 705-726-4242 or&nbsp;</span></font></span><a style='border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 121, 193); font-family:inherit; line-height:1.5; text-decoration:none;' href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'><span style='font-family:inherit; font-size:large;'><font style='border:0px solid currentcolor; box-sizing:border-box; font-family:inherit; line-height:1.5;'><span style='border:0px solid currentcolor; box-sizing:border-box; line-height:1.5;'>ServiceBarrie@barrie.ca</span></font></span></a></p>",
+    "licenseInfo": "<p><span style='background-color:rgb(255,255,255); color:rgb(33,33,33); font-family:Calibri, sans-serif, serif, EmojiFont; font-size:large;'><span style='display:inline !important; float:none; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; text-align:start; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px; text-transform:none; word-spacing:0px;'>© Copyright City of Barrie, The City of Barrie does not warrant the accuracy, completeness, content, or currency of the information provided.</span></span></p>",
+    "accessInformation": "City of Barrie"
+  },
+  "curation:7780d93fcff74a82900e0f0c35d08aff": {
+    "total": 1,
+    "results": [
+      {
+        "id": "7780d93fcff74a82900e0f0c35d08aff",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/3",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/AdministrativeArea/MapServer/3": {
+    "id": 3,
+    "type": "Feature Layer",
+    "name": "Wards (Nov 2026)",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "WARD_NO",
+        "type": "esriFieldTypeInteger",
+        "alias": "Ward Number",
+        "domain": null
+      },
+      {
+        "name": "COUNCILLOR",
+        "type": "esriFieldTypeString",
+        "alias": "Councillor",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "EMAIL",
+        "type": "esriFieldTypeString",
+        "alias": "Email Address",
+        "length": 60,
+        "domain": null
+      },
+      {
+        "name": "URL_IMAGE",
+        "type": "esriFieldTypeString",
+        "alias": "Website Image",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "URL",
+        "type": "esriFieldTypeString",
+        "alias": "Website",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PHONE",
+        "type": "esriFieldTypeString",
+        "alias": "Phone Number",
+        "length": 20,
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Last Update Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "LASTEDITOR",
+        "type": "esriFieldTypeString",
+        "alias": "Last Editor",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/acf91149b807424582a3084b238ed251": {
+    "id": "acf91149b807424582a3084b238ed251",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan - Map 3 - Natural Heritage Protection Overlays - Special Policy Area",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/13",
+    "description": "<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>Polygon feature layer representing the Special Policy Areas\nwithin the City of Barrie.</span></p>\n\n<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white; font-variant-ligatures:normal; font-variant-caps:normal; text-align:start; text-decoration-style:initial; text-decoration-color:initial; word-spacing:0px;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>Relevant fields within the layer include (but not limited to):\nType, Sub Type, Address, and Location.</span></p>\n\n<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white; font-variant-ligatures:normal; font-variant-caps:normal; text-align:start; text-decoration-style:initial; text-decoration-color:initial; word-spacing:0px;'><br /></p>\n\n<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:12.0pt; margin-left:0in; background:white; font-variant-ligatures:normal; font-variant-caps:normal; text-align:start; text-decoration-style:initial; text-decoration-color:initial; word-spacing:0px;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>The City of Barrie is situated in the heart of Central Ontario,\na premier waterfront community on Lake Simcoe, conveniently located an hour\nnorth of Toronto.  Visit <a href='https://www.barrie.ca/' rel='nofollow ugc'>barrie.ca</a> for more information or\ncontact Service Barrie at 705-726-4242 or <a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></p>",
+    "licenseInfo": "<p><span>© Copyright City of Barrie. <span>The City of Barrie does not warrant the accuracy, completeness, content,\nor currency of the information provided.</span></span></p>",
+    "accessInformation": null
+  },
+  "curation:acf91149b807424582a3084b238ed251": {
+    "total": 1,
+    "results": [
+      {
+        "id": "acf91149b807424582a3084b238ed251",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/13",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/13": {
+    "id": 13,
+    "type": "Feature Layer",
+    "name": "Special Policy Area",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "OP_SECTION",
+        "type": "esriFieldTypeString",
+        "alias": "OP Section",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "ADDRESS",
+        "type": "esriFieldTypeString",
+        "alias": "Address",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Hectares)",
+        "domain": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "COMMENT",
+        "type": "esriFieldTypeString",
+        "alias": "Comment",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/1cbdd10524d84fd7ab3a713eaadde682": {
+    "id": "1cbdd10524d84fd7ab3a713eaadde682",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan - Map 8 - Cultural City Features - Historic Neighbourhood Boundary",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/45",
+    "description": "<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>Polygon feature layer representing the Historic\nNeighbourhood Boundary’s </span><span style='font-family:&quot;Arial&quot;,sans-serif; color:#4C4C4C; background:white;'>w</span><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>ithin the City of Barrie.</span></p>\n\n<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>Relevant fields within the layer include (but not limited to): Name,\nType, Subtype, Description, and Status</span></p><p style='margin-top:12.0pt; margin-right:0in; margin-bottom:0in; margin-left:0in; background:white;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'><br /></span></p>\n\n<p style='margin-top:12.0pt; margin-right:0in; margin-bottom:12.0pt; margin-left:0in; background:white; font-variant-ligatures:normal; font-variant-caps:normal; text-align:start; text-decoration-style:initial; text-decoration-color:initial; word-spacing:0px;'><span style='font-size:11.5pt; font-family:&quot;Helvetica&quot;,sans-serif; color:#4C4C4C;'>The City of Barrie is situated in the heart of Central Ontario,\na premier waterfront community on Lake Simcoe, conveniently located an hour\nnorth of Toronto.  Visit <a href='https://www.barrie.ca/' rel='nofollow ugc'>barrie.ca</a> for more information or\ncontact Service Barrie at 705-726-4242 or <a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></p>",
+    "licenseInfo": "<p><span>© Copyright City of Barrie. <span>The City of Barrie does not warrant the accuracy, completeness, content,\nor currency of the information provided.</span></span></p>",
+    "accessInformation": null
+  },
+  "curation:1cbdd10524d84fd7ab3a713eaadde682": {
+    "total": 1,
+    "results": [
+      {
+        "id": "1cbdd10524d84fd7ab3a713eaadde682",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/45",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/45": {
+    "id": 45,
+    "type": "Feature Layer",
+    "name": "Historic Neighbourhood Boundary",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPT",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Ha)",
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Length",
+        "domain": null
+      },
+      {
+        "name": "SHAPE_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/455dabaa98564ac7b91e11a2f5f5f35a": {
+    "id": "455dabaa98564ac7b91e11a2f5f5f35a",
+    "owner": "BarrieGIS",
+    "orgId": "C964zBpHgJUpj4d0",
+    "access": "public",
+    "type": "Feature Service",
+    "title": "Official Plan - Map 1 - Community Structure - Employment Area",
+    "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/47",
+    "description": "<p style='margin:12pt 0in 0in; background-image:initial; background-position:initial; background-size:initial; background-repeat:initial; background-attachment:initial; background-origin:initial; background-clip:initial;'><span style='font-size:11.5pt; font-family:Helvetica, sans-serif;'>Polygon feature layer representing the Constraint Stream Corridor Area within the City of Barrie.</span></p><p style='margin:12pt 0in 0in; background-image:initial; background-position:initial; background-size:initial; background-repeat:initial; background-attachment:initial; background-origin:initial; background-clip:initial;'><font face='Helvetica, sans-serif'><span style='font-size:11.5pt;'>Relevant fields within the layer include (but not limited to): Type, Sub type, Official Plan Designation Rank, and </span><span style='font-size:15.3333px;'>Community</span><span style='font-size:11.5pt;'> </span><span style='font-size:15.3333px;'>Structure</span><span style='font-size:11.5pt;'>.</span></font></p><p style='margin:12pt 0in 0in; background-image:initial; background-position:initial; background-size:initial; background-repeat:initial; background-attachment:initial; background-origin:initial; background-clip:initial;'><span style='font-size:11.5pt; font-family:Helvetica, sans-serif;'><br /></span></p><p style='margin:12pt 0in; background-image:initial; background-position:initial; background-size:initial; background-repeat:initial; background-attachment:initial; background-origin:initial; background-clip:initial;'><span style='font-size:11.5pt; font-family:Helvetica, sans-serif;'>The City of Barrie is situated in the heart of Central Ontario, a premier waterfront community on Lake Simcoe, conveniently located an hour north of Toronto.  Visit <a href='https://www.barrie.ca/' rel='nofollow ugc'>barrie.ca</a> for more information or contact Service Barrie at 705-726-4242 or <a href='mailto:ServiceBarrie@barrie.ca' rel='nofollow ugc'>ServiceBarrie@barrie.ca</a></span></p>",
+    "licenseInfo": "<span style='font-size:11.0pt; font-family:&quot;Calibri&quot;,sans-serif;'>© Copyright City of Barrie. The City of Barrie does not warrant the\naccuracy, completeness, content, or currency of the information provided.</span>",
+    "accessInformation": null
+  },
+  "curation:455dabaa98564ac7b91e11a2f5f5f35a": {
+    "total": 1,
+    "results": [
+      {
+        "id": "455dabaa98564ac7b91e11a2f5f5f35a",
+        "owner": "BarrieGIS",
+        "url": "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/47",
+        "access": "public"
+      }
+    ]
+  },
+  "https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/LandUsePlanning_OfficialPlan/MapServer/47": {
+    "id": 47,
+    "type": "Feature Layer",
+    "name": "Employment Area",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Type",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "SUBTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Subtype",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "OPDESG",
+        "type": "esriFieldTypeString",
+        "alias": "Official Plan Designation",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area (Hectares)",
+        "domain": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "DOC_URL",
+        "type": "esriFieldTypeString",
+        "alias": "Document Web Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "COMMENT",
+        "type": "esriFieldTypeString",
+        "alias": "Comment",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LASTUPDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Last Update Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "LASTEDITOR",
+        "type": "esriFieldTypeString",
+        "alias": "Last Editor",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "COMMUNITY_STRUCTURE",
+        "type": "esriFieldTypeString",
+        "alias": "Community Structure",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "OP_SECTION",
+        "type": "esriFieldTypeString",
+        "alias": "OP Section",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "SHAPE.STArea()",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE.STArea()",
+        "domain": null
+      },
+      {
+        "name": "SHAPE.STLength()",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE.STLength()",
+        "domain": null
+      }
+    ]
+  }
+}

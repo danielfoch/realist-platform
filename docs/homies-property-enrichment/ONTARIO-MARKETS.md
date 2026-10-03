@@ -821,3 +821,91 @@ observations, Walkerville area/district, S.20(1)267 and ward4), Mackenzie Hall a
 results), and two synthetic interiors of inspected BIA/archaeological polygons.
 These synthetic coordinates are not surveyed properties. Run the public verifier
 sequentially: `node --import tsx scripts/verify-windsor.ts https://realist-lean.vercel.app /absolute/output.json`. Coverage includes Guelph’s serialized source session.
+
+
+## Barrie — source verification October 3, 2026
+
+Eighteen licensed City feeds returned **75,764 overlapping source rows** at audit:
+59,777 Current civic rows, one boundary reference, 4,921 active issued-permit
+observations, 542 active application-point observations, 2,880 two-unit
+registration rows, 4,332 zoning polygons, 484 site-plan-control references,
+467 planning-application polygons, 2,233 plan land-use references, two MTSA
+references, 94 cultural landmarks, one growth-centre reference, one historical
+2008 built-up boundary, ten ward and ten separate Nov2026 ward references,
+one special environmental policy area, eight historic-neighbourhood strategy
+areas and zero employment-policy rows. Zero rows do not establish policy absence.
+Rows overlap and are not unique properties, permits, field data points or imports.
+
+[Official City portal](https://opendata.barrie.ca) item
+7c5a1ebb6eb648e0be1e7bf1ff4f2e94 explicitly offers downloads under the complete
+[Open Government Licence – Barrie 1.0](https://www.barrie.ca/Online%20Services/PublishingImages/OpenData_Images/COB_DataLicense.pdf).
+Full three-page bytes SHA256
+d23050c0c893d2d08328d63c7ed21cb8964e4deeae18a96ae960f231fa991bbd
+and exact offer text are pinned. Site/publisher BarrieGIS, orgC964zBpHgJUpj4d0,
+custom/default hostnames, catalogue scopes and City-curated content group
+3ea69cc64836464a9b0e24064ca19e11 bind each selected item to that grant.
+Per-item copyright/no-warranty disclaimers are preserved and independently pinned;
+they are not mistaken for the grant itself. Public exact group/item membership,
+independent fixed root and named typed child, lineage, field schema and source
+credit are verified before records/counts. ArcGIS search omits orgId; that absence
+is retained while authoritative full item/site/group orgId is verified.
+MapServer serviceItemId, child objectIdField and editingInfo remain absent where
+unpublished; no identifier or update epoch is invented.
+
+Generic City civic metadata does not publish building/GPS accuracy or cadastral
+lineage, so City civic geometry is not reused as precise property identity.
+Full Current address, number, street type/direction and blank unit must agree.
+A suitable independent building point or caller-verified coordinate requires one
+licensed City boundary reference before spatial queries. Approximate independent
+street/blockface positions can return strict civic attributes and exact permit/
+registration rows, with spatialScreenPerformed=false/screenedPoint=null; polygon
+and nearby screens skip. Coordinate-only requests skip address histories.
+Current legal/January2026 annex boundaries remain unverified; reference-polygon
+no-match does not establish outside present-day Barrie.
+
+Permits preserve record/parent IDs, raw status and raw status-date text. The active
+issued source describes permits opened since2018 and excludes complete older/
+closed history. Two-unit rows preserve raw registration and unit fields without
+claiming current legality, legal unit count, final inspection or occupancy.
+Active application points publish neither addresses nor file numbers: the
+bounded100m nearby screen is never assigned to the subject property. OBJECTID is
+a GIS row identifier; distances use approximate published points, not lots.
+Planning polygons preserve raw phase/status, received/approval/registration dates,
+appeal field and proposed unit totals; current conditions and permission remain
+unverified. The separate uncurated Site Plans child is not queried. City development
+page plans/reports have separate viewing-only copyright terms and are not copied.
+
+[Current City zoning guidance](https://www.barrie.ca/government/policies-laws/laws-listing/zoning-law)
+reports July31,2026 office consolidation, with2009-141, former Innisfil054-04,
+Springwater5000 and Oro-Medonte97-95 regimes applying in different areas.
+[Allandale CPPS](https://www.barrie.ca/services-payments/permits-licences-applications/community-planning-permit-system-allandale-major-transit-station-area)
+was adopted June17,2026 and is reported in effect, replacing2009-141, site-plan
+control and minor variance within its area. The separate current CPP district
+geometry is not connected; an MTSA reference is not substituted for it.
+[Official Plan guidance](https://www.barrie.ca/government-news/adopted-strategies-plans/official-plan)
+lists OPA1–8 consolidated as of July31,2026, including PPS2024, annexation and
+Allandale CPP changes. GIS labels, raw2022/Approved references and historical
+2008 built-up boundaries do not verify current instruments, amendments, appeals
+or development permissions. Cultural monuments/landmarks and historic-neighbourhood
+strategies are separate from individual/district designation; feature YEARBUILT
+is never the subject building construction year. Current and Nov2026 ward
+references stay separate with no unverified effective-date or councillor claims.
+
+Twelve visible scope gaps cover civic geometry, current legal/annex boundary,
+CPP districts, complete permits, active-application address identity, Site Plans,
+current heritage register, variance, parcels, footprints, conservation regulation
+and current planning instruments. No records/counts are read from unbound separate
+feeds. Scientific watershed screens remain separate from current LSRCA/NVCA
+regulation, floodplain and source-water originating rights. Personal/owner/legal
+identifier/parcel/manager/editor/councillor fields are excluded. Query results are
+bounded50, with transfer-limit failures and source gaps visible. Barrie and the
+broader CMA remain partial.
+
+Repeatable controls: scripts/verify-barrie.ts. The real1BlackbirdLane control
+returns registration record3 Registered, nearby active application row69875 at
+36m without property assignment, published R2-WS(SP-230), current ward7 and
+separate Nov2026 ward8.351BayfieldStreet returns PMT18-00856, PMT22-02807 and
+PMT26-00748 as raw Issued observations with raw date text; approximate location
+uses address-only evidence. Planning/MTSA/special-policy polygon controls are
+explicit synthetic non-cadastral interiors; cultural-feature point controls are
+not surveyed properties.
