@@ -16,14 +16,6 @@ const controls:Row[]=[
     "positive": "heritage"
   },
   {
-    "address": "26 Queen Street, Niagara-on-the-Lake, ON",
-    "positive": "heritage"
-  },
-  {
-    "address": "3501 Schmon Parkway, Thorold, ON",
-    "positive": "settlementReference"
-  },
-  {
     "lat": 43.03852689127248,
     "lng": -79.12404046674517,
     "city": "Niagara Falls",
@@ -54,16 +46,6 @@ const controls:Row[]=[
     "controlMeaning": "synthetic interior of an inspected source feature; not a surveyed property"
   },
   {
-    "lat": 43.13088564967968,
-    "lng": -79.3752561185646,
-    "city": "Lincoln",
-    "province": "ON",
-    "positive": "naturalEnvironmentReference",
-    "nestedPositive": "draftWetlandReference",
-    "sourceControlRecordId": 1,
-    "controlMeaning": "synthetic interior of an inspected source feature; not a surveyed property"
-  },
-  {
     "lat": 43.025585891966635,
     "lng": -79.12528405276286,
     "city": "Niagara Falls",
@@ -78,6 +60,6 @@ async function main(){
   const base=process.argv[2]??'https://realist-lean.vercel.app',results=[];
   // Coverage includes Guelph's serialized source session: keep this verifier sequential.
   for(const control of controls){const u=new URL('/api/property',base);Object.entries(control).filter(([k])=>['address','city','province','lat','lng'].includes(k)).forEach(([k,v])=>u.searchParams.set(k,String(v)));const response=await fetch(u,{signal:AbortSignal.timeout(65000)});assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'*');const result=await response.json()as Row;assert.equal(result.success,true);const layers=result.layers as Record<string,{status:string;data:Row|null}>;assert.equal(layers.municipality.status,'available');assert.equal(layers[String(control.positive)].status,'available',JSON.stringify({control,result}));if(control.nestedPositive)assert.equal(((layers[String(control.positive)].data!.datasets as Row)[String(control.nestedPositive)]as Row).status,'available');assert.equal(layers.conservation.status,'unavailable');assert.equal(layers.development.status,'not_supported');if(!control.address&&control.city==='Niagara Falls')assert.equal(layers.permits.status,'skipped');results.push({control,result});console.log(JSON.stringify({control,status:'passed'}));}
-  const response=await fetch(new URL('/api/property/coverage',base),{signal:AbortSignal.timeout(65000)});assert.equal(response.status,200);const coverage=await response.json()as Row;const n=(coverage.live as Row[]).find(x=>(x.cities as string[]|undefined)?.includes('Niagara Falls'))!;assert.equal((n.datasets as Row[]).filter(x=>x.status==='verified').length,22);assert.equal((n.withheld as Row[]).length,10);assert.equal(n.complete,false);const output={verifiedAt:new Date().toISOString(),results,coverage};if(process.argv[3])await writeFile(process.argv[3],JSON.stringify(output,null,2));console.log(JSON.stringify({passed:results.length,verifiedFeeds:22,publishedRows:(n.datasets as Row[]).reduce((total,d)=>total+Number(d.records??0),0),marketComplete:false}));
+  const response=await fetch(new URL('/api/property/coverage',base),{signal:AbortSignal.timeout(65000)});assert.equal(response.status,200);const coverage=await response.json()as Row;const n=(coverage.live as Row[]).find(x=>(x.cities as string[]|undefined)?.includes('Niagara Falls'))!;assert.equal((n.datasets as Row[]).filter(x=>x.status==='verified').length,12);assert.equal((n.datasets as Row[]).filter(x=>x.status==='unavailable'&&x.records===null).length,11);assert.equal((n.withheld as Row[]).length,10);assert.equal(n.complete,false);const output={verifiedAt:new Date().toISOString(),results,coverage};if(process.argv[3])await writeFile(process.argv[3],JSON.stringify(output,null,2));console.log(JSON.stringify({passed:results.length,verifiedFeeds:12,publishedRows:(n.datasets as Row[]).reduce((total,d)=>total+Number(d.records??0),0),marketComplete:false}));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

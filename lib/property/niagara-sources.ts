@@ -1,5 +1,5 @@
 import type { Source } from "./model";
-export interface NiagaraFeed { publisher:"falls"|"region"; market:string; key:string; group:string; item:string; url:string; rootUrl:string; owner:string; org:string; expectedItemTitle:string; expectedLayerName:string; expectedCopyright:string; termsHash:string; oid:string; geometry:string; fields:Record<string,string>; fieldTypes:Record<string,string>; dates:string[]; matchField?:string; catalogue:{name:string;id:string;title:string;organizationId:string;organizationName:string;licenceId:string;licenceUrl:string;guid:string;descriptionHash?:string}; note:string; source:Source; }
+export interface NiagaraFeed { publisher:"falls"|"region"|"ontario"; disabledReason?:string; market:string; key:string; group:string; item:string; url:string; rootUrl:string; owner:string; org:string; expectedItemTitle:string; expectedLayerName:string; expectedCopyright:string; termsHash:string; oid:string; geometry:string; fields:Record<string,string>; fieldTypes:Record<string,string>; dates:string[]; matchField?:string; catalogue:{name:string;id:string;title:string;organizationId:string;organizationName:string;licenceId:string;licenceUrl:string;guid:string;descriptionHash?:string}; note:string; source:Source; }
 export const NIAGARA_MUNICIPALITIES=["Fort Erie","Grimsby","Lincoln","Niagara Falls","Niagara-on-the-Lake","Pelham","Port Colborne","St. Catharines","Thorold","Wainfleet","Welland","West Lincoln"] as const;
 export const NIAGARA_GRANTS={
   "region": {
@@ -81,10 +81,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:addresses",
       "name": "Address Points",
       "url": "https://niagaraopendata.ca/dataset/address-points",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -125,14 +126,72 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
       "guid": "https://www.arcgis.com/home/item.html?id=1738c31501b04346bfc55fa0b748b96d&sublayer=26"
     },
-    "note": "Region-modified municipal boundary references originating with the Ontario Ministry of Municipal Affairs; preliminary identity gate, not a surveyed/legal boundary opinion. Contains information licensed under the Open Government Licence – Ontario.",
+    "note": "Region-modified municipal boundary references originating with the Ontario Ministry of Municipal Affairs; preliminary identity gate, not a surveyed/legal boundary opinion. Contains information licensed under the Open Government Licence \u2013 Ontario.",
     "source": {
       "id": "niagara:niagara-region:municipality",
       "name": "Municipal Boundaries",
       "url": "https://niagaraopendata.ca/dataset/municipal-boundaries",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region. Contains information licensed under the Open Government Licence – Ontario."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region. Contains information licensed under the Open Government Licence \u2013 Ontario."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
+  },
+  {
+    "publisher": "ontario",
+    "market": "Niagara Region",
+    "key": "ontarioMunicipality",
+    "group": "municipality",
+    "item": "64fb702e16204c3e88b528d9759f1174",
+    "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open03/MapServer/14",
+    "rootUrl": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open03/MapServer",
+    "owner": "LandInformationOntario",
+    "org": "a03W7iZ8T3s5vB7p",
+    "expectedItemTitle": "Municipal Boundary - Lower and Single Tier",
+    "expectedLayerName": "Municipal Bnd Lower And Single",
+    "expectedCopyright": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "termsHash": "d0bab9931a4554669f6dcc3559a03099e87d7f68a44b26783a2bbb19ef959ffc",
+    "oid": "OBJECTID",
+    "geometry": "esriGeometryPolygon",
+    "fields": {
+      "OBJECTID": "recordId",
+      "OGF_ID": "publishedGeographicFeatureId",
+      "MUNICIPAL_NAME": "publishedName",
+      "MUNICIPAL_TYPE": "publishedMunicipalType",
+      "UPPER_TIER_MUNICIPALITY": "publishedUpperTier",
+      "MUNICIPAL_AREA_EXTENT_TYPE": "publishedAreaExtentType",
+      "EFFECTIVE_DATETIME": "publishedEffectiveDate"
+    },
+    "fieldTypes": {
+      "OBJECTID": "esriFieldTypeOID",
+      "OGF_ID": "esriFieldTypeDouble",
+      "MUNICIPAL_NAME": "esriFieldTypeString",
+      "MUNICIPAL_TYPE": "esriFieldTypeString",
+      "UPPER_TIER_MUNICIPALITY": "esriFieldTypeString",
+      "MUNICIPAL_AREA_EXTENT_TYPE": "esriFieldTypeString",
+      "EFFECTIVE_DATETIME": "esriFieldTypeDate"
+    },
+    "dates": [
+      "EFFECTIVE_DATETIME"
+    ],
+    "catalogue": {
+      "name": "lower-tier-and-single-tier-municipal-boundaries",
+      "id": "bab4e8d8-f0e6-498f-a336-4ac2f43d166d",
+      "title": "Lower-tier and single-tier municipal boundaries",
+      "organizationId": "f159b631-bfe2-464a-8b4e-802a34dcf243",
+      "organizationName": "municipal-affairs-and-housing",
+      "licenceId": "OGL-ON-1.0",
+      "licenceUrl": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "guid": "https://geohub.lio.gov.on.ca/datasets/municipal-boundary-lower-and-single-tier"
+    },
+    "note": "Original Ontario lower/single-tier polygons confirm only the requested municipality at a precise point; no surveyed/title/property boundary or legal currency opinion. Published effective dates are record context; editingInfo is absent so source update time is unknown. Count covers the full Ontario boundary feed, not Niagara properties.",
+    "source": {
+      "id": "niagara:ontario:municipality",
+      "name": "Ontario Municipal Boundary - Lower and Single Tier",
+      "url": "https://geohub.lio.gov.on.ca/datasets/municipal-boundary-lower-and-single-tier",
+      "licence": "Open Government Licence \u2013 Ontario",
+      "licenceUrl": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Ontario."
     }
   },
   {
@@ -180,10 +239,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:regionalHeritageProperties",
       "name": "Designated Heritage Properties",
       "url": "https://niagaraopendata.ca/dataset/designated-heritage-properties",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -229,10 +289,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:urbanAreaReference",
       "name": "Urban Area Boundaries",
       "url": "https://niagaraopendata.ca/dataset/urban-area-boundaries",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -276,10 +337,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:ruralSettlementReference",
       "name": "Rural Settlements",
       "url": "https://niagaraopendata.ca/dataset/rural-settlements",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -325,10 +387,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:growthCentreReference",
       "name": "Regional Growth Centre",
       "url": "https://niagaraopendata.ca/dataset/regional-growth-centre",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -378,10 +441,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:wastewaterCatchment",
       "name": "RMoN San SPS Catchments",
       "url": "https://niagaraopendata.ca/dataset/rmon-san-sps-catchments",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -423,10 +487,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:quaternaryWatershed",
       "name": "Quaternary Watersheds",
       "url": "https://niagaraopendata.ca/dataset/quaternary-watersheds",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -472,10 +537,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:tertiaryWatershed",
       "name": "Tertiary Watersheds",
       "url": "https://niagaraopendata.ca/dataset/tertiary-watersheds",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -519,10 +585,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:woodlandReference",
       "name": "Significant Woodlands",
       "url": "https://niagaraopendata.ca/dataset/significant-woodlands1",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "region",
@@ -569,10 +636,11 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-region:draftWetlandReference",
       "name": "NES Other Wetlands Non PSW",
       "url": "https://niagaraopendata.ca/dataset/nes-other-wetlands-non-psw",
-      "licence": "Open Government Licence – Niagara Region 2.0",
+      "licence": "Open Government Licence \u2013 Niagara Region 2.0",
       "licenceUrl": "https://niagaraopendata.ca/pages/open-government-license-2-0-niagara-region",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Region."
-    }
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Region."
+    },
+    "disabledReason": "Regional catalogue and full grant return HTTP 403 to hosted requests; the separate official Hub has no complete licence text. Regional records and counts are disabled until publisher access and reuse bindings can be verified."
   },
   {
     "publisher": "falls",
@@ -618,9 +686,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:municipalAddresses",
       "name": "Niagara Falls Address Points",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-address-points",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -678,9 +746,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:permits",
       "name": "Niagara Falls Completed Building Permits",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-completed-building-permits",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -731,9 +799,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:planningApplications",
       "name": "Niagara Falls Current Development Applications",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-current-development-applications",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -788,9 +856,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:municipalHeritageProperties",
       "name": "Niagara Falls Heritage Properties",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-heritage-properties",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -867,9 +935,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:zoning79200",
       "name": "Niagara Falls Zoning Bylaw 79200",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-zoning-bylaw-79200",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -932,9 +1000,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:zoning1538Crowland",
       "name": "Niagara Falls Zoning Bylaw 1538 Crowland",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-zoning-bylaw-1538-crowland",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -997,9 +1065,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:zoning7069Humberstone",
       "name": "Niagara Falls Zoning Bylaw 7069 Humberstone",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-zoning-bylaw-7069-humberstone",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -1066,9 +1134,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:zoningB0395Willoughby",
       "name": "Niagara Falls Zoning Bylaw B0395 Willoughby",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-zoning-bylaw-b0395-willoughby",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -1111,9 +1179,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:officialPlanLandUse",
       "name": "Niagara Falls Official Plan Schedule A Land Use",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-official-plan-schedule-a-land-use",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -1156,9 +1224,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:specialPolicyAreas",
       "name": "Niagara Falls Official Plan Special Policy Areas",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-official-plan-special-policy-areas",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   },
   {
@@ -1201,9 +1269,9 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
       "id": "niagara:niagara-falls:brownfieldCIP",
       "name": "Niagara Falls Brownfield CIP Area 2026",
       "url": "https://niagaraopendata.ca/dataset/niagara-falls-brownfield-cip-area-2026",
-      "licence": "Open Government Licence – Niagara Falls 1.0",
+      "licence": "Open Government Licence \u2013 Niagara Falls 1.0",
       "licenceUrl": "https://open.niagarafalls.ca/pages/terms-of-use",
-      "attribution": "Contains information licensed under the Open Government Licence – Niagara Falls."
+      "attribution": "Contains information licensed under the Open Government Licence \u2013 Niagara Falls."
     }
   }
 ];
@@ -1254,7 +1322,7 @@ export const NIAGARA_WITHHELD=[
     "market": "Niagara Falls",
     "layer": "municipalBoundary",
     "item": "01626ef413db459ea27d9f6eeb9ba360",
-    "reason": "Licensed City municipal boundary is a partial polyline and omits the international boundary. It is unsuitable for a unique interior municipality gate and is not queried or counted; the licensed regional polygon is used instead."
+    "reason": "Licensed City municipal boundary is a partial polyline and omits the international boundary. It is unsuitable for a unique interior municipality gate and is not queried or counted; the licensed original Ontario polygon is used instead."
   },
   {
     "market": "Niagara Region",

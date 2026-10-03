@@ -63,37 +63,26 @@ async function fallsGrant(c:Context) {
   const pages=rows((siteData.values as Row|undefined)?.pages??[]);
   if(![site,page].every(i=>i.owner===b.owner&&i.orgId===b.org&&i.access==="public")||site.id!==b.site||site.title!==b.siteTitle||page.id!==b.page||page.title!==b.pageTitle||!pages.some(p=>p.id===b.page&&p.slug==="terms-of-use")||sha(normalized(markdown(pageData)))!==b.hash)throw new Error("City full licence or site binding changed");
 }
-async function regionalGrant(f:NiagaraFeed,c:Context) {
-  const b=f.catalogue,url=`https://niagaraopendata.ca/dataset/${b.name}`;
-  // The official catalogue publishes the same individual licence and resource
-  // bindings in JSON-LD. Its action API denies hosted requests; do not call it.
-  await read(c,url,async()=>{
-    const $=load(await fetchText(new URL(url))),scripts=$('script[type="application/ld+json"]');
-    if(scripts.length!==1)throw new Error("Exact licensed regional catalogue binding changed");
-    const graph=rows((JSON.parse(scripts.text()) as Row)["@graph"]),matches=graph.filter(d=>d["@type"]==="schema:Dataset");
-    const d=matches[0],publisher=graph.filter(n=>n["@id"]===(d?.["schema:publisher"] as Row|undefined)?.["@id"]),distribution=rows(d?.["schema:distribution"]??[]).map(n=>n["@id"]);
-    const resource=graph.filter(n=>distribution.includes(n["@id"])&&n["@type"]==="schema:DataDownload"&&n["schema:url"]===f.url),licence=$('section.license a[rel="dc:rights"]');
-    if(matches.length!==1||d["@id"]!==`https://niagaraopendata.ca/dataset/${b.id}`||d["schema:url"]!==url||d["schema:name"]!==b.title||d["schema:license"]!==b.licenceUrl||publisher.length!==1||publisher[0]["@type"]!=="schema:Organization"||publisher[0]["schema:name"]!=="Niagara Region"||!$(`a[href="/organization/${b.organizationName}"]`).length||licence.length!==1||licence.attr("href")!==b.licenceUrl||licence.text().replace(/\s+/g," ").trim()!=="Open Government License 2.0 (Niagara Region)"||resource.length!==1||!$('li.resource-item a').toArray().some(a=>$(a).attr("href")===f.url)||$('#dataset-name').attr('dataset-name')!==b.title)throw new Error("Exact licensed regional catalogue binding changed");
-    if(b.descriptionHash && (typeof d["schema:description"]!=="string" || sha(String(d["schema:description"]).replace(/\s+/g," ").trim())!==b.descriptionHash))throw new Error("Niagara inspected draft-inventory description changed");
-    return {verified:true};
-  });
-  await htmlGrant(c,NIAGARA_GRANTS.region);
-  if(f.key==="municipality") {
-    // The Region explicitly credits Ontario for the original municipal boundaries.
-    const b=NIAGARA_GRANTS.ontario,response=await read(c,b.catalogue),d=response.result as Row|undefined;
-    if(response.success!==true||!d||d.id!==b.catalogueId||d.name!=="municipal-boundaries"||d.state!=="active"||d.license_id!=="OGL-ON-1.0"||d.license_url!==b.url||!rows(d.resources).some(r=>r.url==="https://geohub.lio.gov.on.ca/datasets/municipal-boundary-lower-and-single-tier"))throw new Error("Original Ontario boundary grant changed");
-    await htmlGrant(c,b);
-  }
+async function ontarioGrant(f:NiagaraFeed,c:Context) {
+  const b=f.catalogue,url=`https://data.ontario.ca/api/3/action/package_show?id=${b.name}`;
+  const response=await read(c,url),d=response.result as Row|undefined,org=d?.organization as Row|undefined;
+  if(response.success!==true||!d||d.id!==b.id||d.name!==b.name||d.title!==b.title||d.state!=="active"||d.license_id!==b.licenceId||d.license_url!==b.licenceUrl||org?.id!==b.organizationId||org.name!==b.organizationName||org.state!=="active"||!rows(d.resources).some(r=>r.url===b.guid&&r.package_id===b.id&&r.state==="active"))throw new Error("Original Ontario boundary catalogue changed");
+  await htmlGrant(c,NIAGARA_GRANTS.ontario);
 }
 export async function niagaraMetadata(f:NiagaraFeed,c:Context=new Map()) {
+  if(f.disabledReason)throw new Error("Niagara regional catalogue access is unavailable; records and counts are disabled");
   const [item,m,root]=await Promise.all([read(c,`https://www.arcgis.com/sharing/rest/content/items/${f.item}`),read(c,f.url),read(c,f.rootUrl)]);
   const terms=typeof item.licenseInfo==="string"?item.licenseInfo:"";
-  if(item.id!==f.item||item.owner!==f.owner||item.orgId!==f.org||item.access!=="public"||item.title!==f.expectedItemTitle||item.url!==f.rootUrl||root.serviceItemId!==f.item||sha(normalized(terms))!==f.termsHash||m.name!==f.expectedLayerName||m.geometryType!==f.geometry||(m.copyrightText??"")!==f.expectedCopyright||m.objectIdField!==f.oid||!Object.entries(f.fieldTypes).every(([name,type])=>rows(m.fields).some(x=>x.name===name&&x.type===type)))throw new Error("Publisher, endpoint, terms or typed child changed");
+  if(item.id!==f.item||item.owner!==f.owner||item.orgId!==f.org||item.access!=="public"||item.title!==f.expectedItemTitle||(f.publisher==="ontario"?item.url!==f.url||root.mapName!=="service03"||!rows(root.layers).some(x=>x.id===14&&x.name===f.expectedLayerName):item.url!==f.rootUrl||root.serviceItemId!==f.item)||sha(normalized(terms))!==f.termsHash||m.name!==f.expectedLayerName||m.geometryType!==f.geometry||(m.copyrightText??"")!==f.expectedCopyright||(f.publisher==="ontario"?m.objectIdField!==undefined||m.type!=="Feature Layer":m.objectIdField!==f.oid)||!Object.entries(f.fieldTypes).every(([name,type])=>rows(m.fields).some(x=>x.name===name&&x.type===type)))throw new Error("Publisher, endpoint, terms or typed child changed");
   if(f.publisher==="falls") {
     const anchors=load(terms)("a");
     if(anchors.length!==1||anchors.attr("href")!=="https://open.niagarafalls.ca/pages/terms-of-use")throw new Error("Exact City grant referral changed");
     await fallsGrant(c);
-  }else await regionalGrant(f,c);
+  }else {
+    const anchors=load(terms)("a");
+    if(f.publisher!=="ontario"||anchors.length!==1||anchors.attr("href")!==NIAGARA_GRANTS.ontario.url||m.id!==14)throw new Error("Original Ontario licence or typed layer binding changed");
+    await ontarioGrant(f,c);
+  }
   return {sourceUpdatedAt:arcgisDate((m.editingInfo as Row|undefined)?.dataLastEditDate)};
 }
 function point(g:Row|null):g is Row&{x:number;y:number} {
@@ -119,6 +108,7 @@ function civic(a:Row,f:NiagaraFeed):string {
 export async function niagaraLocation(input:PropertyRequest):Promise<Layer<Location>|null> {
   const city=input.city??input.address?.split(",")[1]?.trim()??null,province=input.province??input.address?.split(",")[2]?.trim()??"ON",market=niagaraMunicipality(city,province);
   if(!market||!input.address||input.lat!==undefined||hasUnit(input.address))return null;
+  if(market!=="Niagara Falls")return null; // Regional civic reads are disabled while publisher access is unavailable.
   const f=feed(market==="Niagara Falls"?"municipalAddresses":"addresses"),embedded=input.address.split(",")[1]?.trim();
   if(input.city&&embedded&&niagaraMunicipality(embedded,province)!==market)return layer("ambiguous",null,f.source,"The explicit municipality conflicts with the civic community. Correct identity before screening.");
   const address=input.address.split(",")[0].trim(),n=streetNumber(address);if(!n)return null;
@@ -130,10 +120,11 @@ export async function niagaraLocation(input:PropertyRequest):Promise<Layer<Locat
     const exact=all.filter(({a})=>niagaraStreetKey(civic(a,f))===niagaraStreetKey(address)&&(f.publisher==="falls"?niagaraStreetKey(`${text(a.Street_No)??""} ${text(a.StreetName)??""}`)===niagaraStreetKey(address):niagaraMunicipality(text(a.Municipality),"ON")===market&&a.LifeCycleStatus==="Active"&&(!text(a.Qualifier)||String(a.Qualifier).toUpperCase()===n.slice(-1).toUpperCase())));
     if(!exact.length)return null;const primary=exact.find(({a})=>!text(a.Unit))??exact[0];
     if(!point(primary.g)||exact.some(({g})=>!point(g)||haversineMeters(primary.g!.y as number,primary.g!.x as number,g.y,g.x)>20))return layer("ambiguous",null,f.source,"Matching civic points are unusable or disagree by more than 20 metres. No arbitrary point is selected.",m.sourceUpdatedAt);
-    const result=layer("available",{address:civic(primary.a,f),city:market,province:"ON",latitude:primary.g.y,longitude:primary.g.x,accuracy:"source_civic_address_point",provider:f.source.id,municipalAddress:{recordIds:exact.map(({a})=>String(a[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,publishedRecords:exact.slice(0,50).map(({a})=>mapped(a,f)),publishedAddressRecordCount:exact.length,publishedRecordsTruncated:exact.length>50}},f.source,f.note+" Civic suffix, street type and direction must agree. A unique licensed regional polygon must confirm the municipality before property queries.",m.sourceUpdatedAt);result.truncated=exact.length>50;return result;
+    const result=layer("available",{address:civic(primary.a,f),city:market,province:"ON",latitude:primary.g.y,longitude:primary.g.x,accuracy:"source_civic_address_point",provider:f.source.id,municipalAddress:{recordIds:exact.map(({a})=>String(a[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,publishedRecords:exact.slice(0,50).map(({a})=>mapped(a,f)),publishedAddressRecordCount:exact.length,publishedRecordsTruncated:exact.length>50}},f.source,f.note+" Civic suffix, street type and direction must agree. A unique licensed original Ontario polygon must confirm the municipality before property queries.",m.sourceUpdatedAt);result.truncated=exact.length>50;return result;
   }catch(error){sourceFailure(f,error);return null;}
 }
 async function query(f:NiagaraFeed,l:Location|null,address:string|null,market:string,c:Context):Promise<Layer> {
+  if(f.disabledReason)return layer("unavailable",{coverageComplete:false,screenPerformed:false,recordsQueried:false},f.source,f.disabledReason);
   if(!precise(l))return layer("skipped",null,f.source,"A precise civic, building or caller point is required; interpolated points are not screened.");
   if(f.matchField&&(!address||!streetNumber(address)))return layer("skipped",null,f.source,"An exact civic building address is required; coordinate-only requests do not search address histories.");
   try {
@@ -164,11 +155,11 @@ function grouped(name:string,pending:NiagaraFeed[],entries:Record<string,Layer>)
 }
 export async function niagaraLayers(address:string|null,city:string|null,province:string|null,l:Location|null,requestedCity?:string):Promise<Record<string,Layer>> {
   const market=niagaraMunicipality(requestedCity??city,province);if(!market)return {};
-  const c:Context=new Map(),f=feed("municipality");let boundary=await query(f,l,null,market,c);
+  const c:Context=new Map(),f=feed("ontarioMunicipality");let boundary=await query(f,l,null,market,c);
   const records=rows((boundary.data as Row|null)?.records??[]),agrees=boundary.status==="available"&&!boundary.truncated&&records.length===1&&niagaraMunicipality(text(records[0].publishedName),"ON")===market;
-  if(boundary.status==="available"&&!agrees)boundary=layer("ambiguous",{...boundary.data as Row,expectedMunicipality:market},f.source,"The regional municipality polygon is non-unique or conflicts with the request. No property queries are performed.",boundary.sourceUpdatedAt);
-  const pending=NIAGARA_FEEDS.filter(f=>!["addresses","municipalAddresses","municipality"].includes(f.key)&&(f.publisher==="region"||market==="Niagara Falls")),pairs:(readonly[string,Layer])[]=[];
-  for(let i=0;i<pending.length;i+=4)pairs.push(...await Promise.all(pending.slice(i,i+4).map(async f=>[f.key,agrees?await query(f,l,address,market,c):layer("skipped",null,f.source,"A precise point and unique matching Niagara municipality polygon were not confirmed; no property query was performed.")]as const)));
+  if(boundary.status==="available"&&!agrees)boundary=layer("ambiguous",{...boundary.data as Row,expectedMunicipality:market},f.source,"The Ontario municipality polygon is non-unique or conflicts with the request. No property queries are performed.",boundary.sourceUpdatedAt);
+  const pending=NIAGARA_FEEDS.filter(f=>!["addresses","municipalAddresses","municipality","ontarioMunicipality"].includes(f.key)&&(f.publisher==="region"||market==="Niagara Falls")),pairs:(readonly[string,Layer])[]=[];
+  for(let i=0;i<pending.length;i+=4)pairs.push(...await Promise.all(pending.slice(i,i+4).map(async f=>[f.key,f.disabledReason?layer("unavailable",{coverageComplete:false,screenPerformed:false,recordsQueried:false},f.source,f.disabledReason):agrees?await query(f,l,address,market,c):layer("skipped",null,f.source,"A precise point and unique matching Niagara municipality polygon were not confirmed; no property query was performed.")]as const)));
   const entries=Object.fromEntries(pairs),direct=Object.fromEntries(pending.filter(f=>f.key===f.group).map(f=>[f.key,entries[f.key]])),groups=Object.fromEntries([...new Set(pending.filter(f=>f.key!==f.group).map(f=>f.group))].map(name=>[name,grouped(name,pending,entries)]));
   const withheld=NIAGARA_WITHHELD.filter(f=>[market,"Niagara Region"].includes(f.market)),gaps:Record<string,Layer>=Object.fromEntries([...new Set(withheld.map(f=>f.layer))].filter(k=>!groups[k]&&!direct[k]&&k!=="municipalBoundary").map(k=>[k,layer("unavailable",{coverageComplete:false,screenPerformed:false,withheld:withheld.filter(f=>f.layer===k)},null,"Unverified or excluded source. No property records or counts are queried from this feed.")]));
   for(const k of ["permits","zoning","planningApplications","officialPlan","variance"])if(!groups[k]&&!direct[k]&&!gaps[k])gaps[k]=layer("not_supported",{coverageComplete:false,screenPerformed:false},null,"Current municipal core records are not connected in this Niagara batch. Regional references do not complete municipal history, decisions, inspections or legal permissions.");
@@ -176,7 +167,7 @@ export async function niagaraLayers(address:string|null,city:string|null,provinc
 }
 export async function niagaraCoverage() {
   const c:Context=new Map(),datasets=[];
-  const inspect=async(f:NiagaraFeed)=>{try{const m=await niagaraMetadata(f,c),r=await get(f.url+"/query",{where:"1=1",returnCountOnly:"true"}),count=number(r.count);if(count===null||!Number.isInteger(count)||count<0)throw new Error("Invalid count");return{market:f.market,layer:f.key,group:f.group,status:"verified",records:count,source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,note:f.note};}catch(error){sourceFailure(f,error);return{market:f.market,layer:f.key,group:f.group,status:"unavailable",records:null,source:f.source,note:"Complete grant, exact source/catalogue binding, typed schema or live count could not be verified."};}};
+  const inspect=async(f:NiagaraFeed)=>{try{const m=await niagaraMetadata(f,c),r=await get(f.url+"/query",{where:"1=1",returnCountOnly:"true"}),count=number(r.count);if(count===null||!Number.isInteger(count)||count<0)throw new Error("Invalid count");return{market:f.market,layer:f.key,group:f.group,status:"verified",records:count,source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,note:f.note};}catch(error){sourceFailure(f,error);return{market:f.market,layer:f.key,group:f.group,status:"unavailable",records:null,source:f.source,note:f.disabledReason??"Complete grant, exact source/catalogue binding, typed schema or live count could not be verified."};}};
   for(let i=0;i<NIAGARA_FEEDS.length;i+=4)datasets.push(...await Promise.all(NIAGARA_FEEDS.slice(i,i+4).map(inspect)));
-  return {cities:[...NIAGARA_MUNICIPALITIES],auditDate:"2026-10-03",delivery:"cached_live_queries",cacheSeconds:3600,datasets,withheld:NIAGARA_WITHHELD.map(f=>({...f,status:"withheld",records:null})),complete:false,guidance:{catalogue:"https://niagaraopendata.ca/dataset/",niagaraPlan:"https://www.niagararegion.ca/official-plan/default.aspx",niagaraAmendments:"https://www.niagararegion.ca/official-plan/amendments.aspx",fallsCatalogue:"https://open.niagarafalls.ca/",fallsZoning:"https://niagarafalls.ca/building-planning-and-business/planning-and-development/zoning/",npca:"https://npca.ca/services/permits"},note:"Selected Niagara regional civic, heritage, settlement, draft wetland/woodland, watershed and rough sanitary-catchment references; Niagara Falls adds completed permits, subject-point planning, heritage, 79-200 zoning and three historical former-township zoning datasets, plan/special-policy and brownfield CIP references. Since March 31, 2025 the Niagara Official Plan belongs to the twelve local municipalities; current local instruments/amendments remain unverified. St. Catharines full City grant is unresolved. Other municipalities' core sources require continued audit. Rows overlap and are not unique properties, data points or database imports."};
+  return {cities:[...NIAGARA_MUNICIPALITIES],auditDate:"2026-10-03",delivery:"cached_live_queries",cacheSeconds:3600,datasets,withheld:NIAGARA_WITHHELD.map(f=>({...f,status:"withheld",records:null})),complete:false,guidance:{catalogue:"https://niagaraopendata.ca/dataset/",niagaraPlan:"https://www.niagararegion.ca/official-plan/default.aspx",niagaraAmendments:"https://www.niagararegion.ca/official-plan/amendments.aspx",fallsCatalogue:"https://open.niagarafalls.ca/",fallsZoning:"https://niagarafalls.ca/building-planning-and-business/planning-and-development/zoning/",npca:"https://npca.ca/services/permits"},note:"Regional civic, heritage, settlement, draft wetland/woodland, watershed and sanitary-catchment feeds are disabled: the catalogue and grant deny hosted requests with HTTP 403, and the separate Region Hub lacks complete grant text. No regional records/counts are read. Original licensed Ontario polygons gate property queries; their full-province count is boundary references, not Niagara properties. Niagara Falls adds completed permits, subject-point planning, heritage, 79-200 zoning and three historical former-township zoning datasets, plan/special-policy and brownfield CIP references. Since March 31, 2025 the Niagara Official Plan belongs to the twelve local municipalities; current local instruments/amendments remain unverified. St. Catharines full City grant is unresolved. Other municipalities' core sources require continued audit. Rows overlap and are not unique properties, data points or database imports."};
 }
