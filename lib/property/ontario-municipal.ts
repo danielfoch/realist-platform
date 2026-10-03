@@ -1,6 +1,7 @@
 import { fetchJson, literal, rows } from "./http";
 import { civicStreetKey, cityKey, hasUnit, layer, number, streetNumber, text, type Layer, type Location, type PropertyRequest, type Row } from "./model";
 import { provinceKey } from "./geocode";
+import { nationalAddress } from "./national";
 import { arcgisDate, streetVariants } from "./hamilton";
 import { haversineMeters } from "@/lib/geo/geometry";
 import { ONTARIO_MUNICIPAL, validMunicipalItem, type Market, type MunicipalFeed } from "./ontario-municipal-sources";
@@ -54,7 +55,9 @@ export async function ontarioMunicipalLocation(input:PropertyRequest):Promise<La
     if(!exact.length)return null;
     const primary=exact.find(x=>!addressParts(f,x.attributes).unit) ?? exact[0];
     if(exact.some(x=>!validPoint(market,x.geometry?.y,x.geometry?.x)) || exact.some(x=>haversineMeters(Number(primary.geometry?.y),Number(primary.geometry?.x),Number(x.geometry?.y),Number(x.geometry?.x))>20))return layer("ambiguous",null,f.source,"Matching municipal civic-address points disagree or lack usable coordinates; provide verified building-level coordinates.",meta.sourceUpdatedAt);
-    return layer("available",{ address:addressParts(f,primary.attributes).address, city:market, province:"ON", latitude:Number(primary.geometry!.y),longitude:Number(primary.geometry!.x),accuracy:"source_civic_address_point",provider:f.source.id,municipalAddress:{ recordIds:exact.map(x=>String(x.attributes[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:meta.sourceUpdatedAt } },f.source,f.note+" Multiple unit records are grouped only when their points agree within 20 metres; this does not identify or verify an individual unit.",meta.sourceUpdatedAt);
+    const registered=await nationalAddress({address,city:city!,province:"ON"},provinceKey);
+    const nar=registered?.status==="available" && registered.data?.accuracy==="source_building_point" && registered.data.address && civicStreetKey(registered.data.address)===civicStreetKey(address) && validPoint(market,registered.data.latitude,registered.data.longitude) && haversineMeters(Number(primary.geometry!.y),Number(primary.geometry!.x),registered.data.latitude!,registered.data.longitude!)<=20 ? registered.data.addressRegister : undefined;
+    return layer("available",{ address:addressParts(f,primary.attributes).address, city:market, province:"ON", latitude:Number(primary.geometry!.y),longitude:Number(primary.geometry!.x),accuracy:"source_civic_address_point",provider:f.source.id,...(nar?{addressRegister:nar}:{}),municipalAddress:{ recordIds:exact.map(x=>String(x.attributes[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:meta.sourceUpdatedAt } },f.source,f.note+" Multiple unit records are grouped only when their points agree within 20 metres; this does not identify or verify an individual unit. National Address Register metadata is retained only when its unique published building point agrees within 20 metres.",meta.sourceUpdatedAt);
   } catch { return null; }
 }
 

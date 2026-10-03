@@ -68,6 +68,7 @@ Mississauga permit `OBJECTID=3` at 1416 Liveoak Drive; London listed heritage
 `OBJECTID=5993` at 862 Waterloo Street. Address controls include 280 Lakeshore
 Road East and 150 Donald Street, Ottawa. Spatial evidence uses published civic
 or building points or caller-supplied coordinates; interpolated points are skipped.
+Unique National Address Register building metadata is retained when its civic identity and published building point agree within 20 metres of the municipal point. Ambiguous, blockface-only and conflicting register points are not attached.
 Tests cover street direction, proposed addresses, unit scope, point disagreement,
 truncation, empty results, licence withdrawal and schema failure.
 

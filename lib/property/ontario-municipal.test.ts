@@ -4,6 +4,8 @@ import { municipalPointLayer, ontarioMunicipalLayers, ontarioMunicipalLocation, 
 import { ontarioMarketRoadmap } from "./ontario-market-roadmap";
 import type { Location, Row } from "./model";
 const fetch = vi.hoisted(()=>vi.fn());
+const nar = vi.hoisted(()=>vi.fn());
+vi.mock("./national",()=>({nationalAddress:nar}));
 vi.mock("./http",async()=>({ ...await vi.importActual<typeof import("./http")>("./http"),fetchJson:fetch }));
 const feed=(market:string,key:string)=>ONTARIO_MUNICIPAL.find(f=>f.market===market&&f.key===key)!;
 function item(f:MunicipalFeed):Row { return { access:"public",owner:f.owner,orgId:f.org,url:f.market==="Mississauga"?f.url.replace(/\/\d+$/,""):f.url,licenseInfo:`<a href='${f.licenceAnchors[0]}'>Terms of Use</a>` }; }
@@ -17,7 +19,7 @@ function provider(f:MunicipalFeed,records:unknown[],options:{ item?:Row; truncat
   };
 }
 const london:Location={address:"481 Ridout St N",city:"London",province:"ON",latitude:42.99315,longitude:-81.2393,accuracy:"source_civic_address_point",provider:"test"};
-beforeEach(()=>{fetch.mockReset();});
+beforeEach(()=>{fetch.mockReset();nar.mockReset().mockResolvedValue(null);});
 describe("Ontario municipal evidence",()=>{
   it("requires the exact public publisher, endpoint and reuse licence",()=>{
     const f=feed("Mississauga","permits");expect(validMunicipalItem(item(f),f)).toBe(true);
@@ -40,6 +42,14 @@ describe("Ontario municipal evidence",()=>{
   });
   it("does not select a point from incomplete address candidates",async()=>{
     const f=feed("London","addresses");fetch.mockImplementation(provider(f,[record(f,{FullNumber:"481",FullStreetName:"Ridout St N",Status:"IA"})],{truncated:true}));expect(await ontarioMunicipalLocation({address:"481 Ridout St N, London, ON"})).toBeNull();
+  });
+  it("retains national building provenance only when the exact identity and point agree",async()=>{
+    const f=feed("London","addresses");fetch.mockImplementation(provider(f,[record(f,{FullNumber:"481",FullStreetName:"Ridout St N",Status:"IA"})]));
+    const registered={...london,accuracy:"source_building_point",addressRegister:{buildingId:"verified-building",publishedAddressRecords:2,postalCodes:["N6A2P6"],buildingUsageCodes:[],csduid:"3539036"}};
+    nar.mockResolvedValue({status:"available",data:registered});expect((await ontarioMunicipalLocation({address:"481 Ridout St N, London, ON"}))?.data?.addressRegister?.buildingId).toBe("verified-building");
+    nar.mockResolvedValue({status:"available",data:{...registered,longitude:-81.3}});expect((await ontarioMunicipalLocation({address:"481 Ridout St N, London, ON"}))?.data?.addressRegister).toBeUndefined();
+    nar.mockResolvedValue({status:"ambiguous",data:null});expect((await ontarioMunicipalLocation({address:"481 Ridout St N, London, ON"}))?.data?.addressRegister).toBeUndefined();
+    nar.mockResolvedValue({status:"available",data:{...registered,accuracy:"blockface_representative"}});expect((await ontarioMunicipalLocation({address:"481 Ridout St N, London, ON"}))?.data?.addressRegister).toBeUndefined();
   });
   it("accepts official Ottawa former communities and rejects a conflicting requested community",async()=>{
     const f=feed("Ottawa","addresses");fetch.mockImplementation(provider(f,[record(f,{ADDRNUM:150,FULL_ROADNAME_EN:"Donald St",MUNICIPALITY:"Old Ottawa",CP_MUNICIPALITY:"OTTAWA",ADDRTYPE:"Main"},{x:-75.6624,y:45.4271})]));
