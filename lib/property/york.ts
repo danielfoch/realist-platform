@@ -62,7 +62,7 @@ export async function yorkLocation(input:PropertyRequest):Promise<Layer<Location
     const street=address.replace(/^\d+[a-z]?\s+/i,"");
     const r=await get(f.url+"/query",{where:`${scopeWhere(f,municipality)} AND ADDRESS_NUMBER = ${parseInt(civic,10)} AND UPPER(FULL_STREET_NAME) IN (${streetVariants(street).map(literal).join(",")})`,outFields:Object.keys(f.fields).join(","),returnGeometry:"true",outSR:"4326",resultRecordCount:"501",orderByFields:f.oid});
     const all=features(r,f);if(r.exceededTransferLimit||all.length>=501)throw new Error("Incomplete civic candidates");
-    const community=YORK_COMMUNITIES[cityName(requestedCity)]?.publishedCommunity;
+    const community=YORK_COMMUNITIES[cityName(requestedCity)]?.publishedCommunity??YORK_COMMUNITIES[cityName(embeddedCity??null)]?.publishedCommunity;
     const exact=all.filter(({a})=>a.MUNICIPALITY===municipality&&a.LIFESTATUS==="Active"&&YORK_PROPERTY_ADDRESS_TYPES.includes(String(a.ADDRS_PNT_TYPE))&&(!community||cityKey(text(a.MAIL_COMMUNITY_NAME)??"")===cityKey(community))&&civicStreetKey(addressAt(a))===civicStreetKey(address));
     if(!exact.length)return null;
     const primary=exact.find(({a})=>!text(a.SUITE_NUMBER))??exact[0];

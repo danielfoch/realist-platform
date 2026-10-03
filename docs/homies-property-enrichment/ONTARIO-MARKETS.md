@@ -477,7 +477,29 @@ Examples: King/Schomberg 199 Church Street matches regional file ZBA.26.K.0078,
 parcel reference 412683 and Schomberg WHPA-D; Richmond Hill 15 Poplar Drive matches
 CONS.18.R.0077 and parcel reference 396464; 111 Sandiford Drive intersects the
 published 2025 employment inventory. The public API/report/skill preserve
-subject-point scope and current municipal gaps. Next priority is Markham's
-explicitly licensed catalogue, then the other York municipalities' permit,
-detailed zoning, heritage and current planning/plan sources. All 76 priority
+subject-point scope and current municipal gaps. Markham now adds the municipal feeds below. Next priority is Vaughan's licensed
+municipal catalogue and the other York municipalities' permit, detailed zoning,
+heritage and current planning/plan sources. All 76 priority
 municipalities and 16 CMA anchors remain incomplete pending full core audits.
+
+
+## Markham municipal sources — October 3, 2026
+
+[City open-data page and commercial licence](https://www.markham.ca/about-city-markham/open-data-markham) links to the official Hub. Its [Terms of Use](https://data-markham.opendata.arcgis.com/pages/terms-of-use), public City_of_Markham-owned Hub Page ac3dd6db2bbd4c0d9fb7260291496b9b in org OWiFbQmr7Eu5DHn1, contains the inspected v1.0 grant. Third-party/personal rights are excluded. Exact public publisher, epoch, grant-card SHA-256, per-item explicit referral, full root URL and named typed child are required before property queries. Blank-licence public items do not inherit the portal grant.
+
+| Enabled source | Public item | Published rows |
+| --- | --- | ---: |
+| Civic Addresses | 7791a0d2e3d3422b8eab3c800be5c4e7 | 98,261 |
+| Heritage Conservation Districts | d9e01d203c544d8b9f2671933f6fee40 | 4 |
+| Secondary Plans | 69a4a292d99b4cf082d9f4b992b36369 | 58 |
+| Development Charge Areas | 696a183a3a104bcd918f2b59c86363c9 | 55 |
+
+Total 98,378 overlapping source rows, not unique homes or data points. Civic labels are MARKHAM 97,778, UNIONVILLE 158 and THORNHILL 325. Exact civic identity uses full address plus civic/street components, preserves direction/suffix/type and supports the source's PKY/CRT abbreviations. Unionville requests require the published UNIONVILLE label. Thornhill alone does not assign Markham rather than Vaughan. Conflicting/distant/unusable/shared-community points stay ambiguous. The municipal resolver is a fallback after York civic identity; polygon queries always require a precise point and unique York municipality boundary confirming Markham.
+
+District mapping supplies names/IDs without bylaws, effective dates, individual listing/designation status or alteration approvals. The individual register remains unsearched. Secondary-plan labels include Statutory and Non-Statutory; preserve both and verify current written policies, schedules, amendments and appeals. The [City Official Plan page](https://www.markham.ca/economic-development-business/planning-development-services/official-plan) reports the 2014 plan's partial approval and continuing 1987 plan applicability for certain appealed/secondary-plan areas. These polygons cannot establish current in-force policy.
+
+Development-charge mapping supplies area names/codes and raw statuses, including leading whitespace. Areas with Proposed Charge and Already Serviced/Covered by Agreement do not establish current rates, fees owed, payment/exemptions, subject agreements or actual servicing/capacity. No fees are calculated. Acres/hectares describe mapped polygons rather than this lot. All three polygon screens keep coverageComplete false, a separate queryCoverageComplete flag, absenceEstablished false and parcelWideScreenPerformed false. Source editingInfo is unpublished, so sourceUpdatedAt stays null.
+
+Withheld without record queries: public Interactive Zoning Map b2f9531874c94167979864d22e200e4c (null licence); Heritage Property Locator 8320264b32a34e30bfbee576ea885906 (blank licence); Temp1_Markham Parcels d91aaf9c9a724bbb8344281a101385aa (no verified grant/third-party rights). [Current building services](https://www.markham.ca/economic-development-business/building-permits) provide ePLAN public search, inspection/completion/compliance and drawing requests; no licensed complete property permit history was identified in this catalogue pass. [Planning services](https://www.markham.ca/economic-development-business/planning-development-services/planning-and-development-applications) describe current file processes, but full current municipal file history/decisions/appeals and a nearby development feed remain unconnected. These current core gaps leave Markham partial.
+
+`node --import tsx scripts/verify-markham.ts /absolute/output/path` checks all four bindings/counts and six live controls: Town Centre plan/charge, Unionville Station Lane district/Core plan, 197 Main Street Unionville, 96 Main Street North Markham district/plan, Church View proposed-charge classification and Cachet valid empty polygons. The municipal layers flow into the JSON API, printable report, one-click hosted Homies skill, seller questions and document requests. All 16 CMA anchors and 76 priority municipalities remain incomplete.

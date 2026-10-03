@@ -51,6 +51,7 @@ describe("York regional property evidence",()=>{
   it("uses verified community aliases and rejects city conflicts, foreign province and neighbouring counties",async()=>{
     fetch.mockImplementation(provider({addresses:[civic()]}));expect((await yorkLocation({address:"199 Church St, Schomberg, ON"}))?.data?.city).toBe("King");expect((await yorkLocation({address:"199 Church St, Schomberg, ON",city:"King"}))?.status).toBe("available");
     expect(await yorkLocation({address:"199 Church St, King City, ON"})).toBeNull();expect((await yorkLocation({address:"199 Church St, King, ON",city:"Markham"}))?.status).toBe("ambiguous");
+    expect(await yorkLocation({address:"199 Church St, King City, ON",city:"King"})).toBeNull();
     for(const city of ["Caledon","Bradford West Gwillimbury","Innisfil","Chippewas of Georgina Island First Nation","Thornhill"])expect(yorkMunicipality(city,"ON")).toBeNull();expect(yorkMunicipality("King","BC")).toBeNull();
   });
   it("does not select among distant/unusable civic points or accept incomplete candidates",async()=>{

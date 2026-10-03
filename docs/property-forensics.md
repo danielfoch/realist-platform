@@ -4,6 +4,13 @@ The public `/api/property/skill` prompt starts with “Create a property forensi
 
 ## Evidence additions
 
+Markham's municipal extension adds four explicitly licensed feeds with 98,378 published source rows: civic addresses 98,261 (MARKHAM 97,778, UNIONVILLE 158, THORNHILL 325), heritage districts 4, secondary-plan polygons 58 and development-charge polygons 55. Civic identity is a strict fallback after York civic resolution; Thornhill alone remains unresolved between municipalities. Point screens require a precise point and unique York boundary confirming Markham. Six direct controls verify district/plan/charge positives and a valid empty-area result.
+
+Only district names/IDs are published, with no individual heritage status or current designation bylaw. Secondary-plan Statutory/Non-Statutory labels are source classifications, not in-force policy or approval. The City reports its 2014 plan is partially approved and its 1987 plan remains applicable in certain appealed/secondary-plan areas. Charge classifications are raw mapping status, not current fees, payment/exemption or actual servicing. Acres/hectares describe whole source polygons, not surveyed lot area. All three point layers retain incomplete overall coverage and separate bounded-query completeness. The live adapters pin the exact terms-page publisher/epoch and inspected grant hash, explicit dataset referral, full item root URL, named child layer and typed attribute whitelist before records. No source editingInfo is published; item modification is not substituted for a source update date.
+
+Individual heritage locator, interactive zoning and unverified third-party municipal parcels remain withheld without property queries. Current permit/inspection history and full municipal applications, conditions and appeals remain unsearched. Reports direct users to current City verification and ePLAN document requests. Selected expansion counts are now 72 verified feeds / 2,384,009 overlapping source rows and table observations; 22 withheld feeds and Ottawa's separate monthly observations are excluded. These counts do not represent unique properties, field-level data points or imports.
+
+
 York Region's October 3 extension adds six cached live feeds across Vaughan, Markham, Richmond Hill, Newmarket, Aurora, Georgina, East Gwillimbury, Whitchurch-Stouffville and King. Eleven source controls passed, including regional application and Schomberg wellhead-zone evidence at 199 Church Street, King; regional consent evidence at 15 Poplar Drive, Richmond Hill; and employment-inventory evidence at 111 Sandiford Drive, Whitchurch-Stouffville.
 
 | Scoped York feed | Published source records |
