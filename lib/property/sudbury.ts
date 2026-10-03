@@ -14,7 +14,8 @@ const feed = (key: string) => SUDBURY_FEEDS.find(f => f.key === key)!;
 const normalized = (s: string) => load(s).text().replace(/\s+/g, " ").trim();
 const sha = (s: string) => createHash("sha256").update(normalized(s)).digest("hex");
 const termsSha = (s: string) => createHash("sha256").update(JSON.stringify({ text: normalized(s), links: load(s)("a").toArray().map(a => load(s)(a).attr("href") ?? "") })).digest("hex");
-const communities = ["greater sudbury", "sudbury", "azilda", "capreol", "chelmsford", "coniston", "copper cliff", "dowling", "falconbridge", "garson", "hanmer", "levack", "lively", "onaping", "val caron", "val therese", "walden", "rayside balfour", "nickel centre"];
+// All 23 City community names audited October 3, 2026; former names are candidates only.
+const communities = ["greater sudbury", "sudbury", "azilda", "blezard valley", "capreol", "chelmsford", "coniston", "copper cliff", "dowling", "falconbridge", "garson", "hanmer", "levack", "lively", "mccrea heights", "naughton", "onaping", "skead", "val caron", "val therese", "wahnapitae", "wanup", "guilletville", "whitefish", "walden", "rayside balfour", "nickel centre"];
 const communityKey = (s: string) => cityKey(s).replace(/[-’']/g, " ").replace(/\s+/g, " ").trim();
 const broadCity = (s: string) => ["greater sudbury", "sudbury"].includes(communityKey(s));
 // Names select a candidate only; one original Ontario municipal polygon must agree.

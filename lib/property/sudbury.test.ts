@@ -59,6 +59,14 @@ describe("Greater Sudbury property evidence", () => {
     const r = await sudburyResearch({address:"47 Maki Ave, Sudbury, ON"}); expect(r?.location?.data).toMatchObject({ accuracy:"source_civic_address_point", provider:"sudbury:municipalAddresses", city:"Greater Sudbury", latitude:location.latitude, municipalAddress:{community:"Sudbury"} }); expect(r?.civic.data).toMatchObject({ records:[{publishedRecordUpdateDate:1366622676000}], primaryPointIdentityEstablished:true, unitIdentityVerified:false });
     json.mockImplementation(provider({municipalAddresses:[civic(),civic({OBJECTID:2,ADDRESSLIFECYCLESTATUS:"Retired"})]})); expect((await sudburyResearch({address:"47 Maki Ave, Greater Sudbury, ON"}))?.location?.status).toBe("available");
   });
+  it("retains strict published community identity across all audited City names", async () => {
+    for (const community of ["Blezard Valley","Wahnapitae","Skead","Whitefish","McCrea Heights","Naughton","Wanup","Guilletville"]) {
+      json.mockImplementation(provider({municipalAddresses:[civic({COMMUNITY:community})]}));
+      const r = await sudburyResearch({address:`47 Maki Avenue, ${community}, ON`}); expect(r?.location?.data?.municipalAddress?.community).toBe(community);
+      json.mockClear();await sudburyLayers("47 Maki Avenue","Greater Sudbury","ON",r?.location?.data??null,community,r);
+      const u=json.mock.calls.map(([u])=>u as URL).find(u=>u.href.startsWith(feed("permits").url+"/query"))!; expect(u.searchParams.get("where")).toContain(community.toUpperCase());expect(u.searchParams.get("where")).not.toContain("WALDEN");
+    }
+  });
   it("stops spatial screening for duplicate, secondary, unit, retired, assigned or truncated civic evidence", async () => {
     for (const records of [[civic(),civic({OBJECTID:2,ADDRESSID:"other"})],[civic({STYPE:"Secondary"})],[civic({UNIT_OR_AMENITY:"Unit"})],[civic({ASSIGNEDADDRESSID:"parent"})],[civic({ADDRESSLIFECYCLESTATUS:"Retired"})]]) {
       json.mockClear().mockImplementation(provider({municipalAddresses:records})); const r=await sudburyResearch({address:"47 Maki Ave, Sudbury, ON"}); expect(r?.location?.status).toBe("ambiguous"); const l=await sudburyLayers("47 Maki Ave","Sudbury","ON",r?.location?.data??null,"Sudbury",r); expect(l.zoning.status).toBe("skipped"); expect(json.mock.calls.filter(([u])=>u.pathname.endsWith("/query")).every(([u])=>u.href.startsWith(feed("municipalAddresses").url))).toBe(true);
@@ -77,7 +85,7 @@ describe("Greater Sudbury property evidence", () => {
     json.mockImplementation(provider({municipalAddresses:[{...civic(),geometry:{x:0,y:0}}]})); expect((await sudburyResearch({address:"47 Maki Ave, Sudbury, ON"}))?.civic.status).toBe("unavailable");
   });
   it("uses municipal names only as candidates and requires one complete original provincial polygon", async () => {
-    for(const city of ["Sudbury","Greater Sudbury","Lively","Garson"]) expect(sudburyMarket(city,"ON")).toBe(true); expect(sudburyMarket("Sudbury","NS")).toBe(false);
+    for(const city of ["Sudbury","Greater Sudbury","Lively","Garson","Blezard Valley","Wahnapitae","Skead","Whitefish","McCrea Heights","Naughton","Wanup","Guilletville"]) expect(sudburyMarket(city,"ON")).toBe(true); expect(sudburyMarket("Sudbury","NS")).toBe(false);
     for (const municipality of [[],[{attributes:{OBJECTID:1,MUNICIPAL_NAME:"THUNDER BAY"}}],[{attributes:{OBJECTID:1,MUNICIPAL_NAME:"GREATER SUDBURY"}},{attributes:{OBJECTID:2,MUNICIPAL_NAME:"GREATER SUDBURY"}}],[{attributes:{OBJECTID:"1",MUNICIPAL_NAME:"GREATER SUDBURY"}}]]) {
       json.mockClear().mockImplementation(provider({municipality})); expect((await screen()).permits.status).toBe("skipped"); expect(json.mock.calls.filter(([u])=>u.pathname.endsWith("/query")).every(([u])=>u.href.startsWith(provincial.url))).toBe(true);
     }

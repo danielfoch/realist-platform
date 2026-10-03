@@ -5,7 +5,7 @@ import type { Row } from "../lib/property/model";
 async function main() {
   const base = process.argv[2] ?? "https://realist-lean.vercel.app", results = [];
   // Coverage includes Guelph: keep the entire verifier/source session sequential.
-  for (const address of ["47 Maki Ave, Sudbury, ON", "993 Delwood Court, Sudbury, ON", "200 Brady St, Sudbury, ON", "200 Mumford Drive, Lively, ON"]) {
+  for (const address of ["47 Maki Ave, Sudbury, ON", "993 Delwood Court, Sudbury, ON", "200 Brady St, Sudbury, ON", "200 Mumford Drive, Lively, ON", "2777 Main Street, Blezard Valley, ON"]) {
     const u = new URL("/api/property", base); u.searchParams.set("address", address);
     const response = await fetch(u, { signal: AbortSignal.timeout(65000) }); assert.equal(response.status, 200); assert.equal(response.headers.get("access-control-allow-origin"), "*");
     const result = await response.json() as Row; assert.equal(result.success, true);
@@ -15,7 +15,8 @@ async function main() {
       for (const k of ["municipality", "permits", "zoning", "temporaryZoning", "buildingFootprintReference", "parcelReference"]) assert.equal(layers[k].status, "skipped");
     } else {
       assert.equal(layers.location.data?.accuracy, "source_civic_address_point"); assert.equal(layers.municipality.status, "available");
-      for (const k of ["permits", "zoning", "buildingFootprintReference", "community", "townshipReference", "parcelReference"]) assert.equal(layers[k].status, "available");
+      for (const k of ["zoning", "buildingFootprintReference", "community", "townshipReference", "parcelReference"]) assert.equal(layers[k].status, "available");
+      assert.equal(layers.permits.status, address.startsWith("2777 ") ? "no_match" : "available");
       assert.equal(layers.zoning.data?.currentOfficialMapLineageVerified, true); assert.equal(layers.zoning.data?.legalPermissionsEstablished, false);
       assert.equal(layers.permits.data?.estimatedValueCurrencyVerified, false); assert.equal(layers.permits.data?.occupancyEstablished, false);
       assert.equal(layers.parcelReference.data?.parcelIdentityVerified, false); assert.equal(layers.buildingFootprintReference.data?.measuredBuildingAreaReturned, false);

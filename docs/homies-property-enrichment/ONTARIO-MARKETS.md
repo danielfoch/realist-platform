@@ -939,13 +939,16 @@ its other map layers do not acquire reuse rights from that check.
 Only one complete active primary City civic point can select a location.
 Retired, secondary, assigned-unit, duplicate, truncated or coordinate-conflicting
 matches remain unresolved. A unique complete original Ontario municipal polygon
-must name Greater Sudbury before City GIS or permit queries. Specific source
-communities remain distinct; former Walden/Lively naming is not silently
+must name Greater Sudbury before City GIS or permit queries. All 23 published City community names were audited as candidates, including
+Blezard Valley, Wahnapitae, Skead, Whitefish, McCrea Heights, Naughton, Wanup and
+Guilletville. Specific source communities remain distinct; former Walden/Lively naming is not silently
 crosswalked. Coordinate-only requests do not query permit addresses. Strict full
 civic components preserve direction and number suffix. The two live unique
 controls were 47 Maki Avenue and 993 Delwood Court; 200 Brady Street and 200
 Mumford Drive in Lively had duplicate active primary rows and stopped spatial
-screening.
+screening. A further live control at 2777 Main Street, Blezard Valley resolved
+one primary City point and returned GIS references; its permit no-match remains
+explicit.
 
 The [City permit legend](https://www.greatersudbury.ca/live/building-and-renovating/open-permit-search/)
 distinguishes applications, issued permits and completed files. The raw feed's
