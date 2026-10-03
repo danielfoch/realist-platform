@@ -417,3 +417,67 @@ municipalities / 16 metro anchors remain in the checklist.
 the two published sources, four withheld feeds and nine positive/ambiguous/empty
 controls, including repeated Esquesing heritage and Georgetown planning rows.
 The public API, report, coverage ledger and Homies skill preserve these limits.
+
+## York Region extension — October 3, 2026
+
+Six scoped live feeds add **789,370 published records** across Vaughan, Markham,
+Richmond Hill, Newmarket, Aurora, Georgina, East Gwillimbury,
+Whitchurch-Stouffville and King. Counts: 424,666 active allowed property civic
+points; 18 municipal boundary polygons; 352,918 active York Region-sourced
+parcel references; 7,073 regional application boundaries; 4,612 employment-land
+inventory records from 2025; 83 wellhead-protection polygons. They are overlapping
+dataset rows, not unique properties, field counts or database imports. The
+selected municipal expansion sources now total **68 verified feeds / 2,285,631
+source rows and table observations**, with nineteen withheld sources excluded.
+Ottawa's monthly permit snapshot remains separate.
+
+The [official York open-data page](https://www.york.ca/york-region/statistics-and-data/open-data)
+links its Hub and commercial-reuse licence. Each enabled public item expressly
+refers to that licence. Runtime metadata checks pin the inspected licence
+document's publisher/name/type/modification epoch/size and each exact dataset
+URL/title, explicit referral, named layer, geometry, copyright and field types.
+Changed bindings fail before record queries. A York-specific HTML referral
+normalization supports the inspected employment-item wording; it does not
+weaken the generic municipal licence check or authorize blank-licence items.
+
+Exact civic matching preserves suffix, type and direction; only active Single,
+Multiple, Building, Building Entrance and Parcel points in the nine municipalities
+are accepted. Transit/utility/park/unknown types, neighbouring counties and First
+Nation boundaries are excluded. Known community aliases require published
+postal-community agreement. Shared points must agree within 20 metres and share
+a community; building/site context does not establish unit legality. Regional
+property queries require one agreeing municipal boundary. Parcel SOURCE values
+outside York Region are excluded; multiple point intersections and conflicts
+with civic parcel references remain ambiguous. Geometry area stays in internal
+units squared; no title, PIN, survey or legal lot-area finding is supplied.
+
+Regional application boundaries intersect the subject point only. Preserve
+legacy/new statuses, types and dates independently, even when they conflict.
+UNITS can contain Yes/No text; it is not a numeric dwelling count. ESRI_OID is
+query-row context; retain published regional/local file references for file
+identity. Private applicant/owner/contact/employee fields, roll/PIN values,
+fees and cross-joined planning constraints are excluded. Full municipal planning
+history, nearby proposals, decisions, conditions and appeal outcomes remain
+unsearched. [York's current role](https://www.york.ca/business/planning-for-regional-growth)
+records the transfer of land-use approval and regional-plan implementation to
+municipalities on July 1, 2024. Regional review is separate from municipal approval.
+
+Employment inventory classifications retain their 2025 vintage and published
+hectare fields; they do not establish current zoning, conversion permission,
+servicing, vacancy or surveyed lot size. Wellhead codes/names remain source
+mapping, not water safety, contamination, actual supply or current activity
+rules. Five sources are withheld without property record queries: First Base
+Solutions building footprints; two regional heritage datasets with public-access
+wording only; regional-plan land-use mapping and urban structure with no verified
+dataset-specific reuse grant.
+
+`node --import tsx scripts/verify-york.ts /absolute/output/path` verifies six
+bindings/scoped counts and eleven live controls across all nine municipalities.
+Examples: King/Schomberg 199 Church Street matches regional file ZBA.26.K.0078,
+parcel reference 412683 and Schomberg WHPA-D; Richmond Hill 15 Poplar Drive matches
+CONS.18.R.0077 and parcel reference 396464; 111 Sandiford Drive intersects the
+published 2025 employment inventory. The public API/report/skill preserve
+subject-point scope and current municipal gaps. Next priority is Markham's
+explicitly licensed catalogue, then the other York municipalities' permit,
+detailed zoning, heritage and current planning/plan sources. All 76 priority
+municipalities and 16 CMA anchors remain incomplete pending full core audits.
