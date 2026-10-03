@@ -29,6 +29,7 @@ not complete a municipal market.
 | Mississauga | Municipal civic points, issued permit history, heritage polygons, wards, three explicitly historical 2010 plan layers | Specific zoning terms restrict copying; rezoning/site-plan reuse terms are unresolved; no current 2051 GIS screen |
 | London | Issued civic points, heritage parcels and districts, generalized land use, Primary Transit Area, Community Improvement Project Areas | The licensed generalized layer lacks actual zone codes; current permit history, detailed zoning and planning remain to be connected |
 | Ottawa | Municipal civic points, Part V heritage district mapping, monthly permit reports covering January 2024–August 2026 | Older permit history, later unpublished months/current status, planning/Part IV data, detailed zoning and current official-plan layers remain to be connected |
+| Oshawa | Municipal civic points, mapped zone labels, existing-use classifications, parcel references, communities, wards, issued two-unit certificates and rental-licence expiry dates | Detailed zoning rules/amendment/appeal currency, property permit history, heritage, current Official Plan GIS and comprehensive planning history remain gaps |
 
 The 15 enabled feeds collectively published **826,962 dataset rows** at the
 verification time. These are source rows, **not** distinct properties, a count of
@@ -74,7 +75,8 @@ truncation, empty results, licence withdrawal and schema failure.
 
 Next: extend Ottawa's older permit reports, planning, both current zoning regimes and overlays;
 find a licensed current Mississauga 2051 feed; connect London's detailed zoning
-and permit history; then expand Durham, Halton, York, Waterloo and Niagara before
+and permit history; expand the Durham regional address and plan feeds alongside
+Oshawa's remaining gaps, then Halton, York, Waterloo and Niagara before
 working through southwestern, eastern and northern CMA/regional markets.
 Retain explicit gaps when a dataset cannot be reused; continue other available
 market work instead of treating one missing licence as a province-wide blocker.
@@ -113,3 +115,71 @@ and explicitly marks older history/current status/final inspections unverified.
 The ninth public snapshot joins the existing daily refresh route, with last-good
 retention and a traced compiled fallback. No production schema or manual refresh
 is required; the scheduled run can publish it normally.
+
+## Oshawa first municipal batch
+
+Eight licensed feeds add **194,389 published rows**, bringing this municipal
+adapter registry to **23 verified feeds / 1,021,351 source rows** at verification
+time. The counts overlap properties and include address/unit and issue-history
+rows; they are not unique properties or unique data points. The three withheld
+Mississauga feeds and Ottawa's separate permit-report snapshot remain excluded.
+
+| Feed | Published rows |
+| --- | ---: |
+| Civic-address points | 64,226 |
+| Zoning labels | 2,459 |
+| Existing land-use classifications | 61,549 |
+| Parcel-reference polygons | 61,549 |
+| Communities | 20 |
+| 2018 ward boundaries | 5 |
+| Issued two-unit certificates | 2,965 |
+| Issued rental-licence records | 1,616 |
+
+Each item binds the public `City.of.Oshawa` publisher, organization
+`qQGLFamV2KgdKsUa`, fixed URL/file and
+[Open Government Licence v2.0](https://map.oshawa.ca/OpenData/Open%20Government%20Licence%20version%202.0%20-%20Oshawa.pdf).
+The licence permits commercial reuse, with attribution and exclusions including
+personal information and unlicensed third-party rights. Only the whitelisted
+municipal property-reference fields and address/date lists are returned.
+[Parcel metadata](https://map.oshawa.ca/OpenData/Metadata/Parcel%20Metadata.pdf)
+describes area in internal units squared. The API preserves that label and does
+not call it surveyed lot area or convert it; municipal parcel IDs are not PINs.
+
+The zoning feed returns complete published labels such as `R1-D(6)`, without
+separate exception text, holding rules, amendment dates, appeals or verified data
+observation dates. [City guidance](https://www.oshawa.ca/business-development/planning-and-development/development-applications/zoning/)
+requires checking the applicable bylaw after obtaining the label.
+[Transit-station amendment guidance](https://www.oshawa.ca/business-development/planning-and-development/development-applications/development-studies/)
+also describes approval-dependent provisions. Existing use is separately
+classified and does not establish a plan designation, legal unit count or
+permission for the proposed use. Licensed Official Plan PDF schedules were
+identified but are not yet parsed into property GIS. The public housing-permit
+dashboard's reuse licence was blank; it is not queried by the API. The City's
+[active applications page](https://www.oshawa.ca/business-development/planning-and-development/development-applications/)
+has a public-meeting date limit and is not treated as complete planning history.
+
+The fixed [two-unit CSV](https://www.arcgis.com/home/item.html?id=97d92126eeae4430885d6225df0ff2a0)
+and [rental-licence CSV](https://www.arcgis.com/home/item.html?id=1331c821b8cd49369f6dc89e2ce0fc50)
+are small bounded live files with one-hour caching. Their catalogue modification
+dates are December 2, 2025; actual observation dates remain unknown. Downloads
+reject redirects and exceedance of byte/row bounds. Strict headers, quoting,
+row widths and stable metadata are verified. Dates use the source's month/day/year
+format; invalid dates remain null with original text. Certificate issue dates
+and rental expiry dates retain different meanings. Neither proves current
+legality, final inspection, revocation status or an unpublished renewal.
+
+`scripts/verify-oshawa.ts` verifies eight feed counts and pins City records at
+55 Aberdeen Street (certificate issued February 9, 2018, zone `R1-C`, mapped
+existing use `Single with Registered Apt`) and 52 Air Dancer Crescent (published
+licence expiry September 5, 2027, zone `R3-A(18)`). At 460 Woodmount Drive, the
+shared civic-address site contains differing unit points, so location remains
+ambiguous and GIS is skipped. Rental unit entries remain available as site-level
+address-list evidence without choosing an arbitrary building point. Tests cover
+exact suffix/direction, damaged CSV, date parsing, withdrawn rights, changed file
+versions, bounded results and source failures.
+
+Durham research has also identified licensed regional civic addresses and plan
+map items. The official City/Region catalogues and current licence text are
+retained in the local research handoff. Regional source adoption, municipal
+matching, the status of inherited planning policies and current amendments still
+need verification before those feeds are enabled.

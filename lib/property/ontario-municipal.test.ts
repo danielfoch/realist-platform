@@ -55,6 +55,15 @@ describe("Ontario municipal evidence",()=>{
     const f=feed("Ottawa","addresses");fetch.mockImplementation(provider(f,[record(f,{ADDRNUM:150,FULL_ROADNAME_EN:"Donald St",MUNICIPALITY:"Old Ottawa",CP_MUNICIPALITY:"OTTAWA",ADDRTYPE:"Main"},{x:-75.6624,y:45.4271})]));
     expect((await ontarioMunicipalLocation({address:"150 Donald St, Ottawa, ON"}))?.status).toBe("available");expect(await ontarioMunicipalLocation({address:"150 Donald St, Kanata, ON"})).toBeNull();
   });
+  it("matches Oshawa civic suffixes and preserves shared-address point ambiguity",async()=>{
+    const f=feed("Oshawa","addresses"),point={x:-78.8658,y:43.9076};fetch.mockImplementation(provider(f,[record(f,{SITE_CIVIC_NO:55,SITE_CIVIC_CHAR:"A",STNAME:"ABERDEEN ST"},point)]));
+    expect(await ontarioMunicipalLocation({address:"55 Aberdeen St, Oshawa, ON"})).toBeNull();expect((await ontarioMunicipalLocation({address:"55A Aberdeen Street, Oshawa, ON"}))?.status).toBe("available");
+    fetch.mockImplementation(provider(f,[record(f,{SITE_CIVIC_NO:460,STNAME:"WOODMOUNT DR",SITE_UNIT_ID:"18"},point),record(f,{OBJECTID:2,SITE_CIVIC_NO:460,STNAME:"WOODMOUNT DR",SITE_UNIT_ID:"50"},{...point,x:-78.87})]));expect((await ontarioMunicipalLocation({address:"460 Woodmount Dr, Oshawa, ON"}))?.status).toBe("ambiguous");
+  });
+  it("keeps Oshawa zone labels and parcel geometry units without implying legal permission or surveyed lot area",async()=>{
+    const point={...london,city:"Oshawa",latitude:43.9076,longitude:-78.8658};const z=feed("Oshawa","zoning");fetch.mockImplementation(provider(z,[record(z,{DESCRIPTION:"R1-D(6) h-12"})]));expect((await municipalPointLayer(z,point)).data).toMatchObject({records:[expect.objectContaining({publishedZoneLabel:"R1-D(6) h-12"})],parcelWideScreenPerformed:false});
+    const p=feed("Oshawa","parcel");fetch.mockImplementation(provider(p,[record(p,{PARCELID:"PCL1",SHAPE_Area:450})]));const r=await municipalPointLayer(p,point);expect(r.data).toMatchObject({records:[expect.objectContaining({municipalParcelId:"PCL1",publishedGeometryAreaInternalUnitsSquared:450})]});expect(r.note).toContain("not a land-registry PIN");
+  });
   it("preserves published London year-built text and designation part",async()=>{
     const f=feed("London","heritage");fetch.mockImplementation(provider(f,[record(f,{Status:"Listed Heritage Property",YearBuilt:"c. 1880-1890",DesignationPart:"V"})]));const r=await municipalPointLayer(f,london);expect(r.status).toBe("available");expect((r.data as Row).records).toEqual([expect.objectContaining({publishedYearBuiltText:"c. 1880-1890",designationPart:"V"})]);expect(r.note).toContain("approximate or a range");
   });

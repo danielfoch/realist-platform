@@ -1,6 +1,6 @@
 import type { Source, Row } from "./model";
 
-export type Market = "Mississauga" | "London" | "Ottawa";
+export type Market = "Mississauga" | "London" | "Ottawa" | "Oshawa";
 export interface MunicipalFeed {
   market: Market; key: string; item: string; url: string; owner: string; org: string | null;
   licenceAnchors: string[]; oid: string; geometry: "esriGeometryPoint" | "esriGeometryPolygon";
@@ -10,14 +10,23 @@ export interface MunicipalFeed {
 const MS_TERMS = "https://mississauga.maps.arcgis.com/sharing/rest/content/items/961c790805c14d8da258ec91bf4117e3/data";
 const LN_TERMS = "https://london.maps.arcgis.com/sharing/rest/content/items/e31458fd0c7e41dd9f93144a9550781d/data";
 const OT_TERMS = "https://ottawa.ca/en/city-hall/get-know-your-city/open-data#open-data-licence-version-2-0";
+export const OSHAWA_TERMS = "https://map.oshawa.ca/OpenData/Open%20Government%20Licence%20version%202.0%20-%20Oshawa.pdf";
+export const OSHAWA_LICENCE_ANCHORS = [OSHAWA_TERMS, decodeURI(OSHAWA_TERMS)];
 const ms = "https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/";
 const ln = "https://maps.london.ca/server/rest/services/OpenData/OpenData_Community/MapServer/";
 const ot = "https://maps.ottawa.ca/arcgis/rest/services/";
+const osh = "https://map.oshawa.ca/arcgis/rest/services/Operational/";
 function feed(market: Market, key: string, item: string, url: string, fields: Record<string, string>, note: string, options: Partial<MunicipalFeed> = {}): MunicipalFeed {
-  const licenceUrl = market === "Mississauga" ? MS_TERMS : market === "London" ? LN_TERMS : OT_TERMS;
-  return { market, key, item, url, owner: market === "Mississauga" ? "MississaugaData" : market === "London" ? "opendata_London" : "open.ouvert@ottawa.ca", org: market === "Mississauga" ? "hM5ymMLbxIyWTjn2" : market === "Ottawa" ? "G6F8XLCl5KtAlZ2G" : null,
-    licenceAnchors: [licenceUrl], oid: "OBJECTID", geometry: "esriGeometryPolygon", fields: { OBJECTID: "recordId", ...fields }, note,
-    source: { id: `${market.toLowerCase()}:${key}`, name: `${market} ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`, url: `https://${market === "Mississauga" ? "data.mississauga.ca" : market === "London" ? "opendata.london.ca" : "open.ottawa.ca"}/datasets/${item}/about`, licence: market === "Ottawa" ? "Open Government Licence – City of Ottawa, version 2.0" : `City of ${market} Open Data Terms of Use`, licenceUrl, attribution: market === "Ottawa" ? "Contains information licensed under the Open Government Licence – City of Ottawa." : `Contains public data from the City of ${market}, distributed under its Open Data Terms of Use. Access and reuse are subject to the linked terms.` }, ...options };
+  const publishers = {
+    Mississauga: { owner:"MississaugaData", org:"hM5ymMLbxIyWTjn2", host:"data.mississauga.ca", terms:MS_TERMS },
+    London: { owner:"opendata_London", org:null, host:"opendata.london.ca", terms:LN_TERMS },
+    Ottawa: { owner:"open.ouvert@ottawa.ca", org:"G6F8XLCl5KtAlZ2G", host:"open.ottawa.ca", terms:OT_TERMS },
+    Oshawa: { owner:"City.of.Oshawa", org:"qQGLFamV2KgdKsUa", host:"city-oshawa.opendata.arcgis.com", terms:OSHAWA_TERMS },
+  };
+  const p = publishers[market], ogl = market === "Ottawa" || market === "Oshawa";
+  return { market, key, item, url, owner:p.owner, org:p.org,
+    licenceAnchors: market === "Oshawa" ? OSHAWA_LICENCE_ANCHORS : [p.terms], oid: "OBJECTID", geometry: "esriGeometryPolygon", fields: { OBJECTID: "recordId", ...fields }, note,
+    source: { id: `${market.toLowerCase()}:${key}`, name: `${market} ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`, url: `https://${p.host}/datasets/${item}/about`, licence: ogl ? `Open Government Licence – ${market === "Oshawa" ? "The Corporation of the " : ""}City of ${market}, version 2.0` : `City of ${market} Open Data Terms of Use`, licenceUrl:p.terms, attribution: ogl ? `Contains information licensed under the Open Government Licence – ${market === "Oshawa" ? "The Corporation of the " : ""}City of ${market}.` : `Contains public data from the City of ${market}, distributed under its Open Data Terms of Use. Access and reuse are subject to the linked terms.` }, ...options };
 }
 const historicalPlan = "Historical 2010 Official Plan mapping only. The City reports that plan was repealed on March 24, 2026 when Official Plan 2051 came into effect. This is not a current plan designation or constraint screen. Verify the current 2051 schedules and subsequent amendments.";
 export const ONTARIO_MUNICIPAL: MunicipalFeed[] = [
@@ -39,15 +48,24 @@ export const ONTARIO_MUNICIPAL: MunicipalFeed[] = [
   feed("London", "communityImprovementArea", "1b0d11ccf60f4e77b2e86dc98ace1e83", ln+"12", { CommunityImprovementProjectArea:"publishedArea", LastEditDate:"recordModifiedDate" }, "Community Improvement Project Area point screen. Area membership does not prove a currently funded program, grant amount, eligibility or an approved application.", { dates:["LastEditDate"] }),
   feed("Ottawa", "addresses", "03ba03fdf8e2486ca94fe64ad2c99102", ot+"Address_Information/MapServer/0", { ADDRNUM:"civicNumber", QUALIFIER:"qualifier", UNIT:"unit", FULL_ROADNAME_EN:"street", FULL_ROADNAME_FR:"streetFrench", MUNICIPALITY:"municipality", CP_MUNICIPALITY:"postalMunicipality", ADDRTYPE:"addressType" }, "Municipal address points are published at parcel centres or approximate building entrances; they are not verified building centroids.", { geometry:"esriGeometryPoint" }),
   feed("Ottawa", "heritageDistrict", "3ef851c23a1c4e92b461dd27571a2fd8", ot+"Planning/MapServer/17", { HCD_EN:"district", HCD_FR:"districtFrench", BYLAW:"bylaw", AMENDMENT:"amendment", DESCR_EN:"description", MODIFIED_DATE:"recordModifiedDate" }, "Part V heritage district point screen. This does not establish an individual Part IV designation or complete heritage-register search.", { dates:["MODIFIED_DATE"] }),
+  feed("Oshawa", "addresses", "528210b2e00c4607b8c971f4ed9389ff", osh+"Parcels_AddPts/MapServer/0", { ADDRESSID:"addressId", SITE_CIVIC_NO:"civicNumber", SITE_CIVIC_CHAR:"civicSuffix", SITE_UNIT_ID:"unit", STNAME:"street" }, "Municipal civic-address points assigned to buildings or properties; location scope is not a surveyed building centroid.", { geometry:"esriGeometryPoint" }),
+  feed("Oshawa", "zoning", "dee9180066de48c684a34ab6c35ac62a", osh+"PopularLayers/MapServer/17", {}, "Published zoning label point screen. Preserve the full label, including any exceptions or holding notation; the feed does not publish separate rule text, amendment dates, appeal status or an observation date. Verify By-law 60-94 as amended and applicable overlays with the City. Central Oshawa and Thornton's Corners transit-station amendments have approval-dependent provisions; a mapped label does not establish current development permission.", { oid:"OBJECTID_1", fields:{ OBJECTID_1:"recordId", DESCRIPTION:"publishedZoneLabel" } }),
+  feed("Oshawa", "existingLandUse", "d5c53053f810480bb6390a67659a9160", osh+"OpenData/MapServer/0", { PARCELID:"municipalParcelId", EXISTING_USE_CODE:"publishedUseCode", EXISTING_USE_DESC:"publishedExistingUse", PROPERTY_CLASS:"publishedPropertyClass", DS_PROPERTY_CLASS:"publishedDetailedClass", LAST_EDITED_DATE:"recordModifiedDate" }, "Published existing-use classification point screen, separate from Official Plan designations and zoning permission. Dwelling/unit descriptions are classifications, not a verified unit count or proof of legality.", { dates:["LAST_EDITED_DATE"] }),
+  feed("Oshawa", "parcel", "444c69bedab545b8ae819d78555eb4aa", osh+"OpenData/MapServer/1", { PARCELID:"municipalParcelId", FCODE:"publishedFeatureCode", SHAPE_Area:"publishedGeometryAreaInternalUnitsSquared" }, "Municipal parcel-reference point screen. The municipal parcel ID is not a land-registry PIN or title record. Published geometry area uses internal units squared; no surveyed lot area or unit conversion is asserted. Boundaries are reference mapping, not a survey."),
+  feed("Oshawa", "community", "1d9e2d22e339458d8486ee5af8fa6ff8", osh+"OpenData/MapServer/2", { COMM:"publishedCommunityCode", COMMNAME:"publishedCommunity" }, "Published City community-boundary point screen; this is not a neighbourhood quality, school catchment or household classification."),
+  feed("Oshawa", "ward", "a9257f99b2d941a3bff928f4a19d6f9d", osh+"OpenData/MapServer/11", { WARDNUMBER:"ward" }, "Published 2018 ward-boundary mapping point screen. Current electoral boundaries and representation must be verified; elected-person contact information is excluded."),
 ];
 
-/** Exact publisher, endpoint and terms binding; a public service alone does not grant reuse rights. */
-export function validMunicipalItem(item: Row, f: MunicipalFeed): boolean {
-  if (f.disabledReason || item.access !== "public" || item.owner !== f.owner || (item.orgId ?? null) !== f.org) return false;
-  const url = typeof item.url === "string" ? item.url.replace(/\/$/, "") : "";
-  if (url !== f.url && url !== f.url.replace(/\/\d+$/, "")) return false;
+export function validMunicipalPublisher(item:Row, f:Pick<MunicipalFeed,"owner"|"org"|"licenceAnchors">):boolean {
+  if (item.access !== "public" || item.owner !== f.owner || (item.orgId ?? null) !== f.org) return false;
   const terms = typeof item.licenseInfo === "string" ? item.licenseInfo : "";
   if (/may not be (?:modified|copied)|without written consent|non.commercial only|all rights reserved/i.test(terms)) return false;
   const anchors = terms.includes("<") ? [...terms.matchAll(/href=['"]([^'"]+)['"]/gi)].map(m => m[1]) : [terms.trim()];
   return anchors.some(a => f.licenceAnchors.includes(a.split("?")[0]));
+}
+/** Exact publisher, endpoint and terms binding; a public service alone does not grant reuse rights. */
+export function validMunicipalItem(item: Row, f: MunicipalFeed): boolean {
+  if (f.disabledReason || !validMunicipalPublisher(item,f)) return false;
+  const url = typeof item.url === "string" ? item.url.replace(/\/$/, "") : "";
+  return url === f.url || url === f.url.replace(/\/\d+$/, "");
 }

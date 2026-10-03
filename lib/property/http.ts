@@ -1,10 +1,10 @@
 /** Only fixed, government/open-data providers are called. Never fetch a caller-supplied URL. */
-const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca"]);
-export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> {
+const HOSTS = new Set(["geolocator.api.geo.ca", "data.calgary.ca", "data.winnipeg.ca", "data.edmonton.ca", "www.thedatazone.ca", "opendata.vancouver.ca", "ckan0.cf.opendata.inter.prod-toronto.ca", "gis.lsrca.on.ca", "services1.arcgis.com", "services.arcgis.com", "services6.arcgis.com", "maps.london.ca", "maps.ottawa.ca", "map.oshawa.ca", "www.arcgis.com", "ws.lioservices.lrc.gov.on.ca"]);
+export async function fetchText(url: URL, timeoutMs = 8000): Promise<string> {
   if (url.protocol !== "https:" || !HOSTS.has(url.hostname)) throw new Error("Unsupported provider");
   const response = await fetch(url, {
     redirect: "error",
-    headers: { Accept: "application/json", "User-Agent": "Homies property enrichment / Realist (hello@realist.ca)" },
+    headers: { Accept: "application/json, text/csv, application/octet-stream", "User-Agent": "Homies property enrichment / Realist (hello@realist.ca)" },
     signal: AbortSignal.timeout(timeoutMs),
     next: { revalidate: 3600 },
   });
@@ -21,8 +21,9 @@ export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> {
       chunks.push(value);
     }
   } finally { await reader.cancel(); }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  return new TextDecoder("utf-8", { fatal:true }).decode(Buffer.concat(chunks));
 }
+export async function fetchJson(url: URL, timeoutMs = 8000): Promise<unknown> { return JSON.parse(await fetchText(url,timeoutMs)); }
 export function rows(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value) || value.some(v => !v || typeof v !== "object" || Array.isArray(v))) throw new Error("Invalid source response");
   return value;

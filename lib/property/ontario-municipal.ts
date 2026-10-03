@@ -6,10 +6,11 @@ import { arcgisDate, streetVariants } from "./hamilton";
 import { haversineMeters } from "@/lib/geo/geometry";
 import { ONTARIO_MUNICIPAL, validMunicipalItem, type Market, type MunicipalFeed } from "./ontario-municipal-sources";
 import { ottawaPermits } from "./ottawa-permits";
+import { oshawaRegistrationCoverage, oshawaRegistrations } from "./oshawa-registrations";
 
-const aliases: Record<string, Market> = { mississauga:"Mississauga", london:"London", ottawa:"Ottawa", nepean:"Ottawa", kanata:"Ottawa", orleans:"Ottawa", gloucester:"Ottawa", "stittsville":"Ottawa" };
+const aliases: Record<string, Market> = { mississauga:"Mississauga", london:"London", oshawa:"Oshawa", ottawa:"Ottawa", nepean:"Ottawa", kanata:"Ottawa", orleans:"Ottawa", gloucester:"Ottawa", "stittsville":"Ottawa" };
 export function ontarioMarket(city: string | null, province: string | null): Market | null { return provinceKey(province ?? "") === "ontario" ? aliases[cityKey(city ?? "")] ?? null : null; }
-const bounds: Record<Market, [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2] };
+const bounds: Record<Market, [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2], Oshawa:[43.84,44.1,-78.97,-78.78] };
 function validPoint(market: Market, lat: unknown, lng: unknown): lat is number {
   const [south,north,west,east] = bounds[market]; return typeof lat === "number" && typeof lng === "number" && lat > south && lat < north && lng > west && lng < east;
 }
@@ -35,6 +36,7 @@ function mapped(a:Row,f:MunicipalFeed):Row { return Object.fromEntries(Object.en
 function addressParts(f:MunicipalFeed,a:Row): { address:string; unit:string|null; issued:boolean } {
   if(f.market === "Mississauga") return { address:String(a.FULLNAME), unit:text(a.UNIT_NO), issued:true };
   if(f.market === "London") return { address:`${a.FullNumber} ${a.FullStreetName}`, unit:text(a.UnitNumber), issued:a.Status === "IA" || a.Status === "IU" };
+  if(f.market === "Oshawa") return { address:`${a.SITE_CIVIC_NO}${text(a.SITE_CIVIC_CHAR) ?? ""} ${a.STNAME}`, unit:text(a.SITE_UNIT_ID), issued:true };
   return { address:`${a.ADDRNUM}${text(a.QUALIFIER) ?? ""} ${a.FULL_ROADNAME_EN}`, unit:text(a.UNIT), issued:["Main","Subordinate"].includes(String(a.ADDRTYPE)) && ["ottawa","old ottawa","nepean","kanata","gloucester","vanier","cumberland","goulbourn","west carleton","osgoode","rideau","rockcliffe park"].includes(cityKey(String(a.MUNICIPALITY))) };
 }
 export async function ontarioMunicipalLocation(input:PropertyRequest):Promise<Layer<Location>|null> {
@@ -46,7 +48,7 @@ export async function ontarioMunicipalLocation(input:PropertyRequest):Promise<La
   const f=ONTARIO_MUNICIPAL.find(f=>f.market===market && f.key==="addresses")!;
   const street=address.replace(/^\d+[a-z]?\s+/i,"");
   const candidates = streetVariants(street).map(literal).join(",");
-  const where = market === "Mississauga" ? `UPPER(STNO) = ${literal(civic.toUpperCase())} AND UPPER(FULLNAME) IN (${streetVariants(address).map(literal).join(",")})` : market === "London" ? `UPPER(FullNumber) = ${literal(civic.toUpperCase())} AND UPPER(FullStreetName) IN (${candidates})` : `ADDRNUM = ${parseInt(civic,10)} AND UPPER(FULL_ROADNAME_EN) IN (${candidates})`;
+  const where = market === "Mississauga" ? `UPPER(STNO) = ${literal(civic.toUpperCase())} AND UPPER(FULLNAME) IN (${streetVariants(address).map(literal).join(",")})` : market === "London" ? `UPPER(FullNumber) = ${literal(civic.toUpperCase())} AND UPPER(FullStreetName) IN (${candidates})` : market === "Oshawa" ? `SITE_CIVIC_NO = ${parseInt(civic,10)} AND UPPER(STNAME) IN (${candidates})` : `ADDRNUM = ${parseInt(civic,10)} AND UPPER(FULL_ROADNAME_EN) IN (${candidates})`;
   try {
     const meta=await municipalMetadata(f);
     const r=await get(f.url+"/query",{ where,outFields:Object.keys(f.fields).join(","),returnGeometry:"true",outSR:"4326",resultRecordCount:"501",orderByFields:f.oid });
@@ -98,14 +100,22 @@ export async function ontarioMunicipalLayers(address:string|null,city:string|nul
     result.permits=await ottawaPermits(address,requestedCity??city,location);
     result.zoning=layer("not_supported",{ zoningScreenPerformed:false,bylaws:["2008-250","2026-50"],appealAndTransitionVerificationRequired:true,verificationUrl:"https://ottawa.ca/en/node/3046321" },null,"Ottawa's 2026-50 transition, appeals and the 2008-250 rules must be checked together. Neither current zoning service is connected as a verified licensed feed yet.");
   }
+  if(market==="Oshawa"){
+    Object.assign(result,await oshawaRegistrations(address));
+    result.permits=layer("not_supported",null,null,"Oshawa's property-level building-permit history is not yet connected to a verified licensed feed; a public housing dashboard does not establish reuse rights or complete permit history.");
+    result.heritage=layer("not_supported",null,null,"Oshawa's individual heritage register and districts are not yet connected to a verified licensed feed.");
+    result.officialPlan=layer("not_supported",{ currentPlanScreenPerformed:false,verificationUrl:"https://www.oshawa.ca/business-development/planning-and-development/official-plan/" },null,"Licensed Official Plan PDF schedules were found but are not yet parsed into property-level GIS evidence. Existing land use is separate from a plan designation; current schedules, Part II plans and approval-dependent transit-station amendments need verification.");
+    result.development=layer("not_supported",{ verificationUrl:"https://www.oshawa.ca/business-development/planning-and-development/development-applications/",fullPlanningHistorySearched:false },null,"The City's active application webpage covers public meetings after January 1, 2026. It is not connected as a licensed comprehensive property-history feed.");
+  }
   return result;
 }
 export async function ontarioMunicipalCoverage() {
-  return Promise.all(ONTARIO_MUNICIPAL.map(async f=>{
+  const gis=await Promise.all(ONTARIO_MUNICIPAL.map(async f=>{
     if(f.disabledReason)return { city:f.market,layer:f.key,status:"withheld",records:null,source:f.source,note:f.disabledReason };
     try {
       const m=await municipalMetadata(f),r=await get(f.url+"/query",{where:"1=1",returnCountOnly:"true"});const count=number(r.count);if(count===null || count<0 || !Number.isInteger(count))throw new Error("Invalid count");
       return { city:f.market,layer:f.key,status:"verified",records:count,source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,note:f.note };
     }catch{return { city:f.market,layer:f.key,status:"unavailable",records:null,source:f.source,note:"Publisher, licence, schema or live count could not be verified." };}
   }));
+  return [...gis,...await oshawaRegistrationCoverage()];
 }
