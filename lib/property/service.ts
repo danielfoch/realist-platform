@@ -13,6 +13,7 @@ import { hamiltonLocation, hamiltonLayers, hamiltonCoverage } from "./hamilton";
 import { provincialPlanningLayer, provincialPlanningCoverage } from "./provincial-planning";
 import { ontarioMunicipalLocation, ontarioMunicipalLayers, ontarioMunicipalCoverage, ontarioMarket } from "./ontario-municipal";
 import { ontarioMarketRoadmap } from "./ontario-market-roadmap";
+import { ottawaPermitCoverage } from "./ottawa-permits";
 
 export async function enrichProperty(input: PropertyRequest) {
   // Without unit-aware assessment keys, stripping a suite number would attach another unit's facts.
@@ -26,7 +27,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const city = location.data?.city ?? input.city ?? input.address?.split(",")[1]?.trim() ?? null;
   const province = location.data?.province ?? input.province ?? input.address?.split(",")[2]?.trim() ?? null;
   const hamiltonResult = hamiltonLayers(address, city, province, location.data);
-  const ontarioResult = ontarioMunicipalLayers(address, city, province, location.data);
+  const ontarioResult = ontarioMunicipalLayers(address, city, province, location.data, queryCity);
   const planningResult = provincialPlanningLayer(location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
@@ -101,10 +102,10 @@ export async function coverage() {
       { cities: ["Mississauga", "London", "Ottawa"], datasets: ontarioMunicipal, note: "Verified municipal feeds and explicit withheld sources. Historical Mississauga 2010 plan layers are not current planning screens; London generalized land use is not detailed zoning." },
     ],
     ontarioMarkets: ontarioMarketRoadmap(),
-    publicSnapshots: [...await richCoverage(), ...await extendedCoverage(), ...hamilton.snapshots],
+    publicSnapshots: [...await richCoverage(), ...await extendedCoverage(), ...hamilton.snapshots, await ottawaPermitCoverage()],
     automaticRefresh: { schedule: "daily at 08:15 UTC", path: "/api/cron/property-refresh", datasets: await refreshHealth(), failurePolicy: "Last good database snapshot retained; compiled assets are a deployment fallback. Baseline national/assessment/permit bulk imports retain their own registry cadences." },
     imported: { databaseStatus: imported.available ? "reachable" : "unavailable", tables: [...imported.tables], sources: imported.sources, imports: imported.imports ?? [] },
     limits: { requestsPerClientPerMinute: 30, requestsSitewidePerMinute: 120, upstreamTimeoutSeconds: 12, sourceCacheSeconds: 3600, batch: false, unitSpecificMatching: false },
-    note: "Configured adapters are not proof of a matching record or source uptime. Imported layers require existing tables, imported rows and source/licence attribution. Registry row counts measure records in the named dataset, not distinct properties; histories include multiple years. The eight public snapshots refresh daily; bulk-import vintages remain in the registry. Hamilton permit feeds retain their 2024 source dates. No MLS, owner contact details, sold-price feed or AVM is exposed.",
+    note: "Configured adapters are not proof of a matching record or source uptime. Imported layers require existing tables, imported rows and source/licence attribution. Registry row counts measure records in the named dataset, not distinct properties; histories include multiple years. The nine public snapshots refresh daily; bulk-import vintages remain in the registry. Ottawa permit reports retain reporting periods separately from issued dates, and repeated permit/address observations are not distinct permits. Hamilton permit feeds retain their 2024 source dates. No MLS, owner contact details, sold-price feed or AVM is exposed.",
   };
 }

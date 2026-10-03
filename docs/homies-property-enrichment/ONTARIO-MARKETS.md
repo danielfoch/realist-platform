@@ -28,7 +28,7 @@ not complete a municipal market.
 | --- | --- | --- |
 | Mississauga | Municipal civic points, issued permit history, heritage polygons, wards, three explicitly historical 2010 plan layers | Specific zoning terms restrict copying; rezoning/site-plan reuse terms are unresolved; no current 2051 GIS screen |
 | London | Issued civic points, heritage parcels and districts, generalized land use, Primary Transit Area, Community Improvement Project Areas | The licensed generalized layer lacks actual zone codes; current permit history, detailed zoning and planning remain to be connected |
-| Ottawa | Municipal civic points, Part V heritage district mapping | Current permit/planning/Part IV data, detailed zoning and current official-plan layers remain to be connected |
+| Ottawa | Municipal civic points, Part V heritage district mapping, monthly permit reports covering January 2024–August 2026 | Older permit history, later unpublished months/current status, planning/Part IV data, detailed zoning and current official-plan layers remain to be connected |
 
 The 15 enabled feeds collectively published **826,962 dataset rows** at the
 verification time. These are source rows, **not** distinct properties, a count of
@@ -72,9 +72,44 @@ Unique National Address Register building metadata is retained when its civic id
 Tests cover street direction, proposed addresses, unit scope, point disagreement,
 truncation, empty results, licence withdrawal and schema failure.
 
-Next: finish Ottawa's permits, planning, both current zoning regimes and overlays;
+Next: extend Ottawa's older permit reports, planning, both current zoning regimes and overlays;
 find a licensed current Mississauga 2051 feed; connect London's detailed zoning
 and permit history; then expand Durham, Halton, York, Waterloo and Niagara before
 working through southwestern, eastern and northern CMA/regional markets.
 Retain explicit gaps when a dataset cannot be reused; continue other available
 market work instead of treating one missing licence as a province-wide blocker.
+
+## Ottawa permit report snapshot
+
+Two fixed official files add **23,794 permit/address report observations** across
+32 reporting months, January 2024 through August 2026. These are observations,
+not distinct permits or properties, and are separate from the 15 GIS feeds above.
+The [2024–2025 item](https://open.ottawa.ca/documents/05046d836248455d92cbc0543ce4c022/about)
+and [2026 item](https://open.ottawa.ca/documents/a8992582cb764c1a9edaebfb0b30e9c7/about)
+link the City's open-data policy; its [licence FAQ](https://ottawa.ca/en/city-hall/open-transparent-and-accountable-government/open-data/open-data-license-change-faq)
+explicitly applies version 2.0 to datasets accessed through its open-data website
+after September 8, 2016. Each refresh validates the exact public publisher, item,
+file name, title, licence policy, byte size, workbook schema, reporting months and
+unchanged catalogue version before publishing atomically. Only a single ArcGIS
+file redirect to the exact item/file on its own origin is allowed.
+
+All source observations are preserved, including master plans without addresses.
+316 observations lack an address and 328 lack a former municipality; they are
+excluded from property matching, as are unit/lot-only addresses. Explicit merged
+property cells are repeated only according to workbook merge ranges. Three
+malformed numeric observations remain null with source text in unparsedMeasures.
+Contractor fields and summary-statistics sheets are excluded.
+
+Reporting periods stay separate from issued dates. A July 2026 report at
+99 Fourth Avenue includes a cancelled revision with a July 29, 2003 issued date;
+that is not a newly issued 2026 permit. At 50 Laxford Drive, Kanata, permit
+CON-2024-009110 reports basement additional-unit work issued January 2, 2025.
+Published work units/value/area are not a verified property unit count, property
+value or finished floor area. Preserve square-feet versus square-metres labels.
+Do not add values across repeated permit/address observations. Exact civic
+matching retains former-municipality ambiguity, returns at most 50 observations,
+and explicitly marks older history/current status/final inspections unverified.
+
+The ninth public snapshot joins the existing daily refresh route, with last-good
+retention and a traced compiled fallback. No production schema or manual refresh
+is required; the scheduled run can publish it normally.

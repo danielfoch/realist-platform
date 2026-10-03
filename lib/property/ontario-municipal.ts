@@ -5,6 +5,7 @@ import { nationalAddress } from "./national";
 import { arcgisDate, streetVariants } from "./hamilton";
 import { haversineMeters } from "@/lib/geo/geometry";
 import { ONTARIO_MUNICIPAL, validMunicipalItem, type Market, type MunicipalFeed } from "./ontario-municipal-sources";
+import { ottawaPermits } from "./ottawa-permits";
 
 const aliases: Record<string, Market> = { mississauga:"Mississauga", london:"London", ottawa:"Ottawa", nepean:"Ottawa", kanata:"Ottawa", orleans:"Ottawa", gloucester:"Ottawa", "stittsville":"Ottawa" };
 export function ontarioMarket(city: string | null, province: string | null): Market | null { return provinceKey(province ?? "") === "ontario" ? aliases[cityKey(city ?? "")] ?? null : null; }
@@ -57,7 +58,7 @@ export async function ontarioMunicipalLocation(input:PropertyRequest):Promise<La
     if(exact.some(x=>!validPoint(market,x.geometry?.y,x.geometry?.x)) || exact.some(x=>haversineMeters(Number(primary.geometry?.y),Number(primary.geometry?.x),Number(x.geometry?.y),Number(x.geometry?.x))>20))return layer("ambiguous",null,f.source,"Matching municipal civic-address points disagree or lack usable coordinates; provide verified building-level coordinates.",meta.sourceUpdatedAt);
     const registered=await nationalAddress({address,city:city!,province:"ON"},provinceKey);
     const nar=registered?.status==="available" && registered.data?.accuracy==="source_building_point" && registered.data.address && civicStreetKey(registered.data.address)===civicStreetKey(address) && validPoint(market,registered.data.latitude,registered.data.longitude) && haversineMeters(Number(primary.geometry!.y),Number(primary.geometry!.x),registered.data.latitude!,registered.data.longitude!)<=20 ? registered.data.addressRegister : undefined;
-    return layer("available",{ address:addressParts(f,primary.attributes).address, city:market, province:"ON", latitude:Number(primary.geometry!.y),longitude:Number(primary.geometry!.x),accuracy:"source_civic_address_point",provider:f.source.id,...(nar?{addressRegister:nar}:{}),municipalAddress:{ recordIds:exact.map(x=>String(x.attributes[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:meta.sourceUpdatedAt } },f.source,f.note+" Multiple unit records are grouped only when their points agree within 20 metres; this does not identify or verify an individual unit. National Address Register metadata is retained only when its unique published building point agrees within 20 metres.",meta.sourceUpdatedAt);
+    return layer("available",{ address:addressParts(f,primary.attributes).address, city:market, province:"ON", latitude:Number(primary.geometry!.y),longitude:Number(primary.geometry!.x),accuracy:"source_civic_address_point",provider:f.source.id,...(nar?{addressRegister:nar}:{}),municipalAddress:{ recordIds:exact.map(x=>String(x.attributes[f.oid])),community:market==="Ottawa" ? text(primary.attributes.MUNICIPALITY) : market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:meta.sourceUpdatedAt } },f.source,f.note+" Multiple unit records are grouped only when their points agree within 20 metres; this does not identify or verify an individual unit. National Address Register metadata is retained only when its unique published building point agrees within 20 metres.",meta.sourceUpdatedAt);
   } catch { return null; }
 }
 
@@ -83,7 +84,7 @@ async function mississaugaPermits(f:MunicipalFeed,address:string|null):Promise<L
     const result=layer(exact.length?"available":"no_match",{ records:exact.slice(0,50).map(x=>mapped(x.attributes,f)),matchMethod:"exact_normalized_civic_address",coverageComplete:!truncated,scope:"building_level",currency:"CAD",absenceEstablished:false },f.source,f.note,m.sourceUpdatedAt);result.truncated=truncated;return result;
   }catch{return layer("unavailable",null,f.source,"The permit feed's publisher, licence, schema or query could not be verified.");}
 }
-export async function ontarioMunicipalLayers(address:string|null,city:string|null,province:string|null,location:Location|null):Promise<Record<string,Layer>> {
+export async function ontarioMunicipalLayers(address:string|null,city:string|null,province:string|null,location:Location|null,requestedCity?:string):Promise<Record<string,Layer>> {
   const market=ontarioMarket(city,province);if(!market)return {};
   const feeds=ONTARIO_MUNICIPAL.filter(f=>f.market===market && f.key!=="addresses");
   const entries=await Promise.all(feeds.map(async f=>[f.key,f.key==="permits"?await mississaugaPermits(f,address):await municipalPointLayer(f,location)] as const));
@@ -93,7 +94,10 @@ export async function ontarioMunicipalLayers(address:string|null,city:string|nul
     result.zoning=layer("not_supported",null,null,"The licensed generalized-land-use feed has no zone codes or permissions. Current Z.-1 zone details, exceptions, overlays and amendments remain to be integrated.");
     result.permits=layer("not_supported",null,null,"London's building-permit history is not yet connected to a verified open-data feed.");
   }
-  if(market==="Ottawa")result.zoning=layer("not_supported",{ zoningScreenPerformed:false,bylaws:["2008-250","2026-50"],appealAndTransitionVerificationRequired:true,verificationUrl:"https://ottawa.ca/en/node/3046321" },null,"Ottawa's 2026-50 transition, appeals and the 2008-250 rules must be checked together. Neither current zoning service is connected as a verified licensed feed yet.");
+  if(market==="Ottawa"){
+    result.permits=await ottawaPermits(address,requestedCity??city,location);
+    result.zoning=layer("not_supported",{ zoningScreenPerformed:false,bylaws:["2008-250","2026-50"],appealAndTransitionVerificationRequired:true,verificationUrl:"https://ottawa.ca/en/node/3046321" },null,"Ottawa's 2026-50 transition, appeals and the 2008-250 rules must be checked together. Neither current zoning service is connected as a verified licensed feed yet.");
+  }
   return result;
 }
 export async function ontarioMunicipalCoverage() {
