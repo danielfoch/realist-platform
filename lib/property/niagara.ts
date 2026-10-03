@@ -31,7 +31,16 @@ async function get(url:string,params:Record<string,string>={}):Promise<Row> {
   if(!r||typeof r!=="object"||Array.isArray(r)||r.error)throw new Error("Niagara source unavailable");return r;
 }
 function read(c:Context,url:string,run=()=>get(url)):Promise<Row> {
-  const pending=c.get(url)??run();c.set(url,pending);return pending;
+  const pending=c.get(url)??run().catch(error=>{
+    if(error instanceof Error&&error.message.startsWith("Niagara "))throw error;
+    const publicUrl=new URL(url);throw new Error(`Niagara public-source read failed at ${publicUrl.hostname}${publicUrl.pathname}: ${error instanceof Error?error.name:"unknown"}`);
+  });c.set(url,pending);return pending;
+}
+function sourceFailure(f:NiagaraFeed,error:unknown) {
+  // Only local validation codes and public-source HTTP status codes enter logs.
+  const message=error instanceof Error?error.message:"unknown";
+  const reason=message.startsWith("Niagara ")||message.startsWith("Exact licensed")||message.startsWith("Original Ontario")||message.startsWith("Publisher,")||/^HTTP \d{3}$/.test(message)?message:"bounded_fetch_or_invalid_response";
+  console.warn("Niagara property source unavailable",{feed:f.key,reason});
 }
 function markdown(d:Row):string {
   const sections=rows(((d.values as Row|undefined)?.layout as Row|undefined)?.sections??[]);
@@ -42,7 +51,8 @@ function markdown(d:Row):string {
 async function htmlGrant(c:Context,b:{url:string;selector:string;hash:string}) {
   const result=await read(c,b.url,async()=>{
     const $=load(await fetchText(new URL(b.url))),sections=$(b.selector);
-    if(sections.length!==1||sha(sections.text().replace(/\s+/g," ").trim())!==b.hash)throw new Error("Complete inspected grant changed");
+    const observed=sha(sections.text().replace(/\s+/g," ").trim());
+    if(sections.length!==1||observed!==b.hash)throw new Error(`Niagara complete grant changed at ${new URL(b.url).hostname}: sections=${sections.length}, hash=${observed}`);
     return {hash:b.hash};
   });
   if(result.hash!==b.hash)throw new Error("Grant unavailable");
@@ -111,7 +121,7 @@ export async function niagaraLocation(input:PropertyRequest):Promise<Layer<Locat
     if(!exact.length)return null;const primary=exact.find(({a})=>!text(a.Unit))??exact[0];
     if(!point(primary.g)||exact.some(({g})=>!point(g)||haversineMeters(primary.g!.y as number,primary.g!.x as number,g.y,g.x)>20))return layer("ambiguous",null,f.source,"Matching civic points are unusable or disagree by more than 20 metres. No arbitrary point is selected.",m.sourceUpdatedAt);
     const result=layer("available",{address:civic(primary.a,f),city:market,province:"ON",latitude:primary.g.y,longitude:primary.g.x,accuracy:"source_civic_address_point",provider:f.source.id,municipalAddress:{recordIds:exact.map(({a})=>String(a[f.oid])),community:market,permitAddressKeys:[civicStreetKey(address)],source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,publishedRecords:exact.slice(0,50).map(({a})=>mapped(a,f)),publishedAddressRecordCount:exact.length,publishedRecordsTruncated:exact.length>50}},f.source,f.note+" Civic suffix, street type and direction must agree. A unique licensed regional polygon must confirm the municipality before property queries.",m.sourceUpdatedAt);result.truncated=exact.length>50;return result;
-  }catch{return null;}
+  }catch(error){sourceFailure(f,error);return null;}
 }
 async function query(f:NiagaraFeed,l:Location|null,address:string|null,market:string,c:Context):Promise<Layer> {
   if(!precise(l))return layer("skipped",null,f.source,"A precise civic, building or caller point is required; interpolated points are not screened.");
@@ -135,7 +145,7 @@ async function query(f:NiagaraFeed,l:Location|null,address:string|null,market:st
       ...(f.key==="draftWetlandReference"?{providerDraftLabel:"DRAFT",currentInventoryStatusVerified:false}:{}),
       ...(f.key==="wastewaterCatchment"?{actualConnectionEstablished:false,availableCapacityEstablished:false,servicingEligibilityEstablished:false}:{}),
       ...(f.key==="brownfieldCIP"?{contaminationEstablished:false,remediationVerified:false,programEligibilityEstablished:false,fundingAvailabilityEstablished:false,grantApproved:false}:{})},f.source,f.note+" Source update time remains unknown if editingInfo is unpublished. No-match does not establish absence.",m.sourceUpdatedAt);result.truncated=truncated;return result;
-  }catch{return layer("unavailable",null,f.source,"The complete inspected grant, exact publisher/catalogue/endpoint, typed schema or bounded source query could not be verified. No factual result is returned.");}
+  }catch(error){sourceFailure(f,error);return layer("unavailable",null,f.source,"The complete inspected grant, exact publisher/catalogue/endpoint, typed schema or bounded source query could not be verified. No factual result is returned.");}
 }
 function grouped(name:string,pending:NiagaraFeed[],entries:Record<string,Layer>):Layer {
   const feeds=pending.filter(f=>f.group===name),datasets=Object.fromEntries(feeds.map(f=>[f.key,entries[f.key]])),values=Object.values(datasets);
@@ -156,7 +166,7 @@ export async function niagaraLayers(address:string|null,city:string|null,provinc
 }
 export async function niagaraCoverage() {
   const c:Context=new Map(),datasets=[];
-  const inspect=async(f:NiagaraFeed)=>{try{const m=await niagaraMetadata(f,c),r=await get(f.url+"/query",{where:"1=1",returnCountOnly:"true"}),count=number(r.count);if(count===null||!Number.isInteger(count)||count<0)throw new Error("Invalid count");return{market:f.market,layer:f.key,group:f.group,status:"verified",records:count,source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,note:f.note};}catch{return{market:f.market,layer:f.key,group:f.group,status:"unavailable",records:null,source:f.source,note:"Complete grant, exact source/catalogue binding, typed schema or live count could not be verified."};}};
+  const inspect=async(f:NiagaraFeed)=>{try{const m=await niagaraMetadata(f,c),r=await get(f.url+"/query",{where:"1=1",returnCountOnly:"true"}),count=number(r.count);if(count===null||!Number.isInteger(count)||count<0)throw new Error("Invalid count");return{market:f.market,layer:f.key,group:f.group,status:"verified",records:count,source:f.source,sourceUpdatedAt:m.sourceUpdatedAt,note:f.note};}catch(error){sourceFailure(f,error);return{market:f.market,layer:f.key,group:f.group,status:"unavailable",records:null,source:f.source,note:"Complete grant, exact source/catalogue binding, typed schema or live count could not be verified."};}};
   for(let i=0;i<NIAGARA_FEEDS.length;i+=4)datasets.push(...await Promise.all(NIAGARA_FEEDS.slice(i,i+4).map(inspect)));
   return {cities:[...NIAGARA_MUNICIPALITIES],auditDate:"2026-10-03",delivery:"cached_live_queries",cacheSeconds:3600,datasets,withheld:NIAGARA_WITHHELD.map(f=>({...f,status:"withheld",records:null})),complete:false,guidance:{catalogue:"https://niagaraopendata.ca/dataset/",niagaraPlan:"https://www.niagararegion.ca/official-plan/default.aspx",niagaraAmendments:"https://www.niagararegion.ca/official-plan/amendments.aspx",fallsCatalogue:"https://open.niagarafalls.ca/",fallsZoning:"https://niagarafalls.ca/building-planning-and-business/planning-and-development/zoning/",npca:"https://npca.ca/services/permits"},note:"Selected Niagara regional civic, heritage, settlement, draft wetland/woodland, watershed and rough sanitary-catchment references; Niagara Falls adds completed permits, subject-point planning, heritage, 79-200 zoning and three historical former-township zoning datasets, plan/special-policy and brownfield CIP references. Since March 31, 2025 the Niagara Official Plan belongs to the twelve local municipalities; current local instruments/amendments remain unverified. St. Catharines full City grant is unresolved. Other municipalities' core sources require continued audit. Rows overlap and are not unique properties, data points or database imports."};
 }
