@@ -909,3 +909,5 @@ PMT26-00748 as raw Issued observations with raw date text; approximate location
 uses address-only evidence. Planning/MTSA/special-policy polygon controls are
 explicit synthetic non-cadastral interiors; cultural-feature point controls are
 not surveyed properties.
+
+Brantford: six City-curated reference feeds now use the full linked Hub Open Data License – Brantford 1.0 and exact official City offer. Civic components are strictly matched; independent precision and a unique named City boundary gate polygon screens. Catalogue zoning/footprint/water-body data are dated 2023 despite September2026 metadata edits. These are reference observations, not current zoning, permission, surveyed measurements, building age, floodplain or GRCA regulation. Eight core scopes remain withheld, including separate blank-grant permit/planning/current-zoning maps, full heritage, cadastral fabric, ADU records and current instruments. Reports include City/GRCA questions and document requests. Brantford and the Ontario expansion remain incomplete; source-row counts overlap and are not unique properties or imports.
