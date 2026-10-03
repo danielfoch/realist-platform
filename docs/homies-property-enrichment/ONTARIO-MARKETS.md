@@ -649,14 +649,17 @@ Welland and West Lincoln. This is partial coverage of all twelve, with municipal
 core feeds connected for Niagara Falls in this batch. Counts are source
 observations, not distinct properties, unique data points or database imports.
 
-The complete inspected Region 2.0 grant, exact individual live CKAN package
-GUID/resource/licence and canonical public item/root/typed child must agree
+The complete inspected Region 2.0 grant, exact individual live public CKAN dataset page UUID/title/publisher, JSON-LD
+distribution and visible licence/resource bindings and canonical public item/root/typed child must agree
 before a record or count query. Region item terms are blank; public access
 alone is insufficient. Municipal boundary attribution also credits Ontario,
 whose original catalogue and full grant are independently validated. Falls
 items refer to the City-owned full Hub licence page, actually version 1.0;
 the older CKAN version/URL is not used as the operative grant. Full grants
 and source fixtures are retained, and changed rights/schema fail closed.
+The catalogue action API returns 403 from the hosted runtime; it is not used.
+The published dataset pages independently bind the explicit grant to each
+selected resource. No login, proxy, IP rotation or guessed grant is used.
 
 Civic matching preserves suffix, street type, direction, active regional
 lifecycle, qualifier and municipality. Falls AV, CR and PY abbreviations are

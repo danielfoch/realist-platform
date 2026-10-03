@@ -29,9 +29,14 @@ describe('Niagara licensed property evidence',()=>{
     for(const change of [{item:{owner:'copy'}},{item:{access:'private'}},{item:{url:'https://other.invalid/FeatureServer'}},{item:{licenseInfo:'Public access only'}},{root:{serviceItemId:'other'}},{metadata:{fields:[]}},{metadata:{copyrightText:'Third party'}},{fallsGrant:{values:{}}},{siteData:{values:{pages:[]}}}]){json.mockClear().mockImplementation(provider({},change));await expect(niagaraMetadata(feed('zoning79200'))).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);}
     html.mockResolvedValue('<div class="ckanext-pages-content">Pages index</div>');json.mockClear().mockImplementation(provider());await expect(niagaraMetadata(feed('woodlandReference'))).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);
   });
-  it('requires exact regional catalogue and original Ontario boundary grants',async()=>{
-    for(const change of [{regionalCatalogue:{success:false}},{regionalCatalogue:{result:{}}},{ontarioCatalogue:{result:{}}}]){json.mockClear().mockImplementation(provider({},change));await expect(niagaraMetadata(feed('municipality'))).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);}
-    json.mockImplementation(provider());html.mockImplementation(async(u:URL)=>u.hostname==='www.ontario.ca'?'Unavailable':fixture[u.href]);await expect(niagaraMetadata(feed('municipality'))).rejects.toThrow();
+  it('requires exact public catalogue JSON-LD, visible licence/resource links and original Ontario grants',async()=>{
+    const f=feed('municipality'),url=`https://niagaraopendata.ca/dataset/${f.catalogue.name}`,page=String(fixture[url]);
+    for(const transform of [(s:string)=>s.replaceAll(f.catalogue.id,'other-id'),(s:string)=>s.replaceAll(f.url,'https://other.invalid/FeatureServer/0'),(s:string)=>s.replaceAll('Niagara Region','Other Region'),(s:string)=>s.replaceAll('section class="module module-narrow module-shallow license"','section class="other"'),(s:string)=>s.replaceAll(f.catalogue.licenceUrl,'https://other.invalid/licence'),(s:string)=>s.replaceAll('schema:Dataset','schema:WebPage')]){json.mockClear();html.mockImplementation(async(u:URL)=>u.href===url?transform(page):fixture[u.href]);await expect(niagaraMetadata(f)).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);}
+    html.mockImplementation(async(u:URL)=>fixture[u.href]);json.mockImplementation(provider({}, {ontarioCatalogue:{result:{}}}));await expect(niagaraMetadata(f)).rejects.toThrow();
+    json.mockImplementation(provider());html.mockImplementation(async(u:URL)=>u.hostname==='www.ontario.ca'?'Unavailable':fixture[u.href]);await expect(niagaraMetadata(f)).rejects.toThrow();
+  });
+  it('uses the official public catalogue pages without querying the action API that denies hosted access',async()=>{
+    await niagaraMetadata(feed('municipality'));expect(json.mock.calls.some(([u])=>u.hostname==='niagaraopendata.ca')).toBe(false);expect(html.mock.calls.some(([u])=>u.href==='https://niagaraopendata.ca/dataset/municipal-boundaries')).toBe(true);
   });
   it('matches active regional civic components and municipality, preserving suffix/type/direction',async()=>{
     const f=feed('addresses'),a={Full_StreetNo:'12',StreetNo:12,StreetName:'King',StreetType:'St',StreetDir:'W',Municipality:'Thorold',LifeCycleStatus:'Active'};

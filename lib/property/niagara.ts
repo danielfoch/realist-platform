@@ -64,9 +64,18 @@ async function fallsGrant(c:Context) {
   if(![site,page].every(i=>i.owner===b.owner&&i.orgId===b.org&&i.access==="public")||site.id!==b.site||site.title!==b.siteTitle||page.id!==b.page||page.title!==b.pageTitle||!pages.some(p=>p.id===b.page&&p.slug==="terms-of-use")||sha(normalized(markdown(pageData)))!==b.hash)throw new Error("City full licence or site binding changed");
 }
 async function regionalGrant(f:NiagaraFeed,c:Context) {
-  const b=f.catalogue,url=`https://niagaraopendata.ca/api/3/action/package_show?id=${b.id}`;
-  const response=await read(c,url),d=response.result as Row|undefined,org=d?.organization as Row|undefined;
-  if(response.success!==true||!d||d.id!==b.id||d.name!==b.name||d.title!==b.title||d.state!=="active"||d.private!==false||org?.id!==b.organizationId||org.name!==b.organizationName||org.state!=="active"||d.license_id!==b.licenceId||d.license_url!==b.licenceUrl||!rows(d.resources).some(r=>r.url===f.url)||!rows(d.extras).some(r=>r.key==="guid"&&r.value===b.guid))throw new Error("Exact licensed regional catalogue binding changed");
+  const b=f.catalogue,url=`https://niagaraopendata.ca/dataset/${b.name}`;
+  // The official catalogue publishes the same individual licence and resource
+  // bindings in JSON-LD. Its action API denies hosted requests; do not call it.
+  await read(c,url,async()=>{
+    const $=load(await fetchText(new URL(url))),scripts=$('script[type="application/ld+json"]');
+    if(scripts.length!==1)throw new Error("Exact licensed regional catalogue binding changed");
+    const graph=rows((JSON.parse(scripts.text()) as Row)["@graph"]),matches=graph.filter(d=>d["@type"]==="schema:Dataset");
+    const d=matches[0],publisher=graph.filter(n=>n["@id"]===(d?.["schema:publisher"] as Row|undefined)?.["@id"]),distribution=rows(d?.["schema:distribution"]??[]).map(n=>n["@id"]);
+    const resource=graph.filter(n=>distribution.includes(n["@id"])&&n["@type"]==="schema:DataDownload"&&n["schema:url"]===f.url),licence=$('section.license a[rel="dc:rights"]');
+    if(matches.length!==1||d["@id"]!==`https://niagaraopendata.ca/dataset/${b.id}`||d["schema:url"]!==url||d["schema:name"]!==b.title||d["schema:license"]!==b.licenceUrl||publisher.length!==1||publisher[0]["@type"]!=="schema:Organization"||publisher[0]["schema:name"]!=="Niagara Region"||!$(`a[href="/organization/${b.organizationName}"]`).length||licence.length!==1||licence.attr("href")!==b.licenceUrl||licence.text().replace(/\s+/g," ").trim()!=="Open Government License 2.0 (Niagara Region)"||resource.length!==1||!$('li.resource-item a').toArray().some(a=>$(a).attr("href")===f.url)||$('#dataset-name').attr('dataset-name')!==b.title)throw new Error("Exact licensed regional catalogue binding changed");
+    return {verified:true};
+  });
   await htmlGrant(c,NIAGARA_GRANTS.region);
   if(f.key==="municipality") {
     // The Region explicitly credits Ontario for the original municipal boundaries.
