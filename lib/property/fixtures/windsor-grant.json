@@ -1,0 +1,1704 @@
+{
+  "https://www.arcgis.com/sharing/rest/content/items/b6e438e857c74685af9ba793c5f19ead": {
+    "id": "b6e438e857c74685af9ba793c5f19ead",
+    "title": "Address Point",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PropertyParcels/MapServer/0",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PropertyParcels/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "AddressPoint",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "AddressPolygon",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 75000,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "BuildingFootprint",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "MunicipalAddressText",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 4,
+        "name": "Parcel",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "UnassessedLand",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ]
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PropertyParcels/MapServer/0": {
+    "id": 0,
+    "name": "AddressPoint",
+    "type": "Feature Layer",
+    "copyrightText": "Data Steward / SoR Owner: [Insert Owner Department, e.g., Traffic Operations]\nGIS Infrastructure & ETL Maintenance: GIS Team\nSync Schedule: Weekly",
+    "description": "This dataset represents public open data. Tabular attributes are extracted from their respective primary Systems of Record (SoR), processed via automated data pipelines, and joined with authoritative spatial geometry. This layer is maintained as a read-only representation for downstream data analytics and datasets within Windsor's public Open Data portal.\n\nSYSTEM OF RECORD (SoR):\n\u2022 Primary Authoritative System: [e.g., GIS / Hansen / Amanda]\n\nDATA LINEAGE & PIPELINE:\n\u2022 Mechanics: : Automated python ETL pipelines extract tabular source records, and load open data feature classes (Gold tier).\n\u2022 Geometry Capture: Attached to authoritative municipal street centerlines, parcel fabrics, or high-accuracy GPS collections.\n\nCOORDINATE REFERENCE NOTES:\n\u2022 Native Database Projection: NAD 1983 UTM Zone 17N (EPSG: 26917).\n\u2022 Linear Units: Meters.",
+    "geometryType": "esriGeometryPoint",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "Legal1",
+        "type": "esriFieldTypeString",
+        "alias": "Legal1",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Legal2",
+        "type": "esriFieldTypeString",
+        "alias": "Legal2",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "Legal3",
+        "type": "esriFieldTypeString",
+        "alias": "Legal3",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "Zoning",
+        "type": "esriFieldTypeString",
+        "alias": "Zoning",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PropCode",
+        "type": "esriFieldTypeString",
+        "alias": "PropCode",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "X",
+        "type": "esriFieldTypeDouble",
+        "alias": "X",
+        "domain": null
+      },
+      {
+        "name": "Y",
+        "type": "esriFieldTypeDouble",
+        "alias": "Y",
+        "domain": null
+      },
+      {
+        "name": "AmandaArea",
+        "type": "esriFieldTypeString",
+        "alias": "GEODB.GISO.AllUniqueAddresses.Area",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Frontage",
+        "type": "esriFieldTypeString",
+        "alias": "Frontage",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Depth",
+        "type": "esriFieldTypeString",
+        "alias": "Depth",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "propertyrsn",
+        "type": "esriFieldTypeString",
+        "alias": "propertyrsn",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "gisid",
+        "type": "esriFieldTypeString",
+        "alias": "gisid",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Ward",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "Address",
+        "type": "esriFieldTypeString",
+        "alias": "Address",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "street_address",
+        "type": "esriFieldTypeString",
+        "alias": "street_address",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "street_name",
+        "type": "esriFieldTypeString",
+        "alias": "street_name",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "street_suffix",
+        "type": "esriFieldTypeString",
+        "alias": "street_suffix",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "street_direction",
+        "type": "esriFieldTypeString",
+        "alias": "street_direction",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "unit_number",
+        "type": "esriFieldTypeString",
+        "alias": "unit_number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "street_name_alias",
+        "type": "esriFieldTypeString",
+        "alias": "street_name_alias",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "PROP_RSN",
+        "type": "esriFieldTypeInteger",
+        "alias": "Property RSN",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/699e993f3fd84510987fec856944c9cc": {
+    "id": "699e993f3fd84510987fec856944c9cc",
+    "title": "City Boundary",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/0",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "CityBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "EssexCountyBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "InternationalBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "MichiganBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "MunicipalWardBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 4,
+        "name": "PeleeIslandBoundary",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 6,
+        "name": "Forward Sortation Area",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ]
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/0": {
+    "id": 0,
+    "name": "CityBoundary",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "Name",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "Shape_Leng",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Leng",
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/dfd6890123374218aca838ba1c022a45": {
+    "id": "dfd6890123374218aca838ba1c022a45",
+    "title": "S20 Zoning",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/12",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer": {
+    "serviceItemId": null,
+    "copyrightText": "",
+    "description": "",
+    "layers": [
+      {
+        "id": 0,
+        "name": "ActiveTransportProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "ArtCultureProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 17,
+        "name": "committee_of_adjustment_application",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "CommunityProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "FacilityProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 4,
+        "name": "ParkProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "RoadProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 6,
+        "name": "SidewalkProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 14,
+        "name": "UCCProject",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 7,
+        "name": "ArchaeologicalLand",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 8,
+        "name": "BusinessImprovementArea",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 9,
+        "name": "HeritageArea",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 10,
+        "name": "HeritageSite",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 15,
+        "name": "SpotElevation",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 11,
+        "name": "PlanningDistrict",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 12,
+        "name": "S20Zoning",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 13,
+        "name": "SchoolBuildingBuffer",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ]
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/12": {
+    "id": 12,
+    "name": "S20Zoning",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "ZONE_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Zoning Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "ZONE_NUM",
+        "type": "esriFieldTypeString",
+        "alias": "Zone Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LINK",
+        "type": "esriFieldTypeString",
+        "alias": "Link",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/3e27a66aaee24c0cb59e592c7d69ee3d": {
+    "id": "3e27a66aaee24c0cb59e592c7d69ee3d",
+    "title": "Heritage Site",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/10",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/10": {
+    "id": 10,
+    "name": "HeritageSite",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPoint",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "ADDRESS",
+        "type": "esriFieldTypeString",
+        "alias": "ADDRESS",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "BUILDING_N",
+        "type": "esriFieldTypeString",
+        "alias": "BUILDING_N",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "HERITAGE_D",
+        "type": "esriFieldTypeString",
+        "alias": "HERITAGE_D",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "X",
+        "type": "esriFieldTypeDouble",
+        "alias": "X",
+        "domain": null
+      },
+      {
+        "name": "Y",
+        "type": "esriFieldTypeDouble",
+        "alias": "Y",
+        "domain": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "WARD",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "DESCRIPTION",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "OWNER",
+        "type": "esriFieldTypeString",
+        "alias": "OWNER",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/e187410969f84d078a09310d8a1a88ef": {
+    "id": "e187410969f84d078a09310d8a1a88ef",
+    "title": "HeritageArea",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/9",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/9": {
+    "id": 9,
+    "name": "HeritageArea",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Heritage Area Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SITE_NUM",
+        "type": "esriFieldTypeInteger",
+        "alias": "Site Number",
+        "domain": null
+      },
+      {
+        "name": "PROP_RSN",
+        "type": "esriFieldTypeInteger",
+        "alias": "Prop RSN",
+        "domain": null
+      },
+      {
+        "name": "ROLL_FIX",
+        "type": "esriFieldTypeString",
+        "alias": "Roll Fix",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "BY_LAW",
+        "type": "esriFieldTypeString",
+        "alias": "By Law",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "WEBSITE",
+        "type": "esriFieldTypeString",
+        "alias": "Website",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "NOTE",
+        "type": "esriFieldTypeString",
+        "alias": "Note",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/d71e44329b754cda93f7f2800cfa5c8e": {
+    "id": "d71e44329b754cda93f7f2800cfa5c8e",
+    "title": "Business Improvement Area",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/8",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": null
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/8": {
+    "id": 8,
+    "name": "BusinessImprovementArea",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "AREATYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Area Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Name",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "COMMENTS",
+        "type": "esriFieldTypeString",
+        "alias": "Comments",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/01f1ebf9159945bf8057f0bfdb18ba18": {
+    "id": "01f1ebf9159945bf8057f0bfdb18ba18",
+    "title": "Planning District",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/11",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/11": {
+    "id": 11,
+    "name": "PlanningDistrict",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "GISO_Planning_PlanningDistrict_AREA",
+        "type": "esriFieldTypeDouble",
+        "alias": "GISO.Planning_PlanningDistrict.AREA",
+        "domain": null
+      },
+      {
+        "name": "NAME",
+        "type": "esriFieldTypeString",
+        "alias": "NAME",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "SITE_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "SITE_TYPE",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/1647e48e0be748e2ba7d023cb9872ca4": {
+    "id": "1647e48e0be748e2ba7d023cb9872ca4",
+    "title": "Municipal Ward Boundary",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/5",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": "<p>&nbsp;This layer was generated by the Geomatices team using the Municipal Ward boundaries as defined by Council Services</p>"
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/5": {
+    "id": 5,
+    "name": "MunicipalWardBoundary",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID_1",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID_1",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeInteger",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "WARD",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "NUMBER",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "COUNCILLOR",
+        "type": "esriFieldTypeString",
+        "alias": "COUNCILLOR",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "Shape_Leng",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Leng",
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/e982ff00898a42caabfe2cc185a379ca": {
+    "id": "e982ff00898a42caabfe2cc185a379ca",
+    "title": "Archaeological Land",
+    "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/7",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Feature Service",
+    "access": "public",
+    "licenseInfo": "<p><i>Copyright 2025. City of Windsor (ArcGIS Online).&nbsp;Please be aware that by downloading or accessing this data, you agree to be bound by the&nbsp;</i><a style='background-color:rgb(255, 255, 255); border:0px solid currentcolor; box-sizing:border-box; color:rgb(0, 97, 155); font-family:&quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size:16px; font-style:normal; font-variant-caps:normal; font-variant-ligatures:normal; font-weight:400; letter-spacing:normal; line-height:1.5; text-align:start; text-decoration:none; text-indent:0px; text-transform:none; word-spacing:0px;' target='_blank' href='https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf' rel='nofollow ugc noopener noreferrer'><i>City of Windsor's Open Data Terms of Use</i></a><i>.</i></p>",
+    "description": ""
+  },
+  "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/7": {
+    "id": 7,
+    "name": "ArchaeologicalLand",
+    "type": "Feature Layer",
+    "copyrightText": "Engineering - Geomatics",
+    "description": "",
+    "geometryType": "esriGeometryPolygon",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "GRID_CODE",
+        "type": "esriFieldTypeDouble",
+        "alias": "GRID_CODE",
+        "domain": null
+      },
+      {
+        "name": "ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "ID",
+        "domain": null
+      },
+      {
+        "name": "Name",
+        "type": "esriFieldTypeString",
+        "alias": "NAME",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "Website",
+        "type": "esriFieldTypeString",
+        "alias": "WEBSITE",
+        "length": 254,
+        "domain": null
+      },
+      {
+        "name": "created_user",
+        "type": "esriFieldTypeString",
+        "alias": "created_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "created_date",
+        "type": "esriFieldTypeDate",
+        "alias": "created_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "last_edited_user",
+        "type": "esriFieldTypeString",
+        "alias": "last_edited_user",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "last_edited_date",
+        "type": "esriFieldTypeDate",
+        "alias": "last_edited_date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "CLASSIFICATION",
+        "type": "esriFieldTypeString",
+        "alias": "CLASSIFICATION",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "Shape_Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Length",
+        "domain": null
+      },
+      {
+        "name": "Shape_Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape_Area",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/5eb39d0df4994cdf88d73db3e4c18a1e": {
+    "id": "5eb39d0df4994cdf88d73db3e4c18a1e",
+    "title": "Open Data Portal",
+    "url": "https://open-data-portal-citywindsor.hub.arcgis.com",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Hub Site Application",
+    "access": "public"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/5eb39d0df4994cdf88d73db3e4c18a1e/data": {
+    "values": {
+      "defaultHostname": "open-data-portal-citywindsor.hub.arcgis.com",
+      "pages": [
+        {
+          "id": "6e96c09c45714875b7f93cd35baae9a1",
+          "title": "Open Data",
+          "slug": "open-data"
+        },
+        {
+          "id": "22355afb8d9d4290823b36873e377a3b",
+          "title": "Demographic Data",
+          "slug": "demographic-data"
+        },
+        {
+          "id": "5bbfe9fbe84542c0b4a9f66ab3047cb3",
+          "title": "FAQs and More",
+          "slug": "faqs-and-more"
+        },
+        {
+          "id": "20370623a5d146b4a298773d5a5919a2",
+          "title": "Core Data Maps",
+          "slug": "core-data-maps"
+        },
+        {
+          "id": "b0c7b30e76794a8e885137f78dc0794d",
+          "title": "Frequently Asked Questions",
+          "slug": "frequently-asked-questions"
+        },
+        {
+          "id": "3d6347cb9dee49c4b9a7fa39bdc52a56",
+          "title": "Meet the Team",
+          "slug": "meet-the-team"
+        },
+        {
+          "id": "12f7fef5bc504f2c9567ed0e08a7c687",
+          "title": "Additional Resources",
+          "slug": "additional-resources"
+        }
+      ],
+      "sites": null
+    },
+    "catalogV2": {
+      "schemaVersion": 1,
+      "title": "Default Site Catalog",
+      "scopes": {
+        "item": {
+          "targetEntity": "item",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "38109cd1467a478da480abbfb0e0ea96"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "event": {
+          "targetEntity": "event",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "38109cd1467a478da480abbfb0e0ea96"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "collections": [
+        {
+          "label": "Sites",
+          "key": "site",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$site"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": true
+          }
+        },
+        {
+          "label": "Data",
+          "key": "dataset",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$dataset"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": "Documents",
+          "key": "document",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$document"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": true
+          }
+        },
+        {
+          "label": "Apps & Maps",
+          "key": "appAndMap",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$app",
+                        "$map"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        }
+      ]
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6e96c09c45714875b7f93cd35baae9a1": {
+    "id": "6e96c09c45714875b7f93cd35baae9a1",
+    "title": "Open Data",
+    "url": "",
+    "owner": "geomatics_citywindsor",
+    "orgId": null,
+    "type": "Hub Page",
+    "access": "public"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6e96c09c45714875b7f93cd35baae9a1/data": {
+    "values": {
+      "defaultHostname": null,
+      "pages": null,
+      "sites": [
+        {
+          "id": "5eb39d0df4994cdf88d73db3e4c18a1e",
+          "title": "Open Data Portal"
+        }
+      ]
+    },
+    "catalogV2": null
+  },
+  "https://www.arcgis.com/sharing/rest/community/groups/38109cd1467a478da480abbfb0e0ea96": {
+    "id": "38109cd1467a478da480abbfb0e0ea96",
+    "title": "Open Data Portal Content",
+    "owner": "geomatics_citywindsor",
+    "access": "public"
+  },
+  "curation:b6e438e857c74685af9ba793c5f19ead": {
+    "total": 1,
+    "results": [
+      {
+        "id": "b6e438e857c74685af9ba793c5f19ead",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PropertyParcels/MapServer/0"
+      }
+    ]
+  },
+  "curation:699e993f3fd84510987fec856944c9cc": {
+    "total": 1,
+    "results": [
+      {
+        "id": "699e993f3fd84510987fec856944c9cc",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/0"
+      }
+    ]
+  },
+  "curation:dfd6890123374218aca838ba1c022a45": {
+    "total": 1,
+    "results": [
+      {
+        "id": "dfd6890123374218aca838ba1c022a45",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/12"
+      }
+    ]
+  },
+  "curation:3e27a66aaee24c0cb59e592c7d69ee3d": {
+    "total": 1,
+    "results": [
+      {
+        "id": "3e27a66aaee24c0cb59e592c7d69ee3d",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/10"
+      }
+    ]
+  },
+  "curation:e187410969f84d078a09310d8a1a88ef": {
+    "total": 1,
+    "results": [
+      {
+        "id": "e187410969f84d078a09310d8a1a88ef",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/9"
+      }
+    ]
+  },
+  "curation:d71e44329b754cda93f7f2800cfa5c8e": {
+    "total": 1,
+    "results": [
+      {
+        "id": "d71e44329b754cda93f7f2800cfa5c8e",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/8"
+      }
+    ]
+  },
+  "curation:01f1ebf9159945bf8057f0bfdb18ba18": {
+    "total": 1,
+    "results": [
+      {
+        "id": "01f1ebf9159945bf8057f0bfdb18ba18",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/11"
+      }
+    ]
+  },
+  "curation:1647e48e0be748e2ba7d023cb9872ca4": {
+    "total": 1,
+    "results": [
+      {
+        "id": "1647e48e0be748e2ba7d023cb9872ca4",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/Boundaries/MapServer/5"
+      }
+    ]
+  },
+  "curation:e982ff00898a42caabfe2cc185a379ca": {
+    "total": 1,
+    "results": [
+      {
+        "id": "e982ff00898a42caabfe2cc185a379ca",
+        "owner": "geomatics_citywindsor",
+        "access": "public",
+        "url": "https://mappmycity.ca/arcgis/rest/services/OpenDataServices/PlanningDevelopment/MapServer/7"
+      }
+    ]
+  }
+}

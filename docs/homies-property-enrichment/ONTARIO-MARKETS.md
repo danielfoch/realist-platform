@@ -761,3 +761,63 @@ interiors of inspected non-cadastral polygons. Run the public verifier sequentia
 `node --import tsx scripts/verify-welland.ts https://realist-lean.vercel.app /absolute/output.json`.
 Coverage includes Guelph's serialized source session; do not run another Guelph
 query or coverage verifier concurrently.
+
+
+## Windsor — source verification October 3, 2026
+
+Nine licensed City feeds publish **138,263 overlapping source rows**: 133,331
+municipal civic attributes, one City boundary, 519 Section20 exception references,
+1,058 heritage records, two heritage areas, nine BIA, 20 planning districts,
+ten wards and 3,313 archaeological classification references. Counts describe
+source records, including repeated/individual address observations; they are
+not distinct properties, unique data points or imported rows.
+
+The complete two-page [City OGL 1.0 grant](https://opendata.citywindsor.ca/Documents/OpenDataTermsofUse.pdf)
+is checked by full PDF-byte hash, exact AGOL referral, public City publisher,
+linked Hub site/page, City curation group membership, independent enterprise
+root and named typed child, whitelisted field types and inspected lineage.
+Published item orgId/serviceItemId/editingInfo values are absent on these sources;
+no IDs or feed observation dates are invented.
+
+The City’s generic AddressPoint metadata does not establish which street,
+parcel-fabric or GPS method produced its positions. Its geometry is not used.
+A suitable independently resolved national building point or caller-supplied
+coordinate and one matching licensed Windsor municipal polygon are required
+before spatial queries. Approximate street positions may return City civic and
+heritage attributes only after a complete full-address/number/type/direction/
+blank-unit match. These records retain `spatialScreenPerformed=false` and
+`screenedPoint=null`; all polygon layers stay skipped. Coordinate-only calls do
+not search civic or heritage addresses. Contradictory municipal/province inputs,
+unknown points, unmatched or ambiguous boundaries cannot start property queries.
+
+[S20](https://citywindsor.ca/documents/city-hall/by-laws-online/City%20of%20Windsor%20Consolidated%20Zoning%20By-law%208600%20%202026%20April.pdf)
+means Section20 specific exceptions; it is separate from base zoning and the
+[annex 85-18 regime](https://citywindsor.ca/residents/planning/plans-and-community-information/Zoning-By-law).
+Current applicability, written text, holds, amendments, appeals and permissions
+remain unverified. Planning districts are separate from current Official Plan
+land-use schedules and adopted policy. Preserve raw heritage area/type/bylaw
+and designation text: Walkerville/Victoria Avenue are published as Heritage Area,
+which does not itself verify conservation-district designation. Heritage WARD
+can contain Facilities/Parks custodian labels; use the separate ward reference.
+Archaeological classifications are preliminary context, not a site inventory,
+completed assessment, consultation, clearance or current Schedule C1 confirmation.
+
+Ten gaps remain visible without records/counts: cadastral parcels, municipal
+address geometry, address polygons, aerial-derived footprints/heights, complete
+base/annex zoning, current Official Plan instruments, permit history, full
+planning/variance histories and [ERCA regulatory mapping](https://www.essexregionconservation.ca/development-services).
+The accessible Committee of Adjustment map and unbound child17 have blank terms;
+they do not inherit neighbouring datasets’ grants. Public property inquiry access
+is separate from commercial record reuse. ERCA says visual-reference mapping is
+not a legal boundary and regulation may apply to unmapped areas; no-match cannot
+establish flood safety or clearance. BIA/ward references do not verify current
+levies, benefits, funding or election boundaries. Per-record edit dates remain
+separate from unknown feed currency. Windsor and the broader CMA remain partial.
+
+Positive controls include Willistead Manor at 1899 Niagara Street (five heritage
+observations, Walkerville area/district, S.20(1)267 and ward4), Mackenzie Hall at
+3277 Sandwich Street (exact-address heritage only with an approximate location),
+8310 Enfield Place (City civic/district/ward, explicit empty heritage/exception
+results), and two synthetic interiors of inspected BIA/archaeological polygons.
+These synthetic coordinates are not surveyed properties. Run the public verifier
+sequentially: `node --import tsx scripts/verify-windsor.ts https://realist-lean.vercel.app /absolute/output.json`. Coverage includes Guelph’s serialized source session.
