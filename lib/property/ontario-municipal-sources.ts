@@ -1,8 +1,9 @@
 import type { Source, Row } from "./model";
 
 export type Market = "Mississauga" | "London" | "Ottawa" | "Oshawa";
+export type HaltonMarket = "Burlington" | "Milton" | "Oakville";
 export interface MunicipalFeed {
-  market: Market | "Durham Region"; key: string; item: string; url: string; owner: string; org: string | null;
+  market: Market | HaltonMarket | "Durham Region"; key: string; item: string; url: string; owner: string; org: string | null;
   licenceAnchors: string[]; oid: string; geometry: "esriGeometryPoint" | "esriGeometryPolygon";
   fields: Record<string, string>; dates?: string[]; source: Source; note: string;
   disabledReason?: string; expectedLayerName?: string;

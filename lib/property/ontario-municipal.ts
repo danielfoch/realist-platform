@@ -10,7 +10,7 @@ import { oshawaRegistrationCoverage, oshawaRegistrations } from "./oshawa-regist
 
 const aliases: Record<string, Market> = { mississauga:"Mississauga", london:"London", oshawa:"Oshawa", ottawa:"Ottawa", nepean:"Ottawa", kanata:"Ottawa", orleans:"Ottawa", gloucester:"Ottawa", "stittsville":"Ottawa" };
 export function ontarioMarket(city: string | null, province: string | null): Market | null { return provinceKey(province ?? "") === "ontario" ? aliases[cityKey(city ?? "")] ?? null : null; }
-const bounds: Record<MunicipalFeed["market"], [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2], Oshawa:[43.84,44.1,-78.97,-78.78], "Durham Region":[43.75,44.65,-79.4,-78.3] };
+const bounds: Record<MunicipalFeed["market"], [number, number, number, number]> = { Mississauga:[43.42,43.78,-79.95,-79.5], London:[42.8,43.2,-81.5,-81.05], Ottawa:[44.8,45.7,-76.5,-75.2], Oshawa:[43.84,44.1,-78.97,-78.78], "Durham Region":[43.75,44.65,-79.4,-78.3], Burlington:[43.25,43.52,-79.99,-79.68], Milton:[43.4,43.75,-80.2,-79.69], Oakville:[43.35,43.6,-79.85,-79.54] };
 function validPoint(market: MunicipalFeed["market"], lat: unknown, lng: unknown): lat is number {
   const [south,north,west,east] = bounds[market]; return typeof lat === "number" && typeof lng === "number" && lat > south && lat < north && lng > west && lng < east;
 }

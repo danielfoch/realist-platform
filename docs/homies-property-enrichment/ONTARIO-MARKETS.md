@@ -75,8 +75,8 @@ truncation, empty results, licence withdrawal and schema failure.
 
 Next: extend Ottawa's older permit reports, planning, both current zoning regimes and overlays;
 find a licensed current Mississauga 2051 feed; connect London's detailed zoning
-and permit history; expand the Durham regional address and plan feeds alongside
-Oshawa's remaining gaps, then Halton, York, Waterloo and Niagara before
+and permit history; audit Durham's remaining municipal gaps alongside Oshawa;
+finish Halton Hills and Halton's remaining layers, then York, Waterloo and Niagara before
 working through southwestern, eastern and northern CMA/regional markets.
 Retain explicit gaps when a dataset cannot be reused; continue other available
 market work instead of treating one missing licence as a province-wide blocker.
@@ -260,5 +260,99 @@ or surveyed lot. A conflicting requested municipality must stop plan queries.
 Tests also exercise publisher/schema failures, complete and incomplete empties,
 unit/context limits, truncation, source outages and zero queries to withheld feeds.
 
-Next regional batches: Halton, York, Waterloo and Niagara. Each still needs its
+Next regional batches: finish Halton Hills, then York, Waterloo and Niagara. Each still needs its
 municipal permit, current zoning, heritage and planning audit before completion.
+
+## Burlington, Milton and Oakville first batch — October 3, 2026
+
+Nineteen enabled municipal feeds add **204,269 published source rows**. Combined
+with the 23 earlier municipal and 18 Durham feeds, these selected registries now
+contain **60 verified feeds / 1,495,456 source rows** at release verification.
+These are overlapping dataset rows, not distinct properties, unique data points
+or database imports. Ten withheld feeds and Ottawa's separate monthly permit
+snapshot are excluded. Actual health and counts are published in the coverage
+endpoint; source observation dates remain unknown where not explicitly supplied.
+
+| Municipality | Enabled feed counts | Total source rows |
+| --- | --- | ---: |
+| Burlington | Civic points 60,356; permit observations 5,062; heritage parcel polygons 271; heritage address points 294; older 2020 zoning mapping 1,782; planning communities 22; planning districts 8 | 67,795 |
+| Milton | Civic points 46,417; urban zoning 2,497; rural zoning 534; heritage address points 978; development polygons 373; hamlets 3; neighbourhoods 26 | 50,828 |
+| Oakville | Civic points 71,156; 2014-014 zoning 4,419; 2009-189 zoning 797; permit observations 9,221; generalized land use 53 | 85,646 |
+
+Each enabled public item is bound to its exact municipal publisher, organization,
+fixed service, named child layer, geometry, whitelisted fields and explicit
+dataset reuse grant. Sources use the [Burlington Open Data Terms of Use](https://opendata.burlington.ca/opendata-terms-of-use/City%20of%20Burlington%20-%20Open%20Data%20Terms%20of%20Use.pdf),
+[Milton Open Government Licence version 2.0](https://discover-milton.hub.arcgis.com/pages/disclaimer-and-terms-of-use)
+and [Oakville Open Data Licence](https://www.oakville.ca/town-hall/plans-strategies/open-data/open-data-licence/).
+Oakville's fixed items sometimes link its former licence paths; the adapter
+accepts only those pinned Town licence anchors and supplies the verified current
+canonical grant. Blank item licences are not inherited from adjacent datasets.
+The API and report retain attribution and Burlington's linked reuse terms and
+acceptance statement. Owner, owner-address, applicant and contact fields are
+excluded. Live queries retain bounded downloads and one-hour caching.
+
+Civic identity requires exact normalized civic number, type, suffix and direction.
+Burlington uses only Active Ontario address records. Oakville's missing CITY/PROV
+values remain unknown; conflicting values are rejected. Shared civic points more
+than 20 metres apart remain ambiguous, with no arbitrary building point.
+Municipal unit/suite and Milton ADU fields are address context, not proof of legal
+units. Unit-specific requests remain unsupported. Building metadata from the
+National Address Register is attached only when identity and the published
+building point agree within 20 metres. Campbellville can appear in Milton's
+published hamlet screen; former-community address aliases are not connected yet.
+
+[Burlington's current zoning guidance](https://www.burlington.ca/en/planning-and-development/zoning.aspx)
+says residential By-law **09-2026 came into force March 2, 2026**, while By-law
+2020 still applies to other lands. The licensed older map cannot establish
+current residential permission. A January 2026 final-draft service is withheld
+because its enacted scope and separate reuse limitations are unverified. The
+aggregate zoning layer makes the incomplete current screen explicit and retains
+the older map's own note and date. Burlington's heritage district item is also
+withheld for lack of an explicit dataset reuse licence.
+
+[Milton's urban 016-2014 and rural 144-2003 zoning](https://www.milton.ca/en/business-and-development/zoning-by-laws.aspx)
+are both screened. [Oakville's 2014-014 and 2009-189 bylaws](https://www.oakville.ca/town-hall/by-laws-enforcement/zoning-by-laws/)
+are both screened, preserving holding, site-specific and temporary-use references
+where published. These are point intersections, not full parcel/legal reviews;
+current text, overlays, amendments, appeals, density, height and permission remain
+unverified. Generalized land use, hamlets and planning communities do not replace
+current Official Plan schedules.
+
+Milton's heritage dataset title says Designated Heritage Properties, but its
+records include **LISTED** properties. The API preserves that distinction and
+published designation-date text without guessing its format. Exact heritage
+address evidence more than 100 metres from a usable civic point stays ambiguous.
+Burlington's heritage address points and parcel polygons are separate evidence;
+both preserve register and designation flags. Oakville's selected heritage and
+active-development items lack explicit reuse licences and remain withheld;
+none of their records or owner fields is queried.
+
+Burlington retains repeated permit numbers with differing work/date fields. At
+1268 Abbey Court, three observations include two entries for `24-019651`; they
+are not counted as three distinct permits. Oakville's catalogue advertises a
+rolling **last-ten-years** scope, updated nightly; full older history remains
+unverified. At 3140 Harasym Trail, `2022 132737 000 00 RN` is published Closed and
+`2022 132737 000 00 TH` is Cancelled. Closed/Final does not verify a final
+inspection or occupancy. Published construction estimates stay in CAD; Oakville
+GFA units are undocumented and are not assumed to be square metres. No values
+are summed across observations and no legal/current unit count is inferred.
+
+Milton's development polygons intersect the subject point and preserve published
+file, registration, status, approval and lapsing dates. They are not nearby
+quarterly application observations, comprehensive decisions, current conditions
+or appeal outcomes. Property permit history remains unconnected for Milton.
+[Halton's former regional plan became each local municipality's plan on July 1, 2024](https://www.halton.ca/the-region/supporting-land-use-planning/regional-official-plan).
+Both applicable municipal and former regional plans require review; Milton's
+municipal consolidation is February 2026. Full current plan GIS, amendments,
+nearby proposals and decisions remain explicit gaps for all three municipalities.
+Halton Hills remains queued pending primary publisher/licence verification.
+
+`scripts/verify-halton.ts` validates the 19 enabled and four withheld bindings,
+pins eight civic controls and positive heritage/permit records, and retains
+source limits. Controls include Milton designated heritage `1` and listed
+heritage `5`, Burlington heritage parcel `481107` and address point `565982`,
+repeated Abbey Court permit observations, and Oakville Closed/Cancelled records.
+Tests cover identity, province/city conflict, point ambiguity, withdrawn rights,
+changed schema, truncation, repeated observations, unknown units, current-zoning
+gaps and zero record queries to withheld sources. Halton Hills and the remaining
+core categories still require an audit before any market can be marked complete.
