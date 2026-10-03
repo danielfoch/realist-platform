@@ -1,5 +1,5 @@
 import type { Source } from "./model";
-export interface NiagaraFeed { publisher:"falls"|"region"; market:string; key:string; group:string; item:string; url:string; rootUrl:string; owner:string; org:string; expectedItemTitle:string; expectedLayerName:string; expectedCopyright:string; termsHash:string; oid:string; geometry:string; fields:Record<string,string>; fieldTypes:Record<string,string>; dates:string[]; matchField?:string; catalogue:{name:string;id:string;title:string;organizationId:string;organizationName:string;licenceId:string;licenceUrl:string;guid:string}; note:string; source:Source; }
+export interface NiagaraFeed { publisher:"falls"|"region"; market:string; key:string; group:string; item:string; url:string; rootUrl:string; owner:string; org:string; expectedItemTitle:string; expectedLayerName:string; expectedCopyright:string; termsHash:string; oid:string; geometry:string; fields:Record<string,string>; fieldTypes:Record<string,string>; dates:string[]; matchField?:string; catalogue:{name:string;id:string;title:string;organizationId:string;organizationName:string;licenceId:string;licenceUrl:string;guid:string;descriptionHash?:string}; note:string; source:Source; }
 export const NIAGARA_MUNICIPALITIES=["Fort Erie","Grimsby","Lincoln","Niagara Falls","Niagara-on-the-Lake","Pelham","Port Colborne","St. Catharines","Thorold","Wainfleet","Welland","West Lincoln"] as const;
 export const NIAGARA_GRANTS={
   "region": {
@@ -554,6 +554,7 @@ export const NIAGARA_FEEDS:NiagaraFeed[]=[
     },
     "dates": [],
     "catalogue": {
+      "descriptionHash": "f4bb56aae838db9df8ff1c636cf5d50f88e8fe5c0334b0f0cb8923137bc37c5f",
       "name": "nes-other-wetlands-non-psw",
       "id": "a1611569-7f04-4ad8-9cdb-6af8fefa20b2",
       "title": "NES Other Wetlands Non PSW",

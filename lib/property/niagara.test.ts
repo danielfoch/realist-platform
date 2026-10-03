@@ -38,6 +38,11 @@ describe('Niagara licensed property evidence',()=>{
   it('uses the official public catalogue pages without querying the action API that denies hosted access',async()=>{
     await niagaraMetadata(feed('municipality'));expect(json.mock.calls.some(([u])=>u.hostname==='niagaraopendata.ca')).toBe(false);expect(html.mock.calls.some(([u])=>u.href==='https://niagaraopendata.ca/dataset/municipal-boundaries')).toBe(true);
   });
+  it('fails closed when the source description supporting the DRAFT label changes',async()=>{
+    const f=feed('draftWetlandReference'),url=`https://niagaraopendata.ca/dataset/${f.catalogue.name}`;
+    html.mockImplementation(async(u:URL)=>u.href===url?String(fixture[u.href]).replaceAll('should be considered DRAFT','is a current inventory'):fixture[u.href]);
+    await expect(niagaraMetadata(f)).rejects.toThrow();expect(json.mock.calls.some(([u])=>u.pathname.endsWith('/query'))).toBe(false);
+  });
   it('matches active regional civic components and municipality, preserving suffix/type/direction',async()=>{
     const f=feed('addresses'),a={Full_StreetNo:'12',StreetNo:12,StreetName:'King',StreetType:'St',StreetDir:'W',Municipality:'Thorold',LifeCycleStatus:'Active'};
     json.mockImplementation(provider({addresses:[record(f,a)]}));expect((await niagaraLocation({address:'12 King Street West, Thorold, ON'}))?.data?.city).toBe('Thorold');

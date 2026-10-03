@@ -74,6 +74,7 @@ async function regionalGrant(f:NiagaraFeed,c:Context) {
     const d=matches[0],publisher=graph.filter(n=>n["@id"]===(d?.["schema:publisher"] as Row|undefined)?.["@id"]),distribution=rows(d?.["schema:distribution"]??[]).map(n=>n["@id"]);
     const resource=graph.filter(n=>distribution.includes(n["@id"])&&n["@type"]==="schema:DataDownload"&&n["schema:url"]===f.url),licence=$('section.license a[rel="dc:rights"]');
     if(matches.length!==1||d["@id"]!==`https://niagaraopendata.ca/dataset/${b.id}`||d["schema:url"]!==url||d["schema:name"]!==b.title||d["schema:license"]!==b.licenceUrl||publisher.length!==1||publisher[0]["@type"]!=="schema:Organization"||publisher[0]["schema:name"]!=="Niagara Region"||!$(`a[href="/organization/${b.organizationName}"]`).length||licence.length!==1||licence.attr("href")!==b.licenceUrl||licence.text().replace(/\s+/g," ").trim()!=="Open Government License 2.0 (Niagara Region)"||resource.length!==1||!$('li.resource-item a').toArray().some(a=>$(a).attr("href")===f.url)||$('#dataset-name').attr('dataset-name')!==b.title)throw new Error("Exact licensed regional catalogue binding changed");
+    if(b.descriptionHash && (typeof d["schema:description"]!=="string" || sha(String(d["schema:description"]).replace(/\s+/g," ").trim())!==b.descriptionHash))throw new Error("Niagara inspected draft-inventory description changed");
     return {verified:true};
   });
   await htmlGrant(c,NIAGARA_GRANTS.region);
