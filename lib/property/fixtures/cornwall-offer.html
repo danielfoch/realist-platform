@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en" class="no-js usn">
+<head>
+            <!-- Google Analytics -->
+        <link rel="dns-prefetch" href="//www.google-analytics.com">
+
+    <!-- Google Fonts -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="preconnect" href="//fonts.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="//fonts.gstatic.com">
+<link rel="preconnect" href="//fonts.gstatic.com" crossorigin>
+
+<!-- Google -->
+<link rel="dns-prefetch" href="//www.gstatic.com">
+<link rel="preconnect" href="//www.gstatic.com" crossorigin>
+<link rel="dns-prefetch" href="//www.google.com">
+<link rel="preconnect" href="//www.google.com" crossorigin>
+
+<!-- Icons -->
+<link rel="preload" href="/css/GOV/icons/ionicons.woff2?v=4.5.4" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/css/GOV/icons/ionicons.woff?v=4.5.4" as="font" type="font/woff" crossorigin>
+
+<!-- CiCi Chatbot -->
+<style>
+    #chatbot-widget {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        background-color: #0078d4;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index:99999;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    #chatbot-iframe {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 300px;
+        height: 400px;
+        border: none;
+        display: none;
+        z-index:99999;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=2">
+        <link rel="canonical" href="https://www.cornwall.ca/en/government-council/opendata/" />
+    <title>Open Data | City of Cornwall</title>
+    <meta name="description" content="">
+            <link rel="alternate" hreflang="en-us" href="https://www.cornwall.ca/en/government-council/opendata/" />
+            <link rel="alternate" hreflang="fr-ca" href="https://www.cornwall.ca/fr/gouvernance-et-conseil/donnees-ouvertes/" />
+    <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@CityofCornwall" />
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Open Data | City of Cornwall" />
+    <meta property="og:image" content="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png" />
+    <meta property="og:url" content="https://www.cornwall.ca/en/government-council/opendata/" />
+    <meta property="og:description" content="" />
+    <meta property="og:site_name" content="City of Cornwall" />
+    <meta name="robots" content="index,follow">
+    <meta name="pageID" content="3240" />
+
+    
+
+
+
+
+    <link fetchpriority="high" href="/sb/sitebuilder-ltr-css-bundle.css.v1-10-8-0" media="screen" rel="stylesheet" />
+<link fetchpriority="high" href="/sb/sitebuilder-css-bundle.css.v1-10-8-0" media="screen" rel="stylesheet" />
+<link fetchpriority="high" href="/sb/sitebuilder-css-small-bundle.css.v1-10-8-0" media="screen and (min-width:0) and (max-width:1279px)" rel="stylesheet" />
+<link fetchpriority="high" href="/sb/sitebuilder-css-large-bundle.css.v1-10-8-0" media="screen and (min-width:1280px)" rel="stylesheet" />
+<link rel="stylesheet" media="screen" fetchpriority="high" href="/uSkinned/css/generated/8b191171-0b43-428f-a670-0b322378e8e6.css?version=639165230667870000" />
+<link fetchpriority="low" href="/sb/sitebuilder-css-prnt-bundle.css.v1-10-8-0" media="print" rel="stylesheet" />
+
+<link fetchpriority="high" href="/sb/gov-css-bundle.css.v1-10-8-0" media="screen" rel="stylesheet" />
+    <link rel="stylesheet" media="screen" fetchpriority="high" href="/css/GOV/modules/alert/alert.css" />
+
+
+            <link rel="shortcut icon" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=32&amp;height=32">
+        <link rel="apple-touch-icon" sizes="57x57" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=57&amp;height=57">
+        <link rel="apple-touch-icon" sizes="60x60" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=60&amp;height=60">
+        <link rel="apple-touch-icon" sizes="72x72" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=72&amp;height=72">
+        <link rel="apple-touch-icon" sizes="76x76" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=76&amp;height=76">
+        <link rel="apple-touch-icon" sizes="114x114" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=114&amp;height=114">
+        <link rel="apple-touch-icon" sizes="120x120" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=120&amp;height=120">
+        <link rel="apple-touch-icon" sizes="144x144" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=144&amp;height=144">
+        <link rel="apple-touch-icon" sizes="152x152" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=152&amp;height=152">
+        <link rel="apple-touch-icon" sizes="180x180" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=180&amp;height=180">
+        <link rel="icon" sizes="16x16" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=16&amp;height=16">
+        <link rel="icon" sizes="32x32" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=32&amp;height=32">
+        <link rel="icon" sizes="96x96" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=96&amp;height=96">
+        <link rel="icon" sizes="192x192" type="image/png" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=192&amp;height=192">
+        <meta name="msapplication-square70x70logo" content="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=70&height=70" />
+        <meta name="msapplication-square150x150logo" content="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=150&height=150" />
+        <meta name="msapplication-wide310x150logo" content="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=310&height=150" />
+        <meta name="msapplication-square310x310logo" content="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?width=310&height=310" />
+
+            <script>
+var notificationExDays = 365;        </script>
+
+    
+<link href="/css/GOV/themes/gs-theme-prestige.css" media="screen" rel="stylesheet">        <!-- Global site tag (gtag.js) - Google Analytics -->
+        <script async fetchpriority="high" src="https://www.googletagmanager.com/gtag/js?id=G-6267DL692H"></script>
+        <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-6267DL692H');
+        </script>
+
+</head>
+<body 
+    
+ class="body-bg body-bg-solid header-01-lg header-01-sm show_header-on-scroll-lg hide_header-on-scroll-sm directional-icons-chevron             secondary-navigation-underline-link-hover  content-underline-link-hover  footer-underline-link-hover    "
+
+>
+            <!-- Notification -->
+        <div id="NotificationPanel" class="usn-notification position-center base-bg closed" role="dialog" aria-label="Cookie consent notification" aria-describedby="cookieconsent:desc">
+            <div class="inner">
+
+                
+
+                    <div id="cookieconsent:desc" class="text base-text">
+                        <p>This website uses cookies to enhance usability and provide you with a more personal experience. By using this website, you agree to our use of cookies as explained in our <a href="/en/privacy-policy/" title="Privacy Policy">Privacy Policy</a>.</p>
+                    </div>
+                <p class="link">
+                    <button class="btn base-btn-bg base-btn-bg base-btn-bg-solid base-btn-bg-hover-solid base-btn-text base-btn-borders accept-cookies" aria-label="Agree to cookie consent message">
+                        <span></span>
+                        Agree
+                    </button>
+                </p>
+            </div>
+        </div>
+        <!--// Notification -->
+
+
+
+
+
+
+    <section class="umb--alerts umb--alerts--modals" aria-label="Alerts">
+        <div class="ghd--carousel" data-flickity-options='{ "cellAlign": "center", "cellSelector": ".ghd--carousel__cell"}'>
+            <button class="umb--alerts__dismiss" type="button">Dismiss all alerts</button>
+
+                <div class="ghd--carousel__cell">
+                    <div data-modal id="alert-modal-18842" class="bx--modal umb--alert umb--alert-- is-visible" role="alertdialog" aria-modal="true" aria-labelledby="alert-modal-1-heading" aria-describedby="alert-modal-1-label" tabindex="-1">
+                        <div class="bx--modal-container">
+                            <div class="gs-modal-container-content">
+                                <div class="bx--modal-header">
+                                    <div class="umb--alert__icon"></div>
+                                     <p class="bx--modal-header__heading bx--type-beta" id="alert-modal-1-heading"></p>
+                                    <p class="bx--modal-header__label bx--type-delta" id="alert-modal-1-label"></p>
+                                    <button class="bx--modal-close" type="button" data-modal-close aria-label="close modal" data-modal-primary-focus>
+                                        <svg focusable="false" preserveAspectRatio="xMidYMid meet" style="will-change: transform;" xmlns="http://www.w3.org/2000/svg" class="bx--modal-close__icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 4.7L11.3 4 8 7.3 4.7 4 4 4.7 7.3 8 4 11.3 4.7 12 8 8.7 11.3 12 12 11.3 8.7 8z"></path></svg>
+                                    </button>
+                                </div>
+                                <div class="bx--modal-content">
+                                    <p><strong>Election Day is Monday, October 26, 2026.</strong> For information on how and where to vote, visit <a href="/en/government-council/elections/" title="Elections">cornwall.ca/elections.</a></p>
+                                </div>
+                                <div class="bx--modal-content--overflow-indicator"></div>
+
+                                <div class="bx--modal-footer">
+                            </div>
+                            </div>
+                        </div>
+                        <span></span>
+                    </div>
+                </div>
+        </div>
+    </section>
+
+
+
+
+
+    
+
+    <!-- Site -->
+    <div id="site">
+
+        <!-- Header -->
+            <header id="site-header" class="header-bg header-bg-solid" tabindex="-1">
+        <!-- Skip links -->
+        <a class="skip-to-content" id="skip-to-content-link" href="#site-content">Skip to main content</a>
+        <a class="skip-to-content" id="skip-to-footer-link" href="#site-footer">Skip to footer</a>
+        <!--// Skip links -->
+        <div class="container">
+
+            <div class="row">
+
+                    <div id="logo" >
+        <a href="/en/" title="City of Cornwall">
+                    <picture>
+                            <source type="image/webp" srcset="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?format=webp" data-srcset="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png?format=webp">
+                        <img src="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/rlhcqshn/city-of-cornwall.png" alt="City of Cornwall logo" fetchpriority="high">
+                    </picture>
+                <span class="sr-only">City of Cornwall</span>
+        </a>
+    </div>
+
+
+
+                    <!-- Expand -->
+                    <button id="burgerNavStyle" class="expand-header expand-3-bars expand-even-lines expand-active-cross" type="button" aria-expanded="false" aria-label="Expand header">
+                        <span>Menu</span>
+                    </button>
+                    <!--// Expand -->
+                <!-- Main navigation -->
+        <nav aria-label="Main" class="main main-advanced nav-dropdown navigation-dropdown-bg navigation-dropdown-bg-solid">
+            <ul>
+            <li class="has-child mega-menu-header-container  ">
+                <span>
+                    <a href="https://www.cornwall.ca/en/property-environment/" >Property &amp; Environment</a>
+                </span>
+
+                    <button class="expand-subpages" type="button" aria-expanded="false" aria-label="Expand sub pages Property & Environment">
+                        <span aria-hidden="true" class="sr-only">Expand sub pages Property & Environment</span>
+                    </button>
+                    <div class="mega-menu header-container items-3">
+                        <div class="menu-container">
+                            
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/property-environment/animals-and-wildlife/" target="_self">Animals and Wildlife</a></li>
+                            <li class=""><a href="/en/property-environment/trees/" target="_self">Trees</a></li>
+                            <li class=""><a href="/en/property-environment/building-and-renovations/" target="_self">Building and Renovations</a></li>
+                            <li class=""><a href="https://connect.cornwall.ca/en-US/" target="_blank">Cornwall Connect</a></li>
+                            <li class=""><a href="/en/property-environment/water-and-utilities/" target="_self">Water and Utilities</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/property-environment/environment-and-sustainability/" target="_self">Environment and Sustainability</a></li>
+                            <li class=""><a href="/en/property-environment/garbage-recycling-and-landfills/" target="_self">Garbage, Recycling and Landfills</a></li>
+                            <li class=""><a href="/en/property-environment/make-a-claim/" target="_self">Make a Claim</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/build-invest/maps/" target="_self">Maps</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/public-safety-transportation/fire-services/openairburn/" target="_self">Open Air Burn Permits</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/property-environment/property-standards/" target="_self">Property Standards</a></li>
+                            <li class=""><a href="/en/property-environment/property-taxes/" target="_self">Property Taxes</a></li>
+                            <li class=""><a href="https://connect.cornwall.ca/en-US/" target="_blank">Report a Problem</a></li>
+            </ul>
+
+                        </div>
+                    </div>
+            </li>
+            <li class="has-child mega-menu-header-container  ">
+                <span>
+                    <a href="https://www.cornwall.ca/en/recreation-community-supports/" >Recreation &amp; Community Supports</a>
+                </span>
+
+                    <button class="expand-subpages" type="button" aria-expanded="false" aria-label="Expand sub pages Recreation & Community Supports">
+                        <span aria-hidden="true" class="sr-only">Expand sub pages Recreation & Community Supports</span>
+                    </button>
+                    <div class="mega-menu header-container items-3">
+                        <div class="menu-container">
+                            
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/recreation-community-supports/about-cornwall/" target="_self">About Cornwall</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/arts-and-culture/" target="_self">Arts and Culture</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/children-s-services/" target="_self">Children&#x2019;s Services</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/community-and-social-services/" target="_self">Community and Social Services</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/cycling/" target="_self">Cycling</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/facility-rentals-and-event-hosting/" target="_self">Facility Rentals and Event Hosting</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/recreation-community-supports/glen-stor-dun-lodge/" target="_self">Glen Stor Dun Lodge</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/history-and-heritage/" target="_self">History and Heritage</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/housing-and-rental-supports/" target="_self">Housing and Rental Supports</a></li>
+                            <li class=""><a href="https://www.library.cornwall.on.ca/" target="_blank">Library</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/build-invest/maps/" target="_self">Maps</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/marina/" target="_self">Marina</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/recreation-community-supports/parks-and-trails/" target="_self">Parks and Trails</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/recreation-and-sports/" target="_self">Recreation and Sports</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/seniors/" target="_self">Seniors</a></li>
+                            <li class=""><a href="/en/recreation-community-supports/social-assistance/" target="_self">Social Assistance</a></li>
+                            <li class=""><a href="https://cornwalltourism.com/" target="_blank">Visit Cornwall</a></li>
+                            <li class=""><a href="https://cornwalltourism.com/explore/water-activities-2/" target="_blank">Waterfront and Boating</a></li>
+            </ul>
+
+                        </div>
+                    </div>
+            </li>
+            <li class="has-child mega-menu-header-container  ">
+                <span>
+                    <a href="https://www.cornwall.ca/en/public-safety-transportation/" >Public Safety&#xA0;&#xA0;&amp; Transportation</a>
+                </span>
+
+                    <button class="expand-subpages" type="button" aria-expanded="false" aria-label="Expand sub pages Public Safety  & Transportation">
+                        <span aria-hidden="true" class="sr-only">Expand sub pages Public Safety  & Transportation</span>
+                    </button>
+                    <div class="mega-menu header-container items-3">
+                        <div class="menu-container">
+                            
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="https://cornwallregionalairport.ca/" target="_blank">Airport</a></li>
+                            <li class=""><a href="/en/public-safety-transportation/alerts-and-notifications/" target="_self">Alerts and Notifications</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/government-council/by-laws/by-law-enforcement/" target="_self">By-law Enforcement</a></li>
+                            <li class=""><a href="/en/public-safety-transportation/fire-services/" target="_self">Fire Services</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/public-safety-transportation/paramedics/" target="_self">Paramedics</a></li>
+                            <li class=""><a href="https://cornwallpolice.com" target="_blank">Police</a></li>
+                            <li class=""><a href="/en/public-safety-transportation/prepare-for-an-emergency/" target="_self">Prepare for an Emergency</a></li>
+                            <li class=""><a href="/en/public-safety-transportation/roads-and-parking/" target="_self">Roads and Parking</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="https://www.cornwall.ca/en/public-safety-transportation/roads-and-parking/snow-removal/" target="_self">Snow Removal</a></li>
+                            <li class=""><a href="/en/public-safety-transportation/transit/" target="_self">Transit</a></li>
+            </ul>
+
+                        </div>
+                    </div>
+            </li>
+            <li class="has-child mega-menu-header-container  ">
+                <span>
+                    <a href="https://www.cornwall.ca/en/build-invest/" >Build &amp; Invest</a>
+                </span>
+
+                    <button class="expand-subpages" type="button" aria-expanded="false" aria-label="Expand sub pages Build & Invest">
+                        <span aria-hidden="true" class="sr-only">Expand sub pages Build & Invest</span>
+                    </button>
+                    <div class="mega-menu header-container items-3">
+                        <div class="menu-container">
+                            
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/build-invest/advertise-with-the-city/" target="_self">Advertise with the City</a></li>
+                            <li class=""><a href="https://choosecornwall.ca/business/cornwall-business-park/" target="_blank">Available Land</a></li>
+                            <li class=""><a href="/en/build-invest/bids-and-tenders/" target="_self">Bids and Tenders</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/property-environment/building-and-renovations/" target="_self">Building and Renovations</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/build-invest/business-licences/" target="_self">Business Licences</a></li>
+                            <li class=""><a href="/en/build-invest/business-supports/" target="_self">Business Supports</a></li>
+                            <li class=""><a href="/en/build-invest/infrastructure-and-construction/" target="_self">Infrastructure and Construction</a></li>
+                            <li class=""><a href="/en/build-invest/maps/" target="_self">Maps</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/build-invest/official-plan/" target="_self">Official Plan</a></li>
+                            <li class=""><a href="/en/build-invest/planning-and-development/" target="_self">Planning and Development</a></li>
+                            <li class=""><a href="/en/build-invest/sign-permits/" target="_self">Sign Permits</a></li>
+                            <li class=""><a href="/en/build-invest/zoning/" target="_self">Zoning</a></li>
+            </ul>
+
+                        </div>
+                    </div>
+            </li>
+            <li class="has-child active mega-menu-header-container  ">
+                <span>
+                    <a href="https://www.cornwall.ca/en/government-council/" >Government &amp; Council</a>
+                </span>
+
+                    <button class="expand-subpages" type="button" aria-expanded="false" aria-label="Expand sub pages Government & Council">
+                        <span aria-hidden="true" class="sr-only">Expand sub pages Government & Council</span>
+                    </button>
+                    <div class="mega-menu header-container items-3">
+                        <div class="menu-container">
+                            
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/government-council/accessibility/" target="_self">Accessibility</a></li>
+                            <li class=""><a href="/en/government-council/applications-licences-and-permits/" target="_self">Applications, Licences and Permits</a></li>
+                            <li class=""><a href="/en/government-council/awards-municipal-grants-and-recognitions/" target="_self">Awards, Municipal Grants and Recognitions</a></li>
+                            <li class=""><a href="https://www.cornwall.ca/en/build-invest/bids-and-tenders/" target="_self">Bids and Tenders</a></li>
+                            <li class=""><a href="/en/government-council/budget-and-finance/" target="_self">Budget and Finance</a></li>
+                            <li class=""><a href="/en/government-council/by-laws/" target="_self">By-Laws</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/government-council/careers/" target="_self">Careers</a></li>
+                            <li class=""><a href="/en/government-council/commissioner-of-oaths/" target="_self">Commissioner of Oaths</a></li>
+                            <li class=""><a href="/en/government-council/contact-us/" target="_self">Contact Us</a></li>
+                            <li class=""><a href="/en/government-council/council-and-committees/" target="_self">Council and Committees</a></li>
+                            <li class=""><a href="/en/government-council/elections/" target="_self">Elections</a></li>
+                            <li class=""><a href="/en/government-council/equity-belonging-and-culture/" target="_self">Equity, Belonging and Culture</a></li>
+            </ul>
+            <ul class="justify-content-start text-left">
+                            <li class=""><a href="/en/government-council/freedom-of-information/" target="_self">Freedom of Information</a></li>
+                            <li class=""><a href="/en/government-council/news-and-notices/" target="_self">News and Notices</a></li>
+                            <li class="active"><a href="/en/government-council/opendata/" target="_self">Open Data</a></li>
+                            <li class=""><a href="/en/government-council/privacy-policy/" target="_self">Privacy Policy</a></li>
+                            <li class=""><a href="https://theportlands.org/" target="_blank">The Port Lands</a></li>
+            </ul>
+
+                        </div>
+                    </div>
+            </li>
+            </ul>
+        </nav>
+                <!--// Main navigation -->
+                <!-- Secondary navigation -->
+                
+        <nav aria-label="Secondary" class="secondary nav-dropdown navigation-dropdown-bg navigation-dropdown-bg-solid">
+            <ul>
+
+                <li class="dropdown" data-area="memberArea" data-content="3240"></li>
+
+
+                            <li class="language-selector dropdown">                            
+                                <a href="#" class="dropdown-toggle" id="languageDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span lang="en" >English</span>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="languageDropdown"> <a class="dropdown-item" href="/fr/gouvernance-et-conseil/donnees-ouvertes/"><span lang="fr">French</span> </a></div>
+                            </li>
+            </ul>
+        </nav>
+
+                <!--// Secondary navigation -->
+                <!-- CTA Links -->
+                
+                <!--// CTA Links -->
+                <!-- Site search -->
+                <!--// Site search -->
+                <!-- Site search Advanced -->
+                                            <div class="form site-search-form site-search radio-topnav">
+                                <div class="gs-search-popup-wrapper">
+                                        <div class="gs-search-inputs">
+
+
+    <!-- GOOGLE SEARCH -->
+        <div class="search-form-container google_search_field-topnav" data-placeholder="" data-engine-id="23b24113586e34239" data-btn="base-btn-bg base-btn-bg-solid base-btn-bg-hover-solid" name="google_search_field-topnav" data-selector="GOVGoogleSearch">
+            <div class="google-search-container site-search-input" aria-label="Site search" data-search="Search">
+                <gcse:searchbox-only></gcse:searchbox-only>
+            </div>
+        </div>
+    <!--// GOOGLE SEARCH -->
+
+                                        </div>
+
+    <!-- SEARCH SELECTION -->
+    <!--// SEARCH SELECTION -->
+
+                                </div>
+
+                                <button class="expand-search" type="button" data-toggle="collapse" aria-label="Expand site search">
+                                    <em>Expand Search</em>
+                                    <i aria-hidden="true" class="icon usn_ion-ios-search search-icon"></i>
+                                    <i aria-hidden="true" class="icon usn_ion-md-close close-icon" tabindex="0"></i>
+                                </button>
+                            </div>
+
+                <!--// Site search Advanced -->
+
+            </div>
+
+        </div>
+    </header>
+
+
+        <!--// Header -->
+        <!-- Content -->
+        <main id="site-content" tabindex="-1">
+
+                <section class="content component usn_cmp_banner base-bg base-bg-solid p-0 gs-interior-banner" >  
+
+        <div class="component-inner">
+
+
+                                <div class="item item_overlay item_short-banner  c2-bg c2-bg-solid ">
+
+                                <!-- IMAGE -->
+                                <div class="image lazyload background-image "  style="background-image:url('https://media-003-ca.cdn.govstack.com/cornwall-ca/media/5wsd0yps/cornwallaerial.jpg?rxy=0.5001268307250579,0.7006109979633401&width=750&height=100&v=1dcf38e10667d10&format=webp')"  data-bgset="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/5wsd0yps/cornwallaerial.jpg?rxy=0.5001268307250579,0.7006109979633401&width=3000&height=1000&v=1dcf38e10667d10&format=webp [type:image/webp] | https://media-003-ca.cdn.govstack.com/cornwall-ca/media/5wsd0yps/cornwallaerial.jpg?rxy=0.5001268307250579,0.7006109979633401&width=3000&height=1000&v=1dcf38e10667d10 1x" data-sizes="auto"   role="img" aria-label="">
+                                </div>
+                                <!--// IMAGE -->
+
+
+
+                    </div>
+
+
+
+        </div>
+    </section>
+    <section class="content component usn_cmp_breadcrumb base-bg base-bg-solid  " >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+
+                <section class="breadcrumb-trail " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+        
+            <nav aria-label="Breadcrumb">
+                <ol class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
+                        <li class="breadcrumb-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/en/" itemtype="https://schema.org/Thing" itemprop="item"><span itemprop="name"><i class="icon before"></i>Home</span></a><meta itemprop="position" content="1" /></li>
+                        <li class="breadcrumb-item" itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"><a href="/en/government-council/" itemtype="https://schema.org/Thing" itemprop="item"><span itemprop="name"><i class="icon before"></i>Government & Council</span></a><meta itemprop="position" content="2" /></li>
+
+                        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="breadcrumb-item active" aria-current="page"><span itemprop="name"><i class="icon before"></i>Open Data</span><meta itemprop="position" content="3" /></li>
+                </ol>
+            </nav>
+        
+    </section>
+
+
+
+                    </div>
+        </div>
+    </section>
+
+            
+
+
+
+    <section class="content component base-bg base-bg-solid"><div class="container">        <!-- Row -->
+        <div class="row">
+            <div class="heading-col col">
+
+
+                <h1 class="heading main base-heading">Open Data</h1>
+
+                    <!-- For GS Mobile Subnav -->
+                            <button class="gs-subnav-trigger" type="button" aria-controls="gs-subnav-wrapper" aria-expanded="false" aria-label="Toggle sub navigation">
+                                <span aria-hidden="true"></span>
+                                <span class="triggerText">Section Menu</span>
+                            </button>
+
+            </div>
+        </div>
+        <!--// Row -->
+<div class="row justify-content-between">
+    <!-- Content column -->
+    <div class="content-col left-col col-lg-8 col-12 order-1">
+
+        
+
+            <section class="content component usn_cmp_text base-bg base-bg-solid  " >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+        <!-- Introduction -->
+        <div class="component-introduction row justify-content-start text-left " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+            <div class="info col">
+
+                
+
+                    <div class="text base-text">
+                        <p dir="ltr">Explore and download free Open Data from the City of Cornwall. Open Data is structured, machine-readable information that can be freely shared and used. You can explore datasets used daily by many City departments. As new datasets are released, we add them in here. We share Open Data for:</p>
+<ul>
+<li>Better customer service</li>
+<li>Stronger community engagement and collaboration</li>
+<li>Faster map updates for new subdivisions (e.g., for delivery companies)</li>
+<li>Better access to water, sewer, and road network data for investors and developers</li>
+</ul>
+<h2 dir="ltr">Request specific information</h2>
+<p dir="ltr">Please make a data request online for specific information. Make sure to provide:</p>
+<ul>
+<li><strong>Short description</strong>: Enter a short one or two word description of the data requested. This field will be publicly visible. Please do not enter any identifiable personal information.</li>
+<li><strong>Detailed request description</strong>: This field will be publicly visible. Please do not enter any identifiable personal information.</li>
+<li><strong>Your name and contact email</strong>: For internal use only and will not be shared publicly.</li>
+</ul>
+                    </div>
+                    <p class="link">
+                                <a class="btn  base-btn-bg base-btn-bg-solid base-btn-bg-hover-solid base-btn-text base-btn-borders" href="https://survey123.arcgis.com/share/6f52c96960ce47f9a41cbe2f594450fc" target="_blank" rel="noreferrer noopener"  title="Link will open in a new window/tab" >
+                                    <span></span>
+                                    Request additional information
+                                </a>
+                    </p>
+            </div>
+        </div>
+        <!--// Introduction -->
+
+
+                <div class="info ">
+
+        
+
+        <div class="text base-text " data-os-animation="fadeIn" data-os-animation-delay="0s">
+            <p>By downloading or accessing this data, you are agreeing to the <a rel="noopener" href="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/5i0aznnd/city-of-cornwall-open-government-licence.pdf" target="_blank" title="City Of Cornwall Open Government Licence">City of Cornwall's Open Government Licence</a>.</p>
+        </div>
+
+
+    </div>
+
+
+        <!-- Outro -->
+        <div class="component-outro row justify-content-start text-left " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+            <div class="info col">
+
+                
+
+            </div>
+        </div>
+        <!--// Outro -->
+
+
+                    </div>
+        </div>
+    </section>
+    <section class="content component usn_cmp_code base-bg base-bg-solid  " >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+
+
+                <div class="code-item " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+        <iframe id="ODframe" title="External page https://data-cornwallcity.opendata.arcgis.com/search?wmode=transparent" src="https://data-cornwallcity.opendata.arcgis.com/search?wmode=transparent" width="100%" height="800" allowfullscreen="" wmode="Opaque" style="overflow: hidden;">Open external page https://data-cornwallcity.opendata.arcgis.com/search?wmode=transparent</iframe>
+    
+    </div>
+
+
+
+
+                    </div>
+        </div>
+    </section>
+    <section class="content component usn_cmp_code base-bg base-bg-solid  " >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+        <!-- Introduction -->
+        <div class="component-introduction row justify-content-start text-left " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+            <div class="info col">
+
+                <h3 class="heading  base-heading " >Explore the Data in these Ready-Made Apps</h3>
+
+            </div>
+        </div>
+        <!--// Introduction -->
+
+
+                <div class="code-item " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+        <iframe title="External page https://cornwallcity.maps.arcgis.com/apps/instant/filtergallery/index.html?appid=318911aa9a914050908a4b114fa7ee7f&amp;wmode=transparent" src="https://cornwallcity.maps.arcgis.com/apps/instant/filtergallery/index.html?appid=318911aa9a914050908a4b114fa7ee7f&amp;wmode=transparent" width="100%" height="420" allowfullscreen="" wmode="Opaque" style="overflow: hidden;">Open external page https://cornwallcity.maps.arcgis.com/apps/instant/filtergallery/index.html?appid=318911aa9a914050908a4b114fa7ee7f&amp;wmode=transparent</iframe>
+    
+    </div>
+
+
+
+
+                    </div>
+        </div>
+    </section>
+    <section class="content component usn_cmp_text base-bg base-bg-solid  " >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+
+
+                <div class="info ">
+
+        
+
+        <div class="text base-text " data-os-animation="fadeIn" data-os-animation-delay="0s">
+            <h3>Other Sources of Data</h3>
+<h4>Cornwall Transit Routes and Live Data</h4>
+<p style="padding-left: 40px;">Access Cornwall Transit's GTFS (General Transit Feed Specification) information below. GTFS is a standardized, open data format for public transportation schedules, stops, and geographic paths. GTFS Real-time is an extension providing live, dynamic updates like vehicle positions and arrival delays.This data is hosted live by Metrolinx and currently accessed by TransitApp, Google Maps, Apple Maps, etc.</p>
+<div class="x_elementToProof">
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a id="OWA089be897-a5a3-b9cb-2fbc-ed956eaf6f91" href="https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmetrolinx.tmix.se%2Fgtfs%2Fgtfs-cornwall.zip&amp;data=05%7C02%7CDLalonde%40cornwall.ca%7Cb7ab0f5cf8e0499b941208de4c7ba270%7C68d0489cf94f4412b722c894adcb2a17%7C0%7C0%7C639032291092198582%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=IoUKKVabtQHedAolY3%2BcqktUovmvReuyprvOII1Nkls%3D&amp;reserved=0" title="Original URL: https://metrolinx.tmix.se/gtfs/gtfs-cornwall.zip. Click or tap if you trust this link." class="x_OWAAutoLink" data-auth="NotApplicable" data-linkindex="0" data-olk-copy-source="MessageBody"><u data-olk-copy-source="MessageBody">Static GTFS</u></a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="x_elementToProof">
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a id="OWA32fb4c69-4a11-e00c-e25e-43f99d4eca69" href="https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmetrolinx.tmix.se%2Fgtfs-realtime-cornwall%2Ftripupdates.pb&amp;data=05%7C02%7CDLalonde%40cornwall.ca%7Cb7ab0f5cf8e0499b941208de4c7ba270%7C68d0489cf94f4412b722c894adcb2a17%7C0%7C0%7C639032291092215475%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=DDTcunIRHgBsAUaiihK454lTvTcyPXgZFeFSiePOuhI%3D&amp;reserved=0" title="Original URL: https://metrolinx.tmix.se/gtfs-realtime-cornwall/tripupdates.pb. Click or tap if you trust this link." class="x_OWAAutoLink" data-auth="NotApplicable" data-linkindex="1"><u>GTFS real-time trip updates</u></a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="x_elementToProof">
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a id="OWAd2ad9dc1-946e-beb8-bb8a-865df7021c12" href="https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmetrolinx.tmix.se%2Fgtfs-realtime-cornwall%2Falerts.pb&amp;data=05%7C02%7CDLalonde%40cornwall.ca%7Cb7ab0f5cf8e0499b941208de4c7ba270%7C68d0489cf94f4412b722c894adcb2a17%7C0%7C0%7C639032291092228686%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=yU9tuLQosHI06qAO1TROjXiYgZhyWlaq9cZVFH4GTQE%3D&amp;reserved=0" title="Original URL: https://metrolinx.tmix.se/gtfs-realtime-cornwall/alerts.pb. Click or tap if you trust this link." class="x_OWAAutoLink" data-auth="NotApplicable" data-linkindex="2"><u>GTFS real-time alerts</u></a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="x_elementToProof">
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a id="OWAf53679a7-f6f4-4570-0ed4-dc04a7a95493" href="https://can01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fmetrolinx.tmix.se%2Fgtfs-realtime-cornwall%2Fvehicleupdates.pb&amp;data=05%7C02%7CDLalonde%40cornwall.ca%7Cb7ab0f5cf8e0499b941208de4c7ba270%7C68d0489cf94f4412b722c894adcb2a17%7C0%7C0%7C639032291092240909%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&amp;sdata=dlXlpyixzQx3oCMzKX8x9u2x7DX9cxgzqtw7DLRjFPM%3D&amp;reserved=0" title="Original URL: https://metrolinx.tmix.se/gtfs-realtime-cornwall/vehicleupdates.pb. Click or tap if you trust this link." class="x_OWAAutoLink" data-auth="NotApplicable" data-linkindex="3"><u>GTFS real-time vehicle updates</u></a></li>
+</ul>
+</li>
+</ul>
+<h4>Cornwall Police Services</h4>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a href="https://crimemaps.ca/city/cornwall/year/2025?lat=45.03555&amp;lng=-74.73820&amp;z=13.10?lat=45.03668&amp;lng=-74.72871&amp;z=12.37" title="Crime Plot Map" data-anchor="?lat=45.03668&amp;lng=-74.72871&amp;z=12.37">Crime Plot Map (2025)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+
+
+    </div>
+
+
+
+
+                    </div>
+        </div>
+    </section>
+
+
+
+
+        
+
+    </div>
+    <!--// Content column -->
+    <!-- Second column -->
+    <div class="right-col col-xl-3 col-lg-4 col-12 order-2  gov-sidebar">
+
+                <!-- Sub Navigation Advanced -->
+                <div id="gs-subnav-desktop" class="sub">
+                    <div id="gs-subnav-wrapper" class="subnav-cross subnav-title-top">
+                    <nav id="gs-subnav-container" aria-label="Sub pages">
+                            <div id="gs-subnav-title" class="gs-subnav-main-title">
+                                <a href="/en/government-council/">
+                                    <span>Government &amp; Council</span>
+                                </a>
+                        </div>
+                            <ul class="gs-subnav gs-subnav-top">
+                                <li class="with-children open">
+                                    <!-- disabled -->
+                                    <a href="/en/government-council/opendata/">
+                                        <span>Open Data</span>
+                                    </a>
+                                    <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Menu Html.Raw(currentTopLevel.Value<string>("subNavigationLinkText")).ToString() : currentTopLevel.Name)</span>
+                                    </button>
+                                    <!-- //disabled -->
+                                    <ul id="gs-subnav-dropdown-0">
+                                                <li><a href="/en/government-council/opendata/"   class="current">
+                                                       <span>Open Data</span>
+                                                </a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+			                <ul class="gs-subnav gs-subnav-bottom">
+                                <li class="with-children">
+					                <div class="gs-subnav-extended-wrapper">
+                                    <a href="#" class="gs-subnav-extended-link" role="button" aria-expanded="false" data-open-title="View Full Menu" data-close-title="Close Full Menu" aria-controls="gs-subnav-extended-menu"><span>View Full Menu</span></a>
+                                    <button class="gs-subnav-extended-toggle toggle" type="button" aria-controls="gs-subnav-extended-menu" aria-expanded="false" aria-label="Toggle Menu Open Data"><span class="sr-only">Toggle Menu Open Data</span></button>
+					                </div>
+        <ul id="gs-subnav-extended-menu">
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/accessibility/"  class=""><span>
+Accessibility                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="https://www.cornwall.ca/en/government-council/council-and-committees/committees-and-boards/accessibility-advisory-committee/"  class=""><span>
+Accessibility Advisory Committee                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="https://www.cornwall.ca/en/public-safety-transportation/transit/accessible-transit/"  class=""><span>
+Accessible Transit                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/accessibility/scent-sensitivity-program/"  class=""><span>
+Scent Sensitivity Program                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/applications-licences-and-permits/"  class=""><span>
+Applications, Licences and Permits                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="https://www.cornwall.ca/en/build-invest/business-licences/"  class=""><span>
+Business Licences                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/applications-licences-and-permits/death-registration/"  class=""><span>
+Death Registration                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/applications-licences-and-permits/lottery-licences/"  class=""><span>
+Lottery Licences                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/applications-licences-and-permits/marriages-licences-and-weddings/"  class=""><span>
+Marriages Licences and Weddings                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/awards-municipal-grants-and-recognitions/"  class=""><span>
+Awards, Municipal Grants and Recognitions                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/awards-municipal-grants-and-recognitions/certificate-request/"  class=""><span>
+Certificate Request                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/awards-municipal-grants-and-recognitions/municipal-grants/"  class=""><span>
+Municipal Grants                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/awards-municipal-grants-and-recognitions/ontario-winter-games-legacy-awards/"  class=""><span>
+Ontario Winter Games Legacy Awards                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/awards-municipal-grants-and-recognitions/request-for-proclamations-flags-and-lights/"  class=""><span>
+Request for Proclamations, Flags and Lights                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                        <li  class="with-children">
+                            <a target="_self" href="https://www.cornwall.ca/en/build-invest/bids-and-tenders/"><span>
+Bids and Tenders                        </span></a>
+                    </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/budget-and-finance/"  class=""><span>
+Budget and Finance                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/budget-and-finance/asset-management/"  class=""><span>
+Asset Management                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/budget-and-finance/budget/"  class=""><span>
+Budget                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/budget-and-finance/financial-statements/"  class=""><span>
+Financial Statements                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="https://www.cornwall.ca/en/property-environment/make-a-claim/"  class=""><span>
+Make a Claim                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/by-laws/"  class=""><span>
+By-Laws                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/by-laws/amps/"  class=""><span>
+AMPS                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/by-laws/by-law-enforcement/"  class=""><span>
+By-Law Enforcement                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/by-laws/pay-a-ticket/"  class=""><span>
+Pay a Ticket                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/careers/"><span>
+Careers                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/commissioner-of-oaths/"><span>
+Commissioner of Oaths                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/contact-us/"><span>
+Contact Us                        </span></a>
+                    </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/council-and-committees/"  class=""><span>
+Council and Committees                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/council-and-committees/accountability-and-transparency/"  class=""><span>
+Accountability and Transparency                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/accountability-and-transparency/council-expenses-and-attendance/"  class=""><span>
+Council Expenses and Attendance                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/accountability-and-transparency/declaration-of-interests/"  class=""><span>
+Declaration of Interests                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/accountability-and-transparency/integrity-commissioner-closed-meetings-and-ombudsman/"  class=""><span>
+Integrity Commissioner, Closed Meetings and Ombudsman                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/agendas-and-minutes/"  class=""><span>
+Agendas and Minutes                                </span></a>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/council-and-committees/committees-and-boards/"  class=""><span>
+Committees and Boards                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/committees-and-boards/accessibility-advisory-committee/"  class=""><span>
+Accessibility Advisory Committee                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="https://www.cornwall.ca/en/build-invest/planning-and-development/planning-committees/"  class=""><span>
+Planning Committees                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/council-meetings/"  class=""><span>
+Council Meetings                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/mayoral-powers/"  class=""><span>
+Mayoral Powers                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/council-and-committees/requests-for-proclamations-flags-and-lights/"  class=""><span>
+Requests for Proclamations, Flags and Lights                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/elections/"  class=""><span>
+Elections                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/elections/candidates/"  class=""><span>
+Candidates                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/elections/candidates/candidate-financial-statements/"  class=""><span>
+Candidate Financial Statements                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/elections/compliance-audit-committee/"  class=""><span>
+Compliance Audit Committee                                </span></a>
+                            </li>
+                            <li >
+                                <a target="_self" href="/en/government-council/elections/third-party-advertisers/"  class=""><span>
+Third Party Advertisers                                </span></a>
+                            </li>
+                            <li  class="with-children">
+                                <a target="_self" href="/en/government-council/elections/how-to-vote/"  class=""><span>
+How to Vote                                </span></a>
+                                <button class="toggle" type="button" aria-expanded="false">
+                                    <span class="sr-only">Toggle Section</span>
+                                </button>
+            <ul>
+                            <li >
+                                <a target="_self" href="/en/government-council/elections/how-to-vote/where-to-vote/"  class=""><span>
+Where to Vote                                </span></a>
+                            </li>
+            </ul>
+                            </li>
+            </ul>
+                            </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/equity-belonging-and-culture/"><span>
+Equity, Belonging and Culture                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/freedom-of-information/"><span>
+Freedom of Information                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/news-and-notices/"><span>
+News and Notices                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_self" href="/en/government-council/privacy-policy/"><span>
+Privacy Policy                        </span></a>
+                    </li>
+                        <li  class="with-children">
+                            <a target="_blank" href="https://theportlands.org/"><span>
+The Port Lands                        </span></a>
+                    </li>
+        </ul>
+                                </li>
+			                </ul>
+                        </nav>
+                    </div>
+                </div>
+                <!--// Sub Navigation Advanced -->
+        <!-- Pods -->
+        <div class="swp">
+
+                <div class="listing listing-pods">
+
+            <div class="item   swp-item item_text-below usn_pod_textimage text-left  " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+            <div class="inner   ">
+                    <div class="info ">
+
+                        <p class="heading  base-heading " >Contact Us</p>
+
+                            <div class="text base-text">
+                                <p><strong>City of Cornwall</strong><br>360 Pitt Street<br>Cornwall, ON, K6J 3P9<br>Telephone: <a href="tel:6139302787"><strong>613-930-2787</strong></a></p>
+                            </div>
+
+                    </div>
+            </div>
+    </div>
+
+
+                </div>
+
+        </div>
+        <!--// Pods -->
+
+    </div>
+    <!--// Second column -->
+
+
+    </div></div></section> 
+
+
+                <section class="content component usn_cmp_ctastrip c1-bg c1-bg-solid  prestige-subscribe" >  
+
+        <div class="component-inner">
+                    <div class="container">
+
+
+                    <!-- ROW -->
+        <div class="row justify-content-between align-items-center textAlignmentLeft">
+
+            <div class="info">
+
+                <p class="heading  c1-heading os-animation"  data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s" >Sign up to our News Feed</p>
+
+                    <div class="text c1-text os-animation" data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+                        <p><span class="lg">Stay up to date on the city's activities, events, programs and operations by subscribing to news feed.</span></p>
+                    </div>
+
+            </div>
+
+                <p class="link os-animation" data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+                            <a class="btn  c4-btn-bg c4-btn-bg-solid c4-btn-bg-hover-solid c4-btn-text c4-btn-borders" href="https://www.cornwall.ca/en/subscribe/"  >
+                                <span></span>
+                                Sign Up Today!
+                            </a>
+                </p>
+
+        </div>
+        <!--// ROW -->
+
+
+
+                    </div>
+        </div>
+    </section>
+
+
+        </main>
+        <!--// Content -->
+        <!-- Footer -->
+                    <footer id="site-footer" class="footer-bg footer-bg-solid" tabindex="-1">
+
+                <!-- Breadcrumb -->
+                
+                <!--// Breadcrumb -->
+
+                <div class="container">
+
+                        <!-- Row -->
+                        <div class="row listing">
+
+            <div class="item  footer-item   col-lg-3 col-md-5 col-12 col  item_text-below usn_pod_textimage text-left  " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="0.9s">
+            <div class="inner   ">
+                    <div class="info ">
+
+                        <p class="heading sm footer-heading " >Contact Us</p>
+
+                            <div class="text footer-text">
+                                <p><strong>City of Cornwall</strong><br>360 Pitt Street<br>Cornwall, ON, K6J 3P9<br>Telephone: <a href="tel:6139302787"><strong>613-930-2787</strong></a></p>
+                            </div>
+
+                    </div>
+            </div>
+    </div>
+            <div class="item  footer-item   col-lg-3 col-md-5 col-12 col  item_text-below usn_pod_textimage textAlignmentLeft  " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="0.9s">
+            <div class="inner   ">
+                    <div class="info ">
+
+                        <p class="heading sm footer-heading " >Resources</p>
+
+                            <div class="text footer-text">
+                                <p><a href="/en/sitemap/" title="Sitemap">Sitemap</a><br><a href="#" data-anchor="#">Accessibility</a><br><a href="/en/privacy-policy/" title="Privacy Policy">Privacy Policy</a></p>
+                            </div>
+
+                    </div>
+            </div>
+    </div>
+            <div class="item  footer-item   col-lg-3 col-md-3 col-12 col  item_text-below usn_pod_textimage text-left  " data-os-animation="fadeIn" data-os-animation-delay="0s" data-os-animation-duration="1.2s">
+            <div class="inner   ">
+                    <div class="info ">
+
+                        <p class="heading sm footer-heading " >Office Hours</p>
+
+                            <div class="text footer-text">
+                                <p>Monday to Friday<br>8:30 am to 4:30 pm</p>
+                            </div>
+
+                    </div>
+            </div>
+    </div>
+                                            <div class="item footer-item usn_pod_sociallinks   col-lg-3 col-md-12 col-12 col ">
+                                        
+                                                <div class="inner">
+                                                    <p class="heading sm footer-heading "  data-os-animation="fadeInDown" data-os-animation-delay="0s" data-os-animation-duration="1s" >Connect With Us</p>        <nav class="social " data-os-animation="fadeInDown" data-os-animation-delay="0s" data-os-animation-duration="1s" aria-label="Social links">
+
+            <ul>
+                        <li>
+                            <span>
+                                <a href="https://www.facebook.com/827412420788220" class="item_icon-m" data-icon="" target="_blank" rel="noreferrer noopener"  title="Link will open in a new window/tab" >
+                                            <img src="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/1otpokoh/facebook_circle.svg" alt="Facebook Icon">
+                                        <span class="sr-only">Facebook</span>
+                                </a>
+                            </span>
+                        </li>
+                        <li>
+                            <span>
+                                <a href="https://www.instagram.com/cityofcornwall/" class="item_icon-m" data-icon="" target="_blank" rel="noreferrer noopener"  title="Link will open in a new window/tab" >
+                                            <img src="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/solbg45u/instagram_circle.svg" alt="Instagram Icon">
+                                        <span class="sr-only">Instagram</span>
+                                </a>
+                            </span>
+                        </li>
+                        <li>
+                            <span>
+                                <a href="https://www.linkedin.com/company/city-of-cornwall" class="item_icon-m" data-icon="" target="_blank" rel="noreferrer noopener"  title="Link will open in a new window/tab" >
+                                            <img src="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/endlbgup/linked_in_circle.svg" alt="LinkedIn Icon">
+                                        <span class="sr-only">Linkedin</span>
+                                </a>
+                            </span>
+                        </li>
+                        <li>
+                            <span>
+                                <a href="https://www.youtube.com/@cityofcornwall9803?v=1htlqH_M4LI" class="item_icon-m" data-icon="" target="_blank" rel="noreferrer noopener"  title="Link will open in a new window/tab" >
+                                            <img src="https://media-003-ca.cdn.govstack.com/cornwall-ca/media/4sahvgac/youtube_circle.svg" alt="YouTube Icon">
+                                        <span class="sr-only">YouTube</span>
+                                </a>
+                            </span>
+                        </li>
+            </ul>
+        </nav>
+
+                                                </div>
+                                           
+                                        </div>
+
+                        </div>
+                        <!--// Row -->
+                    <!-- Row -->
+                    <div class="row">
+
+                        <div class="col">
+                            <nav aria-label="Footer" class="footer-navigation">
+                                <ul>
+                                    <li><div>&copy; 2026 City of Cornwall</div></li>
+                                                    <li><span><a href="https://www.cornwall.ca/en/privacy-policy/"  >Privacy Policy</a></span></li>
+                <li><span><a href="https://www.cornwall.ca/en/sitemap/"  >Sitemap</a></span></li>
+
+                                    <li class="site-credit">
+                                        <div>Made with </div>
+                                        <span><a target="_blank" rel="noopener" title="Link will open in a new window/tab" href="https://www.govstack.com/">Govstack</a></span>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                    </div>
+                    <!--// Row -->
+
+                            <!-- Back to top -->
+        <div class="usn_back-to-top position-right">
+            <button id="back-to-top-link" aria-label="Back to top" class="btn base-btn-bg base-btn-bg base-btn-bg-solid base-btn-bg-hover-solid base-btn-text base-btn-borders btn-back-to-top">
+                <span></span>
+                <i aria-hidden="true" class="icon"></i><span aria-hidden="true" class="d-none">Back to top</span>
+            </button>
+        </div>
+        <!--// Back to top -->
+
+
+                </div>
+            </footer>
+
+        <!--// Footer -->
+
+    </div>
+    <!--// Site -->
+
+    
+    
+
+
+		<script fetchpriority="high" src="/sb/sitebuilder-js-bundle.js.v1-10-8-0" type="text/javascript"></script>
+		<script fetchpriority="high" src="/sb/gov-js-bundle.js.v1-10-8-0" type="text/javascript"></script>
+		<script async defer fetchpriority="low" src="https://www.google.com/recaptcha/api.js"></script>
+
+<script>
+    $(document).ready(function(){
+        let lastCtrlTime = 0;
+        // milli seconds
+        const doublePressWindow = 500;
+        document.addEventListener('keyup', function (event){
+            if(event.key === "Control"){
+                const now = Date.now();
+                if(now - lastCtrlTime <= doublePressWindow){
+                    let metaPageId = document.querySelector("meta[name='pageID']")
+                        .getAttribute("content");
+                    // reset time
+                    lastCtrlTime = 0;
+                    var backofficeEditUrl = window.location.protocol + '//' + window.location.hostname + '/umbraco/#/content/content/edit/' + metaPageId;
+                    window.location.href = backofficeEditUrl;
+                }
+                else{
+                    lastCtrlTime = now;
+                }
+            }
+        });
+    });
+</script>
+<script>
+    $(function(){
+        $('body').attr('data-large-breakpoint', 1280);
+    });
+</script>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/flickity/2.2.2/flickity.pkgd.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
+    <script fetchpriority="high" src="/sb/gov-alerts-js-bundle.js.v1-10-8-0" type="text/javascript"></script>
+                                                                                            <script type="text/javascript" fetchpriority="low" src="https://cse.google.com/cse.js?cx=23b24113586e34239"></script>
+
+    <script defer="" fetchpriority="high" src="/sb/gov-members-nav-js-bundle.js.v1-10-8-0" type="text/javascript"></script>
+
+    <div id="chatbot-widget">
+    <svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24" fill="white" width="24" height="24">
+        <path d="M2 2v20l4-4h16V2H2zm18 14H6.83L4 18V4h16v12z"></path>
+        <circle cx="9" cy="10" r="1.5" fill="white"></circle>
+        <circle cx="12" cy="10" r="1.5" fill="white"></circle>
+        <circle cx="15" cy="10" r="1.5" fill="white"></circle>
+    </svg>
+</div>
+<iframe id="chatbot-iframe" src="about:blank"></iframe>
+<script>
+    const widget = document.getElementById('chatbot-widget');
+    const iframe = document.getElementById('chatbot-iframe');
+    widget.addEventListener('click', () => {
+        if (iframe.style.display === 'none' || iframe.style.display === '') {
+            iframe.style.display = 'block';
+            const chatUrl = 'https://copilotstudio.microsoft.com/environments/466f0964-8bd2-e40e-b9d7-8eb3c3381cf5/bots/cr852_cocCopilot/webchat?__version__=2';
+            const conversationHistory = localStorage.getItem('conversationHistory');
+            iframe.src = conversationHistory ? `${chatUrl}&history=${encodeURIComponent(conversationHistory)}` : chatUrl;
+        } else {
+            iframe.style.display = 'none';
+        }
+    });
+    window.addEventListener('beforeunload', () => {
+        const iframeWindow = iframe.contentWindow;
+        if (iframeWindow) {
+            const history = iframeWindow.getConversationHistory(); // Assuming this function exists
+            localStorage.setItem('conversationHistory', history);
+        }
+    });
+</script>
+    
+    
+
+    
+
+</body>
+
+</html>
