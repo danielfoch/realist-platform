@@ -8,7 +8,7 @@ export async function fetchBytes(url: URL, timeoutMs = 8000): Promise<Uint8Array
     signal: AbortSignal.timeout(timeoutMs),
     next: { revalidate: 3600 },
   });
-  if (!response.ok || !response.body) throw new Error("Source unavailable");
+  if (!response.ok || !response.body) throw new Error(`Source unavailable (HTTP ${response.status})`);
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;

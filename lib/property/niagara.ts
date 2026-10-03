@@ -26,14 +26,14 @@ export function niagaraMunicipality(city:string|null,province:string|null):strin
   return NIAGARA_MUNICIPALITIES.find(c=>municipalKey(c)===municipalKey(city??""))??null;
 }
 async function get(url:string,params:Record<string,string>={}):Promise<Row> {
-  const u=new URL(url);Object.entries({f:"json",...params}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const u=new URL(url);Object.entries({...(!u.pathname.startsWith("/api/3/action/")?{f:"json"}:{}),...params}).forEach(([k,v])=>u.searchParams.set(k,v));
   const r=await fetchJson(new URL(u.href.replace(/\+/g,"%20")))as Row;
   if(!r||typeof r!=="object"||Array.isArray(r)||r.error)throw new Error("Niagara source unavailable");return r;
 }
 function read(c:Context,url:string,run=()=>get(url)):Promise<Row> {
   const pending=c.get(url)??run().catch(error=>{
     if(error instanceof Error&&error.message.startsWith("Niagara "))throw error;
-    const publicUrl=new URL(url);throw new Error(`Niagara public-source read failed at ${publicUrl.hostname}${publicUrl.pathname}: ${error instanceof Error?error.name:"unknown"}`);
+    const publicUrl=new URL(url);throw new Error(`Niagara public-source read failed at ${publicUrl.hostname}${publicUrl.pathname}: ${error instanceof Error&&/^Source unavailable \(HTTP \d{3}\)$/.test(error.message)?error.message:error instanceof Error?error.name:"unknown"}`);
   });c.set(url,pending);return pending;
 }
 function sourceFailure(f:NiagaraFeed,error:unknown) {
