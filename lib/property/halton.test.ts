@@ -91,7 +91,7 @@ describe("Halton municipal evidence",()=>{
   it("checks live source counts while excluding withheld feeds and leaving market completion false",async()=>{
     fetch.mockImplementation(provider());const r=await haltonCoverage();expect(r.datasets.filter(d=>d.status==="verified")).toHaveLength(19);expect(r.datasets.filter(d=>d.status==="withheld")).toHaveLength(4);
     fetch.mockImplementation(provider({}, {count:{count:-1}}));expect((await haltonCoverage()).datasets.some(d=>d.status==="verified")).toBe(false);
-    const road=ontarioMarketRoadmap();for(const city of ["Burlington","Milton","Oakville"]){const m=road.municipalities.find(m=>m.city===city)!;expect(m.stage).toBe("partial_municipal_coverage");expect(m.complete).toBe(false);}expect(road.municipalities.find(m=>m.city==="Halton Hills")?.stage).toBe("queued");
+    const road=ontarioMarketRoadmap();for(const city of ["Burlington","Milton","Oakville"]){const m=road.municipalities.find(m=>m.city===city)!;expect(m.stage).toBe("partial_municipal_coverage");expect(m.complete).toBe(false);}expect(road.municipalities.find(m=>m.city==="Halton Hills")?.stage).toBe("partial_municipal_coverage");
   });
   it("gates unknown municipalities, units, caller coordinates and province conflicts",async()=>{
     expect(haltonMarket("Town of Milton","Ontario")).toBe("Milton");for(const city of ["Halton Hills","Campbellville","constructor","Burlington VT"])expect(haltonMarket(city,"ON")).toBeNull();

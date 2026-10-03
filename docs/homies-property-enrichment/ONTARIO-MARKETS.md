@@ -345,7 +345,7 @@ or appeal outcomes. Property permit history remains unconnected for Milton.
 Both applicable municipal and former regional plans require review; Milton's
 municipal consolidation is February 2026. Full current plan GIS, amendments,
 nearby proposals and decisions remain explicit gaps for all three municipalities.
-Halton Hills remains queued pending primary publisher/licence verification.
+Halton Hills published website evidence is documented separately below; its GIS reuse scope remains unverified.
 
 `scripts/verify-halton.ts` validates the 19 enabled and four withheld bindings,
 pins eight civic controls and positive heritage/permit records, and retains
@@ -356,3 +356,64 @@ Tests cover identity, province/city conflict, point ambiguity, withdrawn rights,
 changed schema, truncation, repeated observations, unknown units, current-zoning
 gaps and zero record queries to withheld sources. Halton Hills and the remaining
 core categories still require an audit before any market can be marked complete.
+
+
+## Halton Hills published website evidence — October 3, 2026
+
+Two separately scoped sources add **805 published table observations**:
+538 Listed, 139 Part IV and 10 Part V heritage entries (**687** total), and
+**118** development-table rows. These are observations, not unique properties
+or applications. They bring the selected municipal expansion sources to
+**62 verified feeds / 1,496,261 source rows and table observations**, excluding
+withheld feeds and Ottawa's separate 23,794 monthly permit observations.
+No database import is claimed.
+
+The [heritage page](https://www.haltonhills.ca/heritage) and
+[development page](https://www.haltonhills.ca/work/planning-development/active-development-applications)
+explicitly permit attributed reproduction in their Town footer. Runtime checks
+pin the publisher, permission, headings/table schema, heritage map-link layer,
+and development script's fixed endpoint and exact six rendered fields. Scripts
+are parsed for fixed bindings and never evaluated. The development request
+excludes geometry, contacts, owner attributes and unpublished status/date fields.
+Heritage historic-person and narrative columns are excluded. Both responses are
+bounded, reject redirects and use a one-hour cache; changed rights/schema or
+incomplete responses return unavailable without factual results.
+
+Only exact civic-location observations are matched. Street type, direction and
+suffix must agree. Published communities must agree; missing or conflicting
+communities remain **ambiguous candidates**. In particular, Part IV/V entries
+publish no explicit community and are not confirmed property designations by
+this adapter. Listed and designated statuses remain separate, repeated
+observations are retained, and null phases are unknown. Address ranges,
+multi-address locations and lot/concession descriptions are not expanded.
+No observation date is published; retrieval does not establish currency.
+
+The Town's ArcGIS licence page applies to information in its Open Data site.
+The linked site is currently private (403), so membership of blank-licence
+civic, boundary and ward items cannot be verified. Those feeds and separate
+zoning GIS are withheld, with no record queries. Website permission is not
+inherited by unrelated GIS services. This limitation does not stop use of the
+Town's explicitly reproducible website content.
+
+Core-category audit: municipal identity uses the existing national geocoder
+baseline; the municipal civic feed is withheld. Permit, final-inspection and
+occupancy history remain gaps. The Town's
+[building-record guidance](https://www.haltonhills.ca/town-hall/governance-accountability/freedom-of-information)
+directs a non-owner without authorization to the formal information-request
+process. [Additional-unit guidance](https://www.haltonhills.ca/aru) is useful for
+requesting documents but is not a property registry or legal-unit conclusion.
+[Current zoning](https://www.haltonhills.ca/zoning) requires the applicable
+2010-0050/00-138 rules, exceptions and amendments; the page describes the
+2025-0070 housekeeping amendment, but no complete GIS/rule screen is connected.
+[Official-plan schedules](https://www.haltonhills.ca/work/planning-development/planning-policy/official-plan)
+and current amendments/constraints remain unparsed, including the former
+regional plan that became local July 1, 2024. Published quarterly planning
+summary totals are not assigned to individual properties. Complete heritage
+register/district geometry, nearby planning history, decisions, conditions and
+appeals remain unverified. Halton Hills stays **partial**, and all 76 priority
+municipalities / 16 metro anchors remain in the checklist.
+
+`node --import tsx scripts/verify-halton-hills.ts /absolute/output/path` verifies
+the two published sources, four withheld feeds and nine positive/ambiguous/empty
+controls, including repeated Esquesing heritage and Georgetown planning rows.
+The public API, report, coverage ledger and Homies skill preserve these limits.

@@ -1,6 +1,7 @@
 import { ONTARIO_MUNICIPAL } from "./ontario-municipal-sources";
 import { DURHAM_MUNICIPALITIES, DURHAM_PLANNING } from "./durham-sources";
 import { HALTON_FEEDS } from "./halton-sources";
+import { HALTON_HILLS_WITHHELD } from "./halton-hills-sources";
 
 const metropolitanMarkets = [
   ["Ottawa–Gatineau (Ontario)",["Ottawa"]],
@@ -26,8 +27,8 @@ export function ontarioMarketRoadmap(){
     completionCriteria:"Research each municipality's official catalogue and regional/provincial sources; integrate usable licensed current property-level feeds, document unavailable or withheld feeds, and verify expected records, empty results, ambiguity and source failure through the live API and report. National address/census or a single boundary layer alone does not complete a market.",
     metropolitanMarkets:metropolitanMarkets.map(([name,cities])=>({name,municipalities:cities,status:"in_progress"})),
     municipalities:municipalities.map(city=>{
-      const regional=DURHAM_MUNICIPALITIES.some(m=>m===city),feeds=[...ONTARIO_MUNICIPAL,...HALTON_FEEDS].filter(f=>f.market===city),configuredLayers=[...new Set([...(existing[city]??[]),...feeds.filter(f=>!f.disabledReason).map(f=>f.key),...(regional?["addresses","municipality","durhamPlanning"]:[])])];
-      return {city,stage:configuredLayers.length?"partial_municipal_coverage":"queued",complete:false,configuredLayers,withheldLayers:[...feeds.filter(f=>f.disabledReason).map(f=>({layer:f.key,reason:f.disabledReason})),...(regional?DURHAM_PLANNING.filter(f=>f.disabledReason).map(f=>({layer:`durhamPlanning.${f.key}`,reason:f.disabledReason})):[])],remainingAudit:"Current core categories and regional coverage need a full source and live-flow audit before this market can be marked complete."};
+      const regional=DURHAM_MUNICIPALITIES.some(m=>m===city),feeds=[...ONTARIO_MUNICIPAL,...HALTON_FEEDS].filter(f=>f.market===city),configuredLayers=[...new Set([...(existing[city]??[]),...feeds.filter(f=>!f.disabledReason).map(f=>f.key),...(regional?["addresses","municipality","durhamPlanning"]:[]),...(city==="Halton Hills"?["heritage","planningApplications"]:[])])];
+      return {city,stage:configuredLayers.length?"partial_municipal_coverage":"queued",complete:false,configuredLayers,withheldLayers:[...feeds.filter(f=>f.disabledReason).map(f=>({layer:f.key,reason:f.disabledReason})),...(regional?DURHAM_PLANNING.filter(f=>f.disabledReason).map(f=>({layer:`durhamPlanning.${f.key}`,reason:f.disabledReason})):[]),...(city==="Halton Hills"?HALTON_HILLS_WITHHELD.map(f=>({layer:f.layer,reason:f.reason})):[])],remainingAudit:"Current core categories and regional coverage need a full source and live-flow audit before this market can be marked complete."};
     }),
     sharedBaseline:["National Address Register where loaded and uniquely matched","2021 neighbourhood Census context where mapped","Ontario Greenbelt/Niagara Escarpment preliminary plan screens where relevant"],
     countMeaning:"Dataset rows are not distinct properties, unique data points or guaranteed matches. A verified live row count does not mean those rows were imported into our database.",
