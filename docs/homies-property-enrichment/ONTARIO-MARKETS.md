@@ -915,3 +915,69 @@ Brantford: six City-curated reference feeds now use the full linked Hub Open Dat
 Quinte West: four City-curated feeds add footprint row references at the subject point and parks, stormwater ponds and school locations within a 1,000-metre search buffer. A suitable independent point and unique complete original Ontario municipal polygon must name Quinte West before City spatial queries. Trenton, Frankford and Batawa are candidate aliases; the City boundary polyline is never used as a containment polygon. The reused province-wide municipality source is counted once. Exact public publisher/org, legacy portal `values.groups` curation, linked full municipal licence PDF, service lineage and typed fields are checked before query. The PDF's publisher redirect is restricted to one exact ArcGIS file path, with bounded body/hash verification; ordinary provider redirects remain disabled. Nearby rows are not assigned to the property, and source edit dates do not establish current condition. Footprints expose no measured area, height, floors, age, geometry or verified building identity. Parks do not establish current access/amenities; schools do not establish catchment or performance; ponds do not establish drainage, floodplain or conservation clearance. Eleven core/terrain scopes remain withheld. The general GIS has separate personal/non-commercial restrictions. The City’s 2022-derived contours/grid expressly are not survey-grade; originating rights, units and vertical datum remain unverified. Current zoning review and draft ARU plan amendment are separate from adopted permission.
 
 Belleville: the originating City and Hub terms restrict commercial reuse. Seventy-four curated items and thirteen root services were inspected without property record, count or geometry queries. Nine withheld scopes are now visible in coverage/reports, with official terms and current-file questions. Separate national/provincial evidence remains available. Public DevReady access does not establish redistribution rights or current legal development permission. The Belleville–Quinte West CMA remains incomplete.
+
+## Greater Sudbury — source verification October 3, 2026
+
+Eight City-curated feeds returned **324,974 overlapping source rows**: 70,171
+civic addresses, 117,701 archived/current permit observations, 8,518 zoning
+polygons, 29 temporary-zoning polygons, 64,503 building-roofline references,
+23 communities, 42 township references and 63,987 parcel references. These are
+source rows, not unique properties, projects, field data points or database
+imports. The reused original Ontario municipality feed is counted once.
+
+The [City's official open-data offer](https://www.greatersudbury.ca/city-hall/open-government/open-data/),
+[full licence 1.0](https://www.greatersudbury.ca/city-hall/open-government/open-data/licence/)
+and current linked policy bind exact public publishers/org, catalogue group,
+item terms and typed service/child lineage before record/count queries. Some
+items link the former policy path, which was separately audited as a 301 to the
+fixed current City policy. Runtime reads the fixed current policy and licence;
+provider redirects remain disabled. The portal application's CC-BY-SA label is
+separate from the selected datasets' City grant. The City zoning page's exact
+current app/map lineage is also checked for zoning and temporary-zoning layers;
+its other map layers do not acquire reuse rights from that check.
+
+Only one complete active primary City civic point can select a location.
+Retired, secondary, assigned-unit, duplicate, truncated or coordinate-conflicting
+matches remain unresolved. A unique complete original Ontario municipal polygon
+must name Greater Sudbury before City GIS or permit queries. Specific source
+communities remain distinct; former Walden/Lively naming is not silently
+crosswalked. Coordinate-only requests do not query permit addresses. Strict full
+civic components preserve direction and number suffix. The two live unique
+controls were 47 Maki Avenue and 993 Delwood Court; 200 Brady Street and 200
+Mumford Drive in Lively had duplicate active primary rows and stopped spatial
+screening.
+
+The [City permit legend](https://www.greatersudbury.ca/live/building-and-renovating/open-permit-search/)
+distinguishes applications, issued permits and completed files. The raw feed's
+`Complete` is not silently mapped to the legend's `Completed`; unrecognized
+statuses retain raw evidence and unverified interpretation. Project dimensions,
+units created and estimated value are permit-file evidence, not present building
+facts. Metric/Imperial labels remain raw; Ground/Gross area units and estimated
+value currency remain unverified. Strict calendar dates preserve unknown strings
+without guessed conversions. Free-form project descriptions and all personal
+contact fields are excluded. Feed data-edit dates, individual administrative
+address dates and project events remain separate.
+
+The [current zoning guidance](https://www.greatersudbury.ca/do-business/zoning/)
+identifies 2010-100Z and says older PDF maps are outdated and official printed
+publications prevail. Map labels are references; current written exceptions,
+holds, amendments, appeals, temporary bylaw expiry/extensions and legal permission
+remain unverified. Roofline heritage labels do not replace the current register;
+no measured building area, height, construction year or parcel identity is
+established. Township numeric codes have no verified name crosswalk.
+
+Twelve core scopes remain withheld: complete permit history, current planning
+instruments, planning applications, variance/consent, heritage, additional-unit
+legality, wellhead/source protection, intake protection, watershed, airport,
+floodplain and conservation regulation. Six separate constraint items used by
+the City map have blank grants outside the inspected open group; no constraint
+records, counts or geometry were queried. The [Official Plan page](https://www.greatersudbury.ca/city-hall/reports-studies-policies-and-plans/official-plan/)
+separates Phase 1 effective April 26, 2019 from ongoing Phase 2 work. Current
+property-level schedules and decisions need further integration. Greater Sudbury
+and the Ontario expansion remain incomplete. Reports and the Homies skill retain
+these gaps, source citations and concrete City/authority document requests.
+
+Run the public verifier serially:
+`node --import tsx scripts/verify-sudbury.ts https://realist-lean.vercel.app /absolute/output.json`.
+Coverage contains a Guelph source session; do not run another Guelph lookup or
+verifier concurrently.
