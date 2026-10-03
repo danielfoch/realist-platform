@@ -984,3 +984,99 @@ Run the public verifier serially:
 `node --import tsx scripts/verify-sudbury.ts https://realist-lean.vercel.app /absolute/output.json`.
 Coverage contains a Guelph source session; do not run another Guelph lookup or
 verifier concurrently.
+
+## Thunder Bay — source verification October 3, 2026
+
+Eight City-curated references publish 207,767 overlapping source rows: civic
+45,102, parcel 52,699, footprint 107,697, district 1, Schedule A 2,128, Figure 9
+3, historical City boundary 1 and historical register 136. These are source rows,
+not unique properties, field data points or imports.
+
+The configured references are civic attributes, OID-only parcel
+and footprint references, Waverley Park heritage district, 2019 Official Plan
+Schedule A land use, Figure 9 site-specific policy areas, a boundary originating
+in the May 1969 Order in Council and the August 22, 2022 heritage CSV.
+
+The [current City open-data offer](https://www.thunderbay.ca/city-hall/thunder-bay-open-data/)
+and [full licence 1.0 PDF](https://www.thunderbay.ca/media/inmjquon/city-of-thunder-bay-open-data-licence.pdf)
+permit commercial copy/adapt/distribute with attribution, excluding personal and
+inaccessible information, unauthorized third-party rights, official marks and
+endorsement. All 18 clauses were read. Dataset-linked old licence URL returns
+404; the current official offer explicitly supplies the same complete version
+1.0 dated March 12, 2020. The PDF is byte-pinned (SHA-256
+`dbb70ac323a4aae50a57fee87a3b1b60b1b34aefda9189a92b57df4c3ea743dc`).
+The complete City offer, privacy/selection guidance and web licence are also
+pinned. Only per-request local accordion UUID fragments are canonicalized;
+full text and originating external links remain part of the pin.
+
+The exact City-linked Hub `0c64648ebf51412b99732c13b81c3979`, owner
+`ChrisDoyle1`, top-level `catalog.groups` and public open-data group
+`169818a570a44bcfae6afd78d055f37a` curate 85 items. Public site/group/dataset
+metadata omits `orgId`; do not invent it. Exact publisher
+`opendata_Thunderbay`, curated membership, hosted service path under
+`services5.arcgis.com/h9xShea49ZANgOtx`, dataset terms, item/root/child lineage,
+descriptions/copyright and typed whitelist fields must agree before queries.
+This grant is not extended to separate uncurated dashboards/general-GIS sources.
+
+Civic evidence preserves complete address, number/suffix, street/type/direction,
+city/province and address type. Only a complete unique `ADDRESS-REGULAR` match
+is reported as available attributes. The City describes the point source as
+original CAD centroid layers; its geometry is never requested or reused and
+active-address/current building precision is not inferred. Duplicate, non-regular
+or truncated evidence stops spatial screening. An independent precise national
+building/civic point or caller coordinate plus one unique complete original
+Ontario municipality polygon naming Thunder Bay is required for City spatial
+queries. That provincial dataset is reused and counted once. The City 1969
+boundary reference is not this containment gate. No parcel/footprint geometry,
+PIN, ownership, area, elevation, construction age, condition or legal/current
+units are returned.
+
+The licensed plan Feature Layers are explicitly **2019 references**, separate
+from the current official app's services. Data edit dates are not proof of a
+current consolidated instrument. The [City property guidance](https://www.thunderbay.ca/growth/build-thunder-bay-your-one-stop-development-shop/find-zoning-and-property-information/)
+links the Official Plan consolidation to August 26, 2024 and subsequent Appendix
+3 amendments, zoning 1-2022 effective April 11, 2022 and zoning consolidation to
+May 27, 2024. Its zoning app points to `2022DRAFT_ZoningMap` with draft-proposal
+metadata and blank originating grant; exact current adoption/reuse lineage remains
+unverified. No current zoning records, counts or geometry are queried.
+
+The [current heritage page](https://www.thunderbay.ca/city-hall/history-heritage-and-records/heritage-in-thunder-bay/heritage-properties/)
+announces five June 2026 designations under bylaw 219-2026. The licensed export
+is fixed to August 22, 2022 and is presented only as historical exact-civic
+observations. Preserve raw `Listed`, `Designated`, mixed district/listed statuses,
+bylaw/report and approximate construction labels. Ownership is omitted. Current
+status, exact instruments, amendments/appeals and parcel-wide applicability need
+confirmation. Waverley Park GIS derives bylaw 65-1988 and is a district reference,
+not the complete current property register. The CSV's complete byte hash and
+schema/vintage are verified before parsing; changes fail closed for re-audit.
+
+The public permit portal was inspected through its ordinary anonymous **Public
+Search** workflow. It warns that files may be inaccurate and may omit history;
+City guidance limits searchable zoning amendments/variances to after April 11,
+2022. The City-linked dashboard describes building activity since 2014, but its
+permit item `a00d2d4d7e964f368095a98a71de8976` has blank grant outside the
+curated open group. Its metadata was inspected; records/counts/geometry were not.
+Current complete permits, inspection/occupancy, planning decisions/conditions,
+heritage/ADU registers and current instruments remain explicit gaps. A certified
+City Property Information Report is a separate paid/account workflow.
+
+[Lakehead's current mapping guidance](https://lakeheadca.com/planning-permits/map-your-property/)
+identifies conceptual screening and warns that not all regulated areas are
+mapped. [LRCA development guidance](https://lakeheadca.com/planning-permits/development-regulations/)
+identifies Ontario Regulation 41/24. Originating reuse rights/current adapters for
+regulation, flood and source protection are unverified; no such records/counts/
+geometry are queried. The airport-height candidate combines third-party Airport
+Authority surfaces and City bylaw 100-2010; originating rights, current instrument,
+units and vertical datum need audit before interpretation. Point references and
+no-matches never establish legal permission, safety, insurance or clearance.
+Thunder Bay remains incomplete.
+
+Bounded source verifier:
+`node --import tsx scripts/verify-thunderbay-sources.ts /absolute/output.json`.
+
+Seven bounded address controls verify four independent building points, two
+blockface skips and one civic-only/no national-location result. Two Waverley
+Street addresses return district references while preserving civic no-match
+from the separate City Waverly spelling. The City published street-name domain
+is used for query candidates; literal apostrophes and SQ/SQUARE types are
+handled without weakening direction, suffix, City/province or unit identity.
