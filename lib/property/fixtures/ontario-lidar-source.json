@@ -1,0 +1,1401 @@
+{
+  "catalogue": {
+    "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+    "success": true,
+    "result": {
+      "access_instructions": {
+        "en": "",
+        "fr": ""
+      },
+      "access_level": "open",
+      "asset_type": "dataset",
+      "author": "",
+      "author_email": "",
+      "creator_user_id": "d9918083-c582-4cfa-acb8-340be6946e2a",
+      "current_as_of": "2025-02-21",
+      "exemption": "none",
+      "exemption_rationale": {
+        "en": "",
+        "fr": ""
+      },
+      "geographic_coverage_translated": {
+        "en": "Ontario",
+        "fr": "Ontario"
+      },
+      "geographic_granularity": "",
+      "id": "7c3d7022-2631-45bc-8f6b-f3d51b7779a7",
+      "isopen": false,
+      "keywords": {
+        "en": [
+          "Environment and Natural Resources"
+        ],
+        "fr": [
+          "Environnement et richesses naturelles"
+        ]
+      },
+      "license_id": "OGL-ON-1.0",
+      "license_title": "Open Government Licence – Ontario",
+      "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "maintainer": null,
+      "maintainer_branch": {
+        "en": "Digital, Data, Information and Business Services Branch",
+        "fr": "Direction du numérique, des données, de l'information et des services opérationnels"
+      },
+      "maintainer_email": "geospatial@ontario.ca",
+      "maintainer_translated": {
+        "en": "Geospatial Ontario",
+        "fr": "Information géospatiale de l'Ontario "
+      },
+      "metadata_created": "2020-10-20T19:58:28.231906",
+      "metadata_modified": "2025-10-27T19:24:45.675435",
+      "name": "ontario-digital-terrain-model-lidar-derived",
+      "notes": "The Ontario Lidar Digital Terrain Model (DTM) Geospatial Ontario (GEO) Dataset is a raster product representing the bare-earth terrain derived from a classified lidar point cloud. The DTM data is available in the form of 1-km by 1-km non-overlapping tiles grouped into packages for download.\r\n\r\nThis dataset is a compilation of lidar data from multiple acquisition projects, as such specifications, parameters and sensors may vary by project. \r\n\r\nThis data is for geospatial tech specialists, and is used by government, municipalities, conservation authorities and the private sector for land use planning and environmental analysis.",
+      "notes_translated": {
+        "en": "The Ontario Lidar Digital Terrain Model (DTM) Geospatial Ontario (GEO) Dataset is a raster product representing the bare-earth terrain derived from a classified lidar point cloud. The DTM data is available in the form of 1-km by 1-km non-overlapping tiles grouped into packages for download.\r\n\r\nThis dataset is a compilation of lidar data from multiple acquisition projects, as such specifications, parameters and sensors may vary by project. \r\n\r\nThis data is for geospatial tech specialists, and is used by government, municipalities, conservation authorities and the private sector for land use planning and environmental analysis.",
+        "fr": "L’ensemble de données d’Information géospatiale de l'Ontario du modèle numérique de terrain de l’Ontario (MNT) (données dérivées de LiDAR) est un produit raster qui représente le terrain nu provenant d’un nuage de points LiDAR classifiés.\r\n\r\nLes données du MNT sont disponibles en tuiles adjacentes de 1 km sur 1 km regroupées en ensembles à télécharger. Puisque l’ensemble de données est une compilation de données LiDAR provenant de plusieurs projets d’acquisition, les spécifications, les paramètres et les capteurs peuvent varier selon le projet.\r\n\r\nCes données sont destinées aux spécialistes de la technologie géospatiale et sont utilisées par le gouvernement, les municipalités, les offices de protection de la nature et le secteur privé aux fins d’aménagement du territoire et d’analyses environnementales."
+      },
+      "num_resources": 2,
+      "num_tags": 2,
+      "opened_date": "2020-10-20",
+      "organization": {
+        "id": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+        "name": "natural-resources",
+        "title": "",
+        "type": "organization",
+        "description": "",
+        "image_url": "2022-09-12-211950.429568mnrf-small.jpg",
+        "created": "2022-09-08T20:43:59.845861",
+        "is_organization": true,
+        "approval_status": "approved",
+        "state": "active"
+      },
+      "owner_org": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+      "private": false,
+      "state": "active",
+      "title": "Ontario Digital Terrain Model (Lidar-Derived)",
+      "title_translated": {
+        "en": "Ontario Digital Terrain Model (Lidar-Derived)",
+        "fr": "Modèle numérique de terrain de l’Ontario (données dérivées de LiDAR)"
+      },
+      "type": "dataset",
+      "update_frequency": "as_required",
+      "url": "",
+      "version": null,
+      "resources": [
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2020-10-20T19:59:16.003672",
+          "data_range_end": "2019-01-01",
+          "data_range_start": "2014-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "4f4483c5-3baf-4265-ba1b-bb1cd2a42899",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2025-10-27T19:24:45.686628",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Ontario Digital Terrain Model (Lidar-Derived)",
+          "name_translated": {
+            "en": "Ontario Digital Terrain Model (Lidar-Derived)",
+            "fr": "Ontario Digital Terrain Model (Lidar-Derived)"
+          },
+          "package_id": "7c3d7022-2631-45bc-8f6b-f3d51b7779a7",
+          "position": 0,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub.lio.gov.on.ca/datasets/mnrf::ontario-digital-terrain-model-lidar-derived",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2020-10-20T19:59:36.386407",
+          "data_range_end": "2019-01-01",
+          "data_range_start": "2014-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "0bd5e9b0-036b-498a-91b5-7cb6c5c7e0c1",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2025-10-27T19:24:45.686717",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Modèle numérique de terrain de l’Ontario (données dérivées de LiDAR)",
+          "name_translated": {
+            "en": "Modèle numérique de terrain de l’Ontario (données dérivées de LiDAR)",
+            "fr": "Modèle numérique de terrain de l’Ontario (données dérivées de LiDAR)"
+          },
+          "package_id": "7c3d7022-2631-45bc-8f6b-f3d51b7779a7",
+          "position": 1,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub-fr.lio.gov.on.ca/datasets/mnrf::modèle-numérique-de-terrain-de-lontario-données-dérivées-de-lidar",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        }
+      ],
+      "tags": [
+        {
+          "display_name": "Environment and Natural Resources",
+          "id": "159d5716-5d3d-4045-a948-22e5bbde0485",
+          "name": "Environment and Natural Resources",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environnement et richesses naturelles",
+          "id": "7a6f2b04-9cd9-4e1b-a8a6-ded7082fca41",
+          "name": "Environnement et richesses naturelles",
+          "state": "active",
+          "vocabulary_id": null
+        }
+      ],
+      "groups": [],
+      "relationships_as_subject": [],
+      "relationships_as_object": []
+    }
+  },
+  "mapItem": {
+    "id": "776819a7a0de42f3b75e40527cc36a0a",
+    "owner": "OntarioProvincialMapping",
+    "ownerId": "0043ac97539049b581b82c5d76fafa8a",
+    "orgId": "TJH5KDher0W13Kgo",
+    "created": 1566571209000,
+    "modified": 1781200440000,
+    "guid": null,
+    "name": null,
+    "title": "Ontario Digital Terrain Model (Lidar-Derived)",
+    "type": "Web Map",
+    "typeKeywords": [
+      "ArcGIS API for JavaScript",
+      "ArcGIS Online",
+      "Explorer Web Map",
+      "Map",
+      "Metadata",
+      "Online Map",
+      "Web Map"
+    ],
+    "description": "<p>Zoom in on the map above and click your area of interest or use the Tile Index linked below to determine which package(s) you require for download.<br /><br />The DTM data is available in the form of 1-km by 1-km non-overlapping tiles grouped into packages for download.This dataset is a compilation of lidar data from multiple acquisition projects, as such specifications, parameters and sensors may vary by project. See the detailed User Guide linked below for additional information.</p><div>You can monitor the availability and status of lidar projects on the Ontario Lidar Coverage map on the <a target='_blank' href='https://geohub.lio.gov.on.ca/pages/ontario-elevation-mapping-program' rel='nofollow ugc noopener noreferrer'>Ontario Elevation Mapping Program</a> hub page.</div><div>&nbsp;</div><div>Now also available through a web service which exposes the data for visualization, geoprocessing and limited download. The service is best accessed through the <a target='_blank' href='https://developers.arcgis.com/rest/services-reference/enterprise/get-started-with-the-services-directory.htm' rel='nofollow ugc noopener noreferrer'>ArcGIS REST API</a>, either directly or by setting up an <a target='_blank' href='https://pro.arcgis.com/en/pro-app/2.8/help/projects/connect-to-a-gis-server.htm' rel='nofollow ugc noopener noreferrer'>ArcGIS server connection</a> using the REST endpoint URL. The service draws using the Web Mercator projection.</div><div>&nbsp;</div><p>For more information on what functionality is available and how to work with the service, read the <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Ontario-Web-Raster-Services-User-Guide.docx' rel='nofollow ugc noopener noreferrer'>Ontario Web Raster Services User Guide</a>. If you have questions about how to use the service, email Geospatial Ontario (GEO) at <a href='mailto:geospatial@ontario.ca' target='_blank' rel='nofollow ugc noopener noreferrer'>geospatial@ontario.ca</a>.</p><div><strong>Service Endpoints</strong></div><div><ul><li><a target='_blank' href='https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer' rel='nofollow ugc noopener noreferrer'>https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer</a></li><li><a target='_blank' href='https://intra.ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer' rel='nofollow ugc noopener noreferrer'>https://intra.ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer</a> <strong>(Government of Ontario Internal Users)</strong></li></ul></div><div><strong>Additional Documentation</strong><br />&nbsp;</div><ul><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Ontario-DTM-Lidar-Derived-User-Guide.docx' rel='nofollow ugc noopener noreferrer'>Ontario DTM (Lidar-Derived) - User Guide (DOCX)</a><br />&nbsp;</li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20-%20Cochrane%20-%20Additional%20Metadata.pdf' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar 2016-2018 - Cochrane - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20-%20Peterborough%20-%20Additional%20Metadata.pdf' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar 2016-2018 - Peterborough - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20-%20Lake%20Erie%20-%20Additional%20Metadata.pdf' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar 2016-2018 - Lake Erie - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20-%20CLOCA%20-%20Additional%20Metadata.pdf' rel='nofollow ugc noopener noreferrer'>CLOCA Lidar 2018 - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20-%20South%20Nation%20-%20Additional%20Metadata.pdf' rel='nofollow ugc noopener noreferrer'>South Nation Lidar 2018-19 - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LakeHuron%20Lidar%20Final%20Report%20October%202022.pdf' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar 2022 - Lake Huron - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LakeSimcoe%20Lidar%20Final%20Report%20October%202022.pdf' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar 2022 - Lake Simcoe - Additional Contractor Metadata (PDF)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Huron-GeorgianBay-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Huron-Georgian Lidar 2022-23 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-KawarthaLakes-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Kawartha Lakes Lidar 2023 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-SaultSteMarie-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Sault Ste Marie Lidar 2023-24 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Sudbury-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Sudbury Lidar 2023-24 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-ThunderBay-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Thunder Bay Lidar 2023-24 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Timmins-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Timmins Lidar 2024 - Additional Contractor Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Cataraqui-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Cataraqui Lidar 2024&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Chapleau-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Chapleau Lidar 2024&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Dryden-Ignace-SiouxLookout-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Dryden-Ignace-Sioux Lookout Lidar 2024&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Atikokan-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Atikokan Lidar 2024&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Manitoulin-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Manitoulin Lidar 2024&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-CentralEast-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Central East Lidar 2025&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-Kenora-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Kenora Lidar 2025&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-NE-Ontario-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Northeastern Ontario Lidar 2024-25&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-RainyRiver-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Rainy River Lidar 2025&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-UpperThames-GrandRiver-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Upper Thames-Grand River Lidar 2025&nbsp;-&nbsp;Additional Metadata (Word)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar-ParrySound-Additional-Contractor-Metadata.docx' rel='nofollow ugc noopener noreferrer'>Wasauksing-Parry Sound 2025&nbsp;-&nbsp;Additional Metadata (Word)</a><br />&nbsp;</li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/OntarioDTM_LidarDerived_TileIndex.zip' rel='nofollow ugc noopener noreferrer'>Ontario DTM (Lidar-Derived) - Tile Index (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/OntarioLidarProjectExtents.zip' rel='nofollow ugc noopener noreferrer'>Ontario Lidar Project Extents (SHP)</a><br />&nbsp;</li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20DTM%20-%20Crne%20-%20breaklines.zip' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar DTM 2016-2018 - Cochrane - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20DTM%20-%20Ptbo%20-%20breaklines.zip' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar DTM 2016-2018 - Peterborough - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar%20DTM%20-%20LakeErie%20-%20breaklines.zip' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar DTM 2016-2018 - Lake Erie - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar DTM - CLOCA - breaklines.zip' rel='nofollow ugc noopener noreferrer'>CLOCA Lidar DTM 2018 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/South_Nation Lidar DTM - breaklines.zip' rel='nofollow ugc noopener noreferrer'>South Nation Lidar DTM 2018-19 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/OttawaGatineau-Lidar-Breaklines.zip' rel='nofollow ugc noopener noreferrer'>Ottawa-Gatineau Lidar DTM 2019-20 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_OMAFRA2022_LakeHuron_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar DTM 2022 - Lake Huron - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_OMAFRA2022_LakeSimcoe_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>OMAFRA Lidar DTM 2022 - Lake Simcoe - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_EasternOntario2021-22_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>Eastern Ontario Lidar DTM 2021-22 - Breaklines (SHP)</a></li><li>Muskoka Lidar DTM 2018 - Breaklines <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2018_hydro_breaklines_CGVD2013.zip' rel='nofollow ugc noopener noreferrer'>CGVD2013 (SHP)</a> / <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2018_hydro_breaklines_CGVD28.zip' rel='nofollow ugc noopener noreferrer'>CGVD28 (SHP)</a></li><li>Muskoka Lidar DTM 2021 - Breaklines <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2021_hydro_breaklines_CGVD2013.zip' rel='nofollow ugc noopener noreferrer'>CGVD2013 (SHP)</a> / <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2021_hydro_breaklines_CGVD28.zip' rel='nofollow ugc noopener noreferrer'>CGVD28 (SHP)</a></li><li>Muskoka Lidar DTM 2023 - Breaklines <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2023_hydro_breaklines_CGVD2013.zip' rel='nofollow ugc noopener noreferrer'>CGVD2013 (SHP)</a> / <a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Muskoka_2023_hydro_breaklines_CGVD28.zip' rel='nofollow ugc noopener noreferrer'>CGVD28 (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_HuronGeorgianBay_2022_2023_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Huron-Georgian Bay 2022-23 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_KawarthaLakes_2023_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Kawartha Lakes 2023 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_SaultSteMarie_2024_hydro_breaklines_UTM16.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Sault Ste Marie 2023-24- UTM16 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_SaultSteMarie_2023_24_hydro_breaklines_UTM17.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Sault Ste Marie 2023-24- UTM17 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Sudbury_2023_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Sudbury 2023-24 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_ThunderBay_2023_24_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Thunder Bay 2023-24 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Timmins_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Timmins 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Cataraqui_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Cataraqui 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Chapleau_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Chapleau 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Dryden_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Dryden 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Ignace_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Ignace 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_SiouxLookout_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Sioux Lookout 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_2024_2025_NE_Ontario_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Northeastern Ontario 2024-25 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Atikokan_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Atikokan 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_Manitoulin_2024_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Manitoulin 2024 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_CentralEast_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Central East 2025 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lidar_DTM_Kenora_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Kenora 2025 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_RainyRiver_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Rainy River 2025 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_UpperThamesGrandRiver_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Upper Thames-Grand River 2025 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_LowerThames_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Lower Thames 2025 - Breaklines (SHP)</a></li><li><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/LidarDTM_ParrySound_2025_hydro_breaklines.zip' rel='nofollow ugc noopener noreferrer'>DEDSFM Wasauksing-Parry Sound 2025 - Breaklines (SHP)</a></li></ul><p><strong>Product Packages</strong><br /><br /><a target='_blank' href='https://www.publicdocs.mnr.gov.on.ca/mirb/OntarioDTM_LidarDerived_DataPackageLinks.docx' rel='nofollow ugc noopener noreferrer'>Download links for the Ontario DTM (Lidar-Derived) (Word)</a><br /><br />Projects:</p><ul><li>LEAP 2009</li><li>GTA 2014-18</li><li>OMAFRA 2016-18</li><li>CLOCA 2018</li><li>South Nation CA 2018-19</li><li>Muskoka 2018-23</li><li>York-Lake Simcoe 2019</li><li>Ottawa River 2019-20</li><li>Ottawa-Gatineau 2019-20</li><li>Lake Nipissing 2020</li><li>Hamilton-Niagara 2021</li><li>Huron Shores 2021</li><li>Eastern Ontario 2021-22</li><li>OMAFRA Lake Huron 2022</li><li>OMAFRA Lake Simcoe 2022</li><li>Belleville 2022</li><li>Digital Elevation Data to Support Flood Mapping 2022-26<ul><li>Huron-Georgian Bay 2022-23</li><li>Kawartha Lakes 2023</li><li>Sault Ste Marie 2023-24</li><li>Sudbury 2023-24</li><li>Thunder Bay 2023-24</li><li>Timmins 2024</li><li>Cataraqui 2024</li><li>Chapleau 2024</li><li>Dryden 2024</li><li>Ignace 2024</li><li>Northeastern Ontario 2024-25</li><li>Sioux Lookout 2024</li><li>Atikokan 2024</li><li>Manitoulin 2024</li><li>Central East 2025</li><li>Kenora 2025</li><li>Kenora 2025</li><li>Upper Thames-Grand River 2025</li><li>Lower Thames 2025</li><li>Wasauksing-Parry Sound 2025</li></ul></li><li>Greater Toronto Area Lidar 2023</li></ul><p><strong>Status</strong><br />On going: Data is continually being updated<br /><br /><strong>Maintenance and Update Frequency</strong><br />As needed: Data is updated as deemed necessary<br /><br /><strong>Contact</strong><br />Ontario Ministry of Natural Resources - Geospatial Ontario, <a href='mailto:geospatial@ontario.ca' target='_blank' rel='nofollow ugc noopener noreferrer'>geospatial@ontario.ca</a></p>",
+    "tags": [
+      "Ottawa-Gatineau Lidar",
+      "Hamilton-Niagara Lidar",
+      "Ottawa River lidar",
+      "Ministry of Natural Resources",
+      "digital terrain model",
+      "DEM",
+      "open data",
+      "lidar",
+      "Foundation Geospatial Data",
+      "MNR",
+      "elevation",
+      "GTA Lidar",
+      "airborne topographic lidar",
+      "LEAP",
+      "terrain",
+      "ODCSYNC",
+      "light detection and ranging",
+      "South Nation Lidar",
+      "topography",
+      "DTM",
+      "FGD",
+      "OMAFRA lidar",
+      "CLOCA Lidar",
+      "Digital Data Information and Business Services Branch",
+      "digital elevation model",
+      "GeospatialOntario",
+      "Lidar Eastern Acquisition Project"
+    ],
+    "snippet": "The Ontario Digital Terrain Model (Lidar-Derived) is a raster dataset representing the bare-earth terrain derived from a classified lidar point cloud.",
+    "thumbnail": "thumbnail/thumbnail.png",
+    "documentation": null,
+    "extent": [
+      [
+        -95.50778606155075,
+        41.24245622113581
+      ],
+      [
+        -73.07370403030669,
+        50.504480743968735
+      ]
+    ],
+    "categories": [
+      "/Categories/MNR-CMID-DDIBS-GEO",
+      "/Categories/Natural Resources/Digital, Data and Information and Business Services Branch/Geospatial Ontario"
+    ],
+    "spatialReference": "",
+    "accessInformation": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "classification": null,
+    "licenseInfo": "<a href='https://www.ontario.ca/page/open-government-licence-ontario' rel='nofollow ugc'>Open Government Licence – Ontario</a>",
+    "culture": "english (united states)",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 3360,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 3,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 376968,
+    "contentStatus": "public_authoritative",
+    "scoreCompleteness": 100,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1791079200000
+  },
+  "mapData": {
+    "operationalLayers": [
+      {
+        "id": "223303a727364aeba6cb0414ade72e53",
+        "showLegend": true,
+        "opacity": 1,
+        "title": "Ontario DTM (Lidar-Derived) Package Index",
+        "url": "https://services1.arcgis.com/TJH5KDher0W13Kgo/arcgis/rest/services/Ontario_Digital_Terrain_Model_Lidar_Derived_WFL1/FeatureServer/0",
+        "itemId": "ae2f11bd9e0e473080a4c5ded9ff93da",
+        "layerType": "ArcGISFeatureLayer",
+        "layerDefinition": {
+          "featureReduction": null,
+          "fieldConfigurations": [
+            {
+              "name": "Resolution",
+              "fieldFormat": {
+                "type": "number",
+                "useGrouping": "always"
+              }
+            },
+            {
+              "name": "Size_GB",
+              "fieldFormat": {
+                "type": "number",
+                "useGrouping": "always"
+              }
+            },
+            {
+              "name": "Shape__Area",
+              "fieldFormat": {
+                "type": "number",
+                "useGrouping": "always"
+              }
+            },
+            {
+              "name": "Shape__Length",
+              "fieldFormat": {
+                "type": "number",
+                "useGrouping": "always"
+              }
+            }
+          ],
+          "drawingInfo": {
+            "renderer": {
+              "type": "simple",
+              "symbol": {
+                "type": "esriSFS",
+                "color": [
+                  0,
+                  77,
+                  168,
+                  64
+                ],
+                "outline": {
+                  "type": "esriSLS",
+                  "color": [
+                    0,
+                    77,
+                    168,
+                    255
+                  ],
+                  "width": 1,
+                  "style": "esriSLSSolid"
+                },
+                "style": "esriSFSSolid"
+              }
+            }
+          }
+        },
+        "popupInfo": {
+          "popupElements": [
+            {
+              "type": "fields",
+              "description": "",
+              "fieldInfos": [
+                {
+                  "fieldName": "Project",
+                  "isEditable": true,
+                  "label": "Project",
+                  "visible": true
+                },
+                {
+                  "fieldName": "Package",
+                  "isEditable": true,
+                  "label": "Package",
+                  "visible": true
+                },
+                {
+                  "fieldName": "Size_GB",
+                  "isEditable": true,
+                  "label": "Size (GB)",
+                  "visible": true
+                },
+                {
+                  "fieldName": "Resolution",
+                  "isEditable": true,
+                  "label": "Resolution (m)",
+                  "visible": true
+                },
+                {
+                  "fieldName": "DownloadLink",
+                  "isEditable": true,
+                  "label": "Download Link",
+                  "visible": true
+                },
+                {
+                  "fieldName": "ServiceLink",
+                  "isEditable": true,
+                  "label": "Service Link",
+                  "visible": true
+                }
+              ],
+              "title": ""
+            }
+          ],
+          "expressionInfos": [],
+          "fieldInfos": [
+            {
+              "fieldName": "Resolution",
+              "isEditable": true,
+              "label": "Resolution (m)",
+              "visible": true
+            },
+            {
+              "fieldName": "Size_GB",
+              "isEditable": true,
+              "label": "Size (GB)",
+              "visible": true
+            },
+            {
+              "fieldName": "OBJECTID",
+              "isEditable": true,
+              "label": "OBJECTID",
+              "visible": false
+            },
+            {
+              "fieldName": "Package",
+              "isEditable": true,
+              "label": "Package",
+              "visible": true
+            },
+            {
+              "fieldName": "Shape__Area",
+              "isEditable": true,
+              "label": "Shape__Area",
+              "visible": false
+            },
+            {
+              "fieldName": "Shape__Length",
+              "isEditable": true,
+              "label": "Shape__Length",
+              "visible": false
+            },
+            {
+              "fieldName": "Project",
+              "isEditable": true,
+              "label": "Project",
+              "visible": true
+            },
+            {
+              "fieldName": "ServiceLink",
+              "isEditable": true,
+              "label": "Service Link",
+              "visible": true
+            },
+            {
+              "fieldName": "DownloadLink",
+              "isEditable": true,
+              "label": "Download Link",
+              "visible": true
+            }
+          ],
+          "title": "{Package}"
+        }
+      }
+    ],
+    "baseMap": {
+      "baseMapLayers": [
+        {
+          "id": "1806b857347-layer-1",
+          "opacity": 1,
+          "title": "Ontario Vector Topographic Data Cache Service",
+          "visibility": true,
+          "itemId": "0007ddaa7c1a48d9bf667795feba012e",
+          "layerType": "VectorTileLayer",
+          "styleUrl": "https://tiles.arcgis.com/tiles/TJH5KDher0W13Kgo/arcgis/rest/services/Ontario_Vector_Topographic_Data_Cache_Service/VectorTileServer/resources/styles/root.json"
+        },
+        {
+          "id": "19c33dde858-layer-41",
+          "opacity": 0.4,
+          "title": "Ontario DTM LidarDerived",
+          "url": "https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer",
+          "layerType": "ArcGISImageServiceLayer"
+        }
+      ],
+      "title": "Ontario Vector Topographic Data Cache"
+    },
+    "authoringApp": "ArcGISMapViewer",
+    "authoringAppVersion": "2026.1",
+    "initialState": {
+      "viewpoint": {
+        "scale": 4622324.434309,
+        "targetGeometry": {
+          "spatialReference": {
+            "latestWkid": 3857,
+            "wkid": 102100
+          },
+          "xmin": -10631878.11116474,
+          "ymin": 5048169.946241749,
+          "xmax": -8134527.523032123,
+          "ymax": 6534105.77610518
+        }
+      }
+    },
+    "spatialReference": {
+      "latestWkid": 3857,
+      "wkid": 102100
+    },
+    "timeZone": "system",
+    "version": "2.36"
+  },
+  "item": {
+    "id": "ae2f11bd9e0e473080a4c5ded9ff93da",
+    "owner": "OntarioProvincialMapping",
+    "ownerId": "0043ac97539049b581b82c5d76fafa8a",
+    "orgId": "TJH5KDher0W13Kgo",
+    "created": 1566571177000,
+    "modified": 1757699390000,
+    "guid": null,
+    "name": "Ontario_Digital_Terrain_Model_Lidar_Derived_WFL1",
+    "title": "Ontario Digital Terrain Model (Lidar-Derived) Package Index",
+    "type": "Feature Service",
+    "typeKeywords": [
+      "ArcGIS Server",
+      "Data",
+      "Feature Access",
+      "Feature Service",
+      "Metadata",
+      "Service",
+      "Singlelayer",
+      "Hosted Service"
+    ],
+    "description": "The Ontario Digital Terrain Model (Lidar-Derived) is a raster representing the bare-earth terrain derived from a classified lidar point cloud. For more details about this product see the <a href='https://mnrf.maps.arcgis.com/home/item.html?id=776819a7a0de42f3b75e40527cc36a0a' target='_blank'>Ontario Digital Terrain Model (Lidar-Derived) web map</a>.",
+    "tags": [
+      "digital elevation model",
+      "DEM",
+      "digital terrain model",
+      "DTM",
+      "terrain",
+      "topography",
+      "OMAFRA lidar",
+      "airborne topographic lidar",
+      "light detection and ranging",
+      "lidar",
+      "elevation",
+      "Lidar Eastern Acquisition Project",
+      "LEAP",
+      "open data",
+      "CLOCA Lidar",
+      "South Nation Lidar",
+      "GTA Lidar",
+      "MNR",
+      "Ministry of Natural Resources",
+      "Digital Data Information and Business Services Branch"
+    ],
+    "snippet": "This the download package index layer for the Ontario Digital Terrain Model (Lidar-Derived).",
+    "thumbnail": "thumbnail/thumbnail1582576440277.png",
+    "documentation": null,
+    "extent": [
+      [
+        -93.48849320310441,
+        41.5777548545529
+      ],
+      [
+        -74.34446072044082,
+        50.34233508002572
+      ]
+    ],
+    "categories": [
+      "/Categories/Corporate Management and Information Division/Digital, Data, Information and Business Services Branch/Geospatial Ontario",
+      "/Categories/Corporate Management and Information Division/Mapping and Information Resources Branch"
+    ],
+    "spatialReference": "102100",
+    "accessInformation": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "classification": null,
+    "licenseInfo": "<a href='https://www.ontario.ca/page/open-government-licence-ontario' rel='nofollow ugc'>Open Government Licence – Ontario</a>",
+    "culture": "en-ca",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "https://services1.arcgis.com/TJH5KDher0W13Kgo/arcgis/rest/services/Ontario_Digital_Terrain_Model_Lidar_Derived_WFL1/FeatureServer",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 39821312,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 1,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 203766,
+    "contentStatus": "public_authoritative",
+    "scoreCompleteness": 95,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1791079200000
+  },
+  "root": {
+    "currentVersion": 12,
+    "serviceItemId": "ae2f11bd9e0e473080a4c5ded9ff93da",
+    "sourceSchemaChangesAllowed": true,
+    "hasViews": true,
+    "serviceDescription": "The Ontario Digital Terrain Model (Lidar-Derived) is a raster representing the bare-earth terrain derived from a classified lidar point cloud.",
+    "hasVersionedData": false,
+    "supportsDisconnectedEditing": false,
+    "hasStaticData": false,
+    "hasSharedDomains": false,
+    "maxRecordCount": 2000,
+    "maxIdsCount": 1000000,
+    "supportedQueryFormats": "JSON",
+    "supportsVCSProjection": false,
+    "supportedExportFormats": "csv,shapefile,sqlite,geoPackage,filegdb,featureCollection,geojson,kml,excel",
+    "supportedConvertFileFormats": "JSON,PBF",
+    "supportedConvertContentFormats": "LayerEditCollection",
+    "supportedFullTextLocales": [
+      "neutral",
+      "ar-SA",
+      "bg-BG",
+      "bn-IN",
+      "ca-ES",
+      "cs-CZ",
+      "da-DK",
+      "de-DE",
+      "el-GR",
+      "en-GB",
+      "en-US",
+      "es-ES",
+      "fr-FR",
+      "gu-IN",
+      "he-IL",
+      "hi-IN",
+      "hr-HR",
+      "id-ID",
+      "is-IS",
+      "it-IT",
+      "ja-JP",
+      "kn-IN",
+      "ko-KR",
+      "lt-LT",
+      "lv-LV",
+      "ml-IN",
+      "mr-IN",
+      "ms-MY",
+      "nb-NO",
+      "nl-NL",
+      "pa-IN",
+      "pl-PL",
+      "pt-BR",
+      "pt-PT",
+      "ro-RO",
+      "ru-RU",
+      "sk-SK",
+      "sl-SI",
+      "sr-Cyrl-CS",
+      "sr-Latn-CS",
+      "sv-SE",
+      "ta-IN",
+      "te-IN",
+      "th-TH",
+      "tr-TR",
+      "uk-UA",
+      "ur-PK",
+      "vi-VN",
+      "zh-CN",
+      "zh-HK",
+      "zh-MO",
+      "zh-SG",
+      "zh-TW"
+    ],
+    "supportsSharedTemplates": true,
+    "hasSharedTemplates": true,
+    "capabilities": "Query",
+    "description": "",
+    "copyrightText": "",
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    },
+    "initialExtent": {
+      "xmin": -9696222.89375026,
+      "ymin": 5018859.65959454,
+      "xmax": -8228890.646635788,
+      "ymax": 6476686.9204928875,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857
+      }
+    },
+    "fullExtent": {
+      "xmin": -10543868.8181,
+      "ymin": 5097937.528904153,
+      "xmax": -8275987.5107,
+      "ymax": 6505774.686399996,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857
+      }
+    },
+    "allowGeometryUpdates": true,
+    "supportsTrueCurve": true,
+    "trueCurveSupportMode": "OGC",
+    "supportedCurveTypes": [
+      "esriGeometryCircularArc"
+    ],
+    "supportedTrueCurvePbfFeatureEncodings": [
+      "esriCompressedShapeBuffer",
+      "esriDefault"
+    ],
+    "allowTrueCurvesUpdates": true,
+    "onlyAllowTrueCurveUpdatesByTrueCurveClients": true,
+    "units": "esriMeters",
+    "supportsAppend": true,
+    "supportedAppendCapabilities": "Features",
+    "supportsSharedDomains": true,
+    "supportsWebHooks": true,
+    "supportsTemporalLayers": true,
+    "layerOverridesEnabled": true,
+    "size": 221184,
+    "syncEnabled": false,
+    "supportsApplyEditsWithGlobalIds": false,
+    "supportsReturnDeleteResults": true,
+    "supportsLayerOverrides": true,
+    "supportsTilesAndBasicQueriesMode": true,
+    "supportsQueryContingentValues": true,
+    "supportedContingentValuesFormats": "JSON, PBF",
+    "supportsContingentValuesJson": 2,
+    "advancedEditingCapabilities": {
+      "supportsSplit": false,
+      "supportsReturnServiceEditsInSourceSR": false,
+      "supportsAsyncApplyEdits": true,
+      "supportsReturnEditResults": true,
+      "supportsApplyEditsbyUploadID": true,
+      "supportedApplyEditsUploadIDFormats": "JSON,PBF"
+    },
+    "editorTrackingInfo": {
+      "enableEditorTracking": false,
+      "enableOwnershipAccessControl": false,
+      "allowOthersToQuery": true,
+      "allowOthersToUpdate": true,
+      "allowOthersToDelete": false,
+      "allowAnonymousToQuery": true,
+      "allowAnonymousToUpdate": true,
+      "allowAnonymousToDelete": true
+    },
+    "xssPreventionInfo": {
+      "xssPreventionEnabled": true,
+      "xssPreventionRule": "InputOnly",
+      "xssInputRule": "rejectInvalid"
+    },
+    "layers": [
+      {
+        "id": 0,
+        "name": "Ontario DTM (Lidar-Derived) Package Index",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ],
+    "tables": []
+  },
+  "child": {
+    "currentVersion": 12,
+    "id": 0,
+    "name": "Ontario DTM (Lidar-Derived) Package Index",
+    "type": "Feature Layer",
+    "serviceItemId": "ae2f11bd9e0e473080a4c5ded9ff93da",
+    "cacheMaxAge": 30,
+    "sourceSchemaChangesAllowed": true,
+    "hasViews": true,
+    "displayField": "Package",
+    "description": "Lidar_DTM_Package_IndexSimp",
+    "copyrightText": "",
+    "defaultVisibility": true,
+    "editingInfo": {
+      "lastEditDate": 1780949553890,
+      "schemaLastEditDate": 1780949553858,
+      "dataLastEditDate": 1780949553890
+    },
+    "relationships": [],
+    "isDataVersioned": false,
+    "hasContingentValuesDefinition": false,
+    "supportsAppend": true,
+    "supportsCalculate": true,
+    "supportsASyncCalculate": true,
+    "supportsTruncate": true,
+    "supportsAttachmentsByUploadId": true,
+    "supportsAttachmentsResizing": true,
+    "supportsRollbackOnFailureParameter": true,
+    "supportsStatistics": true,
+    "supportsExceedsLimitStatistics": true,
+    "supportsAdvancedQueries": true,
+    "supportsValidateSql": true,
+    "supportsCoordinatesQuantization": true,
+    "supportsLayerOverrides": true,
+    "supportsTilesAndBasicQueriesMode": true,
+    "supportsFieldDescriptionProperty": true,
+    "supportsQuantizationEditMode": true,
+    "supportsColumnStoreIndex": true,
+    "supportsApplyEditsWithGlobalIds": false,
+    "supportsMultiScaleGeometry": true,
+    "supportsReturningQueryGeometry": true,
+    "enableNullGeometry": false,
+    "hasGeometryProperties": true,
+    "geometryProperties": {
+      "shapeAreaFieldName": "Shape__Area",
+      "shapeLengthFieldName": "Shape__Length",
+      "units": "esriMeters"
+    },
+    "advancedQueryCapabilities": {
+      "supportsPagination": true,
+      "supportsPaginationOnAggregatedQueries": true,
+      "supportsQueryRelatedPagination": true,
+      "supportsQueryWithDistance": true,
+      "supportsOutDistance": true,
+      "supportsReturningQueryExtent": true,
+      "supportsStatistics": true,
+      "supportsOrderBy": true,
+      "supportsDistinct": true,
+      "supportsQueryWithResultType": true,
+      "supportsSqlExpression": true,
+      "supportsTimeRelation": true,
+      "supportsAdvancedQueryRelated": true,
+      "supportsCountDistinct": true,
+      "supportsPercentileStatistics": true,
+      "supportsApproxPercentileStatistics": true,
+      "supportsSpatialAggregationStatistics": true,
+      "supportsTrueCurve": true,
+      "supportedSpatialAggregationStatistics": [
+        "EnvelopeAggregate",
+        "CentroidAggregate",
+        "ConvexHullAggregate"
+      ],
+      "supportsLod": true,
+      "supportsQueryWithLodSR": false,
+      "supportedLodTypes": [
+        "geohash"
+      ],
+      "supportsReturningGeometryCentroid": true,
+      "supportsReturningGeometryEnvelope": true,
+      "supportsReturningGeometryProperties": true,
+      "supportsQueryWithDatumTransformation": true,
+      "supportsCurrentUserQueries": true,
+      "supportsHavingClause": true,
+      "supportsOutFieldSQLExpression": true,
+      "supportsMaxRecordCountFactor": true,
+      "supportsTopFeaturesQuery": true,
+      "supportsDisjointSpatialRel": true,
+      "supportsQueryWithCacheHint": true,
+      "supportedOperationsWithCacheHint": [
+        "query",
+        "queryTopFilter",
+        "queryAnalytics",
+        "queryAttachments",
+        "queryRelated",
+        "queryBins",
+        "queryPivot"
+      ],
+      "supportsQueryAnalytic": true,
+      "supportsQueryPivot": true,
+      "supportsQueryBins": true,
+      "supportsDefaultSR": true,
+      "supportsTranslations": false,
+      "supportsAggIds": true,
+      "supportsQueryWithCollation": true,
+      "supportsISODOW": true,
+      "supportsISOWeek": true,
+      "supportsFullTextSearch": true,
+      "fullTextSearchCapabilities": {
+        "supportsAccentSensitivity": true,
+        "supportsStopWords": true,
+        "supportsSearchOperator": true,
+        "supportsOperator": true
+      }
+    },
+    "advancedQueryAnalyticCapabilities": {
+      "supportsLinearRegression": true,
+      "supportsTrendlineRegression": true,
+      "supportsAsync": true,
+      "supportsPercentileAnalytic": true
+    },
+    "queryBinsCapabilities": {
+      "supportsAsync": true,
+      "supportsAutoIntervalBin": true,
+      "supportsFixedIntervalBin": true,
+      "supportsFixedBoundariesBin": true,
+      "supportsDateBin": true,
+      "supportsClassificationBin": true,
+      "supportsStackBy": true,
+      "supportsSplitBy": true,
+      "supportsFirstDayOfWeek": true,
+      "supportsSnapToData": true,
+      "supportsReturnFullIntervalBin": true,
+      "supportsReturnStackValueRange": true,
+      "supportsNormalization": true,
+      "supportedStatisticTypes": [
+        "COUNT",
+        "SUM",
+        "AVG",
+        "VAR",
+        "STDDEV",
+        "MIN",
+        "MAX",
+        "PERCENTILE_CONT",
+        "PERCENTILE_DISC",
+        "APPROX_PERCENTILE_CONT",
+        "APPROX_PERCENTILE_DISC",
+        "CentroidAggregate",
+        "EnvelopeAggregate",
+        "ConvexHullAggregate"
+      ],
+      "supportedNormalizationTypes": [
+        "boxCox",
+        "field",
+        "inverse",
+        "log",
+        "naturalLog",
+        "percentOfTotal",
+        "squareRoot"
+      ]
+    },
+    "supportedOperationsWithCollation": "query,addField,updateField",
+    "advancedEditingCapabilities": {
+      "supportedSqlFormatsInCalculate": [
+        "standard"
+      ],
+      "supportsAsyncApplyEdits": true,
+      "supportsReturnEditResults": true,
+      "supportsApplyEditsbyUploadID": true,
+      "supportedApplyEditsUploadIDFormats": "JSON,PBF",
+      "supportsTranslation": false,
+      "supportsMaxTranslations": 10
+    },
+    "infoInEstimates": [
+      "extent",
+      "count"
+    ],
+    "useStandardizedQueries": true,
+    "geometryType": "esriGeometryPolygon",
+    "minScale": 0,
+    "maxScale": 0,
+    "extent": {
+      "xmin": -9351879.82601889,
+      "ymin": 5097937.528904153,
+      "xmax": -8279588.8122,
+      "ymax": 6421965.578362086,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857
+      }
+    },
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    },
+    "drawingInfo": {
+      "renderer": {
+        "type": "simple",
+        "symbol": {
+          "type": "esriSFS",
+          "style": "esriSFSSolid",
+          "color": [
+            202,
+            252,
+            194,
+            0
+          ],
+          "outline": {
+            "type": "esriSLS",
+            "style": "esriSLSSolid",
+            "color": [
+              0,
+              77,
+              168,
+              255
+            ],
+            "width": 1
+          }
+        }
+      },
+      "scaleSymbols": true,
+      "transparency": 0,
+      "labelingInfo": null
+    },
+    "allowGeometryUpdates": true,
+    "trueCurveSupportMode": "OGC",
+    "supportedCurveTypes": [
+      "esriGeometryCircularArc"
+    ],
+    "supportedTrueCurvePbfFeatureEncodings": [
+      "esriCompressedShapeBuffer",
+      "esriDefault"
+    ],
+    "allowTrueCurvesUpdates": true,
+    "onlyAllowTrueCurveUpdatesByTrueCurveClients": true,
+    "hasAttachments": false,
+    "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+    "hasMetadata": true,
+    "hasM": true,
+    "allowUpdateWithoutMValues": true,
+    "hasZ": true,
+    "enableZDefaults": true,
+    "zDefault": 0,
+    "objectIdField": "OBJECTID",
+    "uniqueIdField": {
+      "name": "OBJECTID",
+      "isSystemMaintained": true
+    },
+    "globalIdField": "",
+    "typeIdField": "",
+    "collation": {
+      "locale": "neutral",
+      "caseSensitive": false,
+      "accentSensitive": true
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Package",
+        "type": "esriFieldTypeString",
+        "alias": "Package",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Size_GB",
+        "type": "esriFieldTypeDouble",
+        "alias": "Size (GB)",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Resolution",
+        "type": "esriFieldTypeDouble",
+        "alias": "Resolution (m)",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "ServiceLink",
+        "type": "esriFieldTypeString",
+        "alias": "Service Link",
+        "sqlType": "sqlTypeOther",
+        "length": 256,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DownloadLink",
+        "type": "esriFieldTypeString",
+        "alias": "Download Link",
+        "sqlType": "sqlTypeOther",
+        "length": 400,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Project",
+        "type": "esriFieldTypeString",
+        "alias": "Project",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "indexes": [
+      {
+        "name": "PK__ONTARIO___F4B70D851AA4C958",
+        "fields": "OBJECTID",
+        "isAscending": true,
+        "isUnique": true,
+        "description": "",
+        "indexType": "Attribute"
+      },
+      {
+        "name": "user_4693.ONTARIO_DIGITAL_TERRAIN_MODEL_LIDAR_DERIVED_WFL1_ONTARIO_DTM__LIDAR_DERIVED__PACKAGE_INDEX_Shape_sidx",
+        "fields": "Shape",
+        "isAscending": true,
+        "isUnique": false,
+        "description": "",
+        "indexType": "Spatial"
+      },
+      {
+        "name": "Shape__Area_Index",
+        "fields": "Shape__Area",
+        "isAscending": true,
+        "isUnique": false,
+        "description": "",
+        "indexType": "Attribute"
+      },
+      {
+        "name": "Shape__Length_Index",
+        "fields": "Shape__Length",
+        "isAscending": true,
+        "isUnique": false,
+        "description": "",
+        "indexType": "Attribute"
+      }
+    ],
+    "dateFieldsTimeReference": {
+      "timeZone": "UTC",
+      "timeZoneIANA": "Etc/UTC",
+      "respectsDaylightSaving": false
+    },
+    "preferredTimeReference": null,
+    "types": [],
+    "templates": [
+      {
+        "name": "Ontario DTM (Lidar-Derived) Package Index",
+        "description": "",
+        "drawingTool": "esriFeatureEditToolPolygon",
+        "prototype": {
+          "attributes": {
+            "Package": null,
+            "Size_GB": null,
+            "Resolution": null,
+            "ServiceLink": null,
+            "DownloadLink": null,
+            "Project": null
+          }
+        }
+      }
+    ],
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "supportedAppendFormats": "sqlite,geoPackage,shapefile,filegdb,featureCollection,geojson,csv,excel,jsonl,featureService,pbf",
+    "supportedAppendSourceFilterFormats": "sqlite,geoPackage,shapefile,filegdb,featureService",
+    "supportedExportFormats": "csv,shapefile,sqlite,geoPackage,filegdb,featureCollection,geojson,kml,excel,parquet",
+    "supportedConvertFileFormats": "JSON,PBF,Parquet",
+    "supportedConvertContentFormats": "LayerEditCollection,FeatureCollection",
+    "supportedSpatialRelationships": [
+      "esriSpatialRelIntersects",
+      "esriSpatialRelContains",
+      "esriSpatialRelCrosses",
+      "esriSpatialRelEnvelopeIntersects",
+      "esriSpatialRelIndexIntersects",
+      "esriSpatialRelOverlaps",
+      "esriSpatialRelTouches",
+      "esriSpatialRelWithin",
+      "esriSpatialRelDisjoint",
+      "esriSpatialRelRelation"
+    ],
+    "guidFormat": "",
+    "supportsContingentValues": true,
+    "supportsEditingContingentValues": true,
+    "supportedContingentValuesFormats": "JSON, PBF",
+    "supportsFieldGroups": true,
+    "supportedSyncDataOptions": 260,
+    "hasStaticData": false,
+    "maxRecordCount": 2000,
+    "standardMaxRecordCount": 2000,
+    "maxIdsCount": 1000000,
+    "standardMaxRecordCountNoGeometry": 32000,
+    "tileMaxRecordCount": 4000,
+    "maxRecordCountFactor": 1,
+    "capabilities": "Query"
+  },
+  "woodstock": {
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "name": "OBJECTID",
+      "isSystemMaintained": true
+    },
+    "globalIdFieldName": "",
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Package",
+        "type": "esriFieldTypeString",
+        "alias": "Package",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Resolution",
+        "type": "esriFieldTypeDouble",
+        "alias": "Resolution (m)",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Project",
+        "type": "esriFieldTypeString",
+        "alias": "Project",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 20,
+          "Package": "Lake Erie L",
+          "Resolution": 0.5,
+          "Project": "OMAFRA Lidar 2016-18"
+        }
+      },
+      {
+        "attributes": {
+          "OBJECTID": 419,
+          "Package": "UpperThamesGrandRiver-DTM-05",
+          "Resolution": 0.5,
+          "Project": "DEDSFM Upper Thames-Grand River 2025"
+        }
+      }
+    ]
+  },
+  "hamilton": {
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "name": "OBJECTID",
+      "isSystemMaintained": true
+    },
+    "globalIdFieldName": "",
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Package",
+        "type": "esriFieldTypeString",
+        "alias": "Package",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Resolution",
+        "type": "esriFieldTypeDouble",
+        "alias": "Resolution (m)",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Project",
+        "type": "esriFieldTypeString",
+        "alias": "Project",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 131,
+          "Package": "Hamilton-Niagara DTM B",
+          "Resolution": 0.5,
+          "Project": "Hamilton-Niagara 2021"
+        }
+      }
+    ]
+  },
+  "kawartha": {
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "name": "OBJECTID",
+      "isSystemMaintained": true
+    },
+    "globalIdFieldName": "",
+    "geometryType": "esriGeometryPolygon",
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Package",
+        "type": "esriFieldTypeString",
+        "alias": "Package",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Resolution",
+        "type": "esriFieldTypeDouble",
+        "alias": "Resolution (m)",
+        "sqlType": "sqlTypeOther",
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Project",
+        "type": "esriFieldTypeString",
+        "alias": "Project",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 244,
+          "Package": "KawarthaLakes-DTM-03",
+          "Resolution": 0.5,
+          "Project": "DEDSFM Kawartha Lakes 2023"
+        }
+      }
+    ]
+  },
+  "empty": {
+    "objectIdFieldName": "OBJECTID",
+    "uniqueIdField": {
+      "name": "OBJECTID",
+      "isSystemMaintained": true
+    },
+    "globalIdFieldName": "",
+    "features": []
+  },
+  "count": {
+    "count": 420
+  }
+}

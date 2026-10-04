@@ -1176,3 +1176,29 @@ Independently licensed province-wide pit/quarry authorization context adds three
 [Two original Ontario reference feeds](./ONTARIO-FABRIC.md) add 292,826 lot/concession polygons and 2,528 geographic township polygons: 295,354 overlapping reference rows, not unique properties or imports. Preserve accuracy, raw labels and dates; current survey/title, modern parcel and legal access remain unverified.
 
 [Kawartha Lakes](./KAWARTHA-LAKES.md) adds dated source guidance for rural zoning appeals/review, operative plans, separate authorized building/septic searches, ARU registration, current heritage and shoreline/road-allowance files. City reuse grants are unresolved; parcel sharing has a separate explicit restriction. The OGL-labelled Regulated Area is OHN waterbody mapping, and the licensed natural-heritage archive is a historical 2012 conversion candidate, so neither establishes current regulation. No City property feed is integrated or counted. All market completion flags remain false.
+
+
+## Woodstock/Oxford and original Ontario lidar index
+
+Woodstock advances to an audited reuse gap with dated City/County source guidance,
+current planning/record-search routes, explicit municipal layer gaps and report
+document requests. No City/County property features, counts or geometry are
+queried. Open-data definitions and blank/reference grants are assessed separately
+from the contractor data-request restriction and main County website terms; no
+categorical blanket ban is inferred. POLARIS/Teranet/MPAC lineage and mixed
+City/provincial contours remain unresolved. Current text consolidation, Q2 2026
+mapping, awaiting-consolidation amendments, conditional ARU eligibility, separate
+Legal Compliance Letter, older-file gaps and conflicting survey-release guidance
+remain explicit. See [WOODSTOCK.md](WOODSTOCK.md). Other Oxford markets retain
+their individual queued audit status.
+
+The original separately licensed Ontario lidar package index adds one shared feed
+and an independently observed 420 overlapping package polygons. It returns
+package/project references and reported raster resolution, retaining overlaps;
+no geometry, pixels, elevation, slope, building height or regulatory findings.
+Direct original raster sampling timed out and stays unintegrated. Package index
+coverage does not verify actual raster coverage; resolution is not accuracy and
+raw project-year labels are not verified acquisition dates. Counts are source
+index rows, not properties, pixels, data points or imports. See
+[ONTARIO-LIDAR.md](ONTARIO-LIDAR.md). All major-market completion remains unproven;
+Stratford/Perth and the other queued regional markets remain next audit candidates.
