@@ -1,0 +1,2017 @@
+{
+  "root": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "serviceDescription": "<div><p>Version: n/a</p><p>Build: 2025-09-24 11:05:30</p></div>",
+    "mapName": "service06",
+    "description": "<div><p id='serviceVersion'>Version: n/a</p><p id='serviceBuild'>Build: 2025-09-24 11:05:30</p></div>",
+    "copyrightText": "",
+    "supportsDynamicLayers": true,
+    "layers": [
+      {
+        "id": 16,
+        "name": "Greenbelt Hamlet",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 18,
+        "name": "Greenbelt River Valley Connection",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 4,
+        "name": "CLUPA Overlay",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "CLUPA Provincial",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 0,
+        "name": "Federal Land Other",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 20,
+        "name": "Greenbelt Towns Villages",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 19,
+        "name": "Greenbelt Specialty Crop",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 17,
+        "name": "Greenbelt Outer Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 15,
+        "name": "Greenbelt Designation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "Geographic Township Improved",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 21,
+        "name": "Lake Simcoe PAW Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "Lot Fabric Improved",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 22,
+        "name": "Natural Heritage System Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 23,
+        "name": "NGO Nature Reserve",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 27,
+        "name": "Niagara Escarpment Policy Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 24,
+        "name": "Niagara Escarpment Minor Urban Centre",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 25,
+        "name": "Niagara Escarpment Plan Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 26,
+        "name": "Niagara Escarpment Plan Designation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 29,
+        "name": "ORM Planning Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 28,
+        "name": "ORM Land Use Designation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 30,
+        "name": "Land Use Plan Area, MNR",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": [
+      {
+        "id": 6,
+        "name": "CLUPA_AMENDMENT",
+        "type": "Table"
+      },
+      {
+        "id": 7,
+        "name": "CLUPA_AMENDMENT_DETAIL",
+        "type": "Table"
+      },
+      {
+        "id": 8,
+        "name": "CLUPA_POLICY",
+        "type": "Table"
+      },
+      {
+        "id": 9,
+        "name": "CLUPA_POLICY_AND_AMENDMENT",
+        "type": "Table"
+      },
+      {
+        "id": 10,
+        "name": "CLUPA_POLICY_AND_DIR_SOURCE",
+        "type": "Table"
+      },
+      {
+        "id": 11,
+        "name": "CLUPA_POLICY_AND_MNR_DISTRICT",
+        "type": "Table"
+      },
+      {
+        "id": 12,
+        "name": "CLUPA_POLICY_AND_PARK_ADMIN",
+        "type": "Table"
+      },
+      {
+        "id": 13,
+        "name": "CLUPA_POLICY_AND_PERMITTED_USE",
+        "type": "Table"
+      },
+      {
+        "id": 14,
+        "name": "CLUPA_POLICY_DIR_SOURCE",
+        "type": "Table"
+      }
+    ],
+    "spatialReference": {
+      "wkid": 4269,
+      "latestWkid": 4269,
+      "xyTolerance": 2e-7,
+      "zTolerance": 2,
+      "mTolerance": 0.001,
+      "falseX": -400,
+      "falseY": -400,
+      "xyUnits": 11258999068426.24,
+      "falseZ": 0,
+      "zUnits": 1,
+      "falseM": -100000,
+      "mUnits": 10000
+    },
+    "singleFusedMapCache": false,
+    "initialExtent": {
+      "xmin": -299.28038577798714,
+      "ymin": -126.58868687627138,
+      "xmax": 202.9620755495804,
+      "ymax": 205.43603436818915,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-7,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "fullExtent": {
+      "xmin": -95.1539384,
+      "ymin": 41.676559999999995,
+      "xmax": -74.32011,
+      "ymax": 56.859359999999995,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-7,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "datesInUnknownTimezone": false,
+    "minScale": 0,
+    "maxScale": 0,
+    "units": "esriDecimalDegrees",
+    "supportedImageFormatTypes": "PNG32,PNG24,PNG,JPG,DIB,TIFF,EMF,PS,PDF,GIF,SVG,SVGZ,BMP",
+    "documentInfo": {
+      "Title": "Default.aprx",
+      "Author": "",
+      "Comments": "",
+      "Subject": "",
+      "Category": "",
+      "AntialiasingMode": "None",
+      "TextAntialiasingMode": "Force",
+      "Version": "2.9.0",
+      "Keywords": ""
+    },
+    "supportsQueryDomains": true,
+    "capabilities": "Map,Query,Data",
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "exportTilesAllowed": false,
+    "referenceScale": 0,
+    "supportsDatumTransformation": true,
+    "archivingInfo": {
+      "supportsHistoricMoment": false
+    },
+    "supportsClipping": true,
+    "supportsSpatialFilter": true,
+    "supportsTimeRelation": true,
+    "supportsQueryDataElements": true,
+    "maxRecordCount": 5000,
+    "maxImageHeight": 4096,
+    "maxImageWidth": 4096,
+    "supportedExtensions": "WMSServer",
+    "resampling": false
+  },
+  "feeds": {
+    "lot-fabric-improved": {
+      "package": {
+        "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+        "success": true,
+        "result": {
+          "access_instructions": {
+            "en": "",
+            "fr": ""
+          },
+          "access_level": "open",
+          "asset_type": "dataset",
+          "author": "",
+          "author_email": "",
+          "creator_user_id": "faba29e3-f7ad-4b37-ad77-3ce832d12630",
+          "current_as_of": "2024-12-16",
+          "exemption": "none",
+          "exemption_rationale": {
+            "en": "",
+            "fr": ""
+          },
+          "geographic_coverage_translated": {
+            "en": "Ontario",
+            "fr": "Ontario"
+          },
+          "geographic_granularity": "",
+          "id": "2af8a864-72c5-4714-9f66-66f6dd01c43e",
+          "isopen": false,
+          "keywords": {
+            "en": [
+              "Economy and Business",
+              "Environment and Natural Resources",
+              "Infrastructure and Transportation",
+              "Government",
+              "townships"
+            ],
+            "fr": [
+              "Économie et affaires",
+              "Environnement et richesses naturelles",
+              "Infrastructure et transport",
+              "Gouvernement",
+              "cantons"
+            ]
+          },
+          "license_id": "OGL-ON-1.0",
+          "license_title": "Open Government Licence – Ontario",
+          "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+          "maintainer": null,
+          "maintainer_branch": {
+            "en": "Divisional Support Branch",
+            "fr": "Direction du soutien à la Division"
+          },
+          "maintainer_email": "jennifer.mcmurray@ontario.ca",
+          "maintainer_translated": {
+            "en": "Office of the Surveyor General",
+            "fr": "Bureau de l'arpenteur général"
+          },
+          "metadata_created": "2020-01-11T06:52:09.750629",
+          "metadata_modified": "2025-10-23T17:32:59.306099",
+          "name": "lot-fabric-improved",
+          "notes": "The spatial accuracy of the lot fabric for some townships has been improved\r\nthrough the Ontario Parcel, Township Realignment and Township Improvement\r\nprojects. Improvements to the fabric may include:\r\n\r\n  * road allowance widths\r\n  * spatial changes to better represent the location of lot boundaries\r\n  * more consistent concession names.\r\n\r\nData is collected on an on-going basis. The time period \"end date\" may be more\r\nrecent than indicated here.\r\n\r\n",
+          "notes_translated": {
+            "en": "The spatial accuracy of the lot fabric for some townships has been improved\r\nthrough the Ontario Parcel, Township Realignment and Township Improvement\r\nprojects. Improvements to the fabric may include:\r\n\r\n  * road allowance widths\r\n  * spatial changes to better represent the location of lot boundaries\r\n  * more consistent concession names.\r\n\r\nData is collected on an on-going basis. The time period \"end date\" may be more\r\nrecent than indicated here.\r\n\r\n",
+            "fr": "La precision spatiale de la composition des lots pour certains cantons a ete\r\namelioree grace aux projets des parcelles de l'Ontario, de realignement des\r\ncantons et de l'amelioration des cantons.\r\n\r\nLes ameliorations apportees a la composition peuvent inclure :\r\n\r\n  * les largeurs des reserves routieres\r\n  * des modifications spatiales pour mieux representer la localisation des limites des lots\r\n  * une uniformite accrue des noms de concessions\r\n\r\nLes donnees sont amassees continuellement. La « date de fin » pourrait etre\r\nplus recente que celle qui est indique ici.\r\n\r\n\r\n\r\n"
+          },
+          "num_resources": 1,
+          "num_tags": 10,
+          "opened_date": "2015-04-30",
+          "organization": {
+            "id": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+            "name": "natural-resources",
+            "title": "",
+            "type": "organization",
+            "description": "",
+            "image_url": "2022-09-12-211950.429568mnrf-small.jpg",
+            "created": "2022-09-08T20:43:59.845861",
+            "is_organization": true,
+            "approval_status": "approved",
+            "state": "active"
+          },
+          "owner_org": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+          "private": false,
+          "state": "active",
+          "title": "Lot fabric improved",
+          "title_translated": {
+            "en": "Lot fabric improved",
+            "fr": "Composition améliorée des lots"
+          },
+          "type": "dataset",
+          "update_frequency": "yearly",
+          "url": "",
+          "version": null,
+          "resources": [
+            {
+              "cache_last_updated": null,
+              "cache_url": null,
+              "created": "2019-12-31T10:32:42.675989",
+              "data_last_updated": "2015-04-30",
+              "data_range_end": "2008-06-06",
+              "data_range_start": "2008-06-06",
+              "datastore_active": false,
+              "datastore_contains_all_records_of_source_file": false,
+              "description": "",
+              "description_translated": {
+                "en": "",
+                "fr": ""
+              },
+              "format": "WEB",
+              "hash": "",
+              "id": "f8abaf9f-3e97-405a-9e06-bfcca3c9fd39",
+              "language": "english",
+              "last_modified": null,
+              "metadata_modified": "2025-10-23T17:32:59.317946",
+              "mimetype": null,
+              "mimetype_inner": null,
+              "name": "Lot fabric improved",
+              "name_translated": {
+                "en": "Lot fabric improved",
+                "fr": "Lot fabric improved"
+              },
+              "package_id": "2af8a864-72c5-4714-9f66-66f6dd01c43e",
+              "position": 0,
+              "resource_type": null,
+              "schema": "",
+              "size": null,
+              "state": "active",
+              "type": "data",
+              "url": "https://geohub.lio.gov.on.ca/datasets/lot-fabric-improved",
+              "url_type": null,
+              "validation_options": "",
+              "validation_status": "",
+              "validation_timestamp": ""
+            }
+          ],
+          "tags": [
+            {
+              "display_name": "Economy and Business",
+              "id": "af3c51e1-ed85-4b1d-ad87-ae1eef6234e5",
+              "name": "Economy and Business",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environment and Natural Resources",
+              "id": "159d5716-5d3d-4045-a948-22e5bbde0485",
+              "name": "Environment and Natural Resources",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environnement et richesses naturelles",
+              "id": "7a6f2b04-9cd9-4e1b-a8a6-ded7082fca41",
+              "name": "Environnement et richesses naturelles",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Gouvernement",
+              "id": "558f82ee-08bb-40b9-93bb-886771750f57",
+              "name": "Gouvernement",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Government",
+              "id": "f94166a9-337f-4b63-9127-dc9a86f212c8",
+              "name": "Government",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Infrastructure and Transportation",
+              "id": "8409a3e4-5cbc-4307-989c-29b6b74043b3",
+              "name": "Infrastructure and Transportation",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Infrastructure et transport",
+              "id": "e83fc9cb-c126-4f3a-bcd7-7572f702d0f5",
+              "name": "Infrastructure et transport",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "cantons",
+              "id": "71626501-6d08-4402-93b7-4cdb707e9329",
+              "name": "cantons",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "townships",
+              "id": "efd9a8b9-e3c8-4cc9-b164-7a1d22a00451",
+              "name": "townships",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Économie et affaires",
+              "id": "d6d2f1a2-956a-4938-9670-ebd690a5456e",
+              "name": "Économie et affaires",
+              "state": "active",
+              "vocabulary_id": null
+            }
+          ],
+          "groups": [],
+          "relationships_as_subject": [],
+          "relationships_as_object": []
+        }
+      },
+      "item": {
+        "id": "960b8dccf21740e99448e47941ee84d6",
+        "owner": "LandInformationOntario",
+        "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+        "orgId": "a03W7iZ8T3s5vB7p",
+        "created": 1539192882000,
+        "modified": 1786795833000,
+        "guid": null,
+        "name": null,
+        "title": "Lot fabric improved",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Metadata",
+          "Service"
+        ],
+        "description": "<div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>The spatial accuracy of the lot fabric for some townships has been improved through the Ontario Parcel, Township Realignment and Township Improvement projects. Improvements to the fabric may include:</span></div><div><ul><li><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>road allowance widths</span></li><li><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>spatial changes to better represent the location of lot boundaries</span></li><li><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>more consistent concession names.</span></li></ul></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Data is collected on an on-going basis. The time period “end date” may be more recent than indicated here.</span></div><p><br /></p><div><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'><strong>Additional Documentation</strong></span><br /></div><div><ul><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lot%20Fabric%20Improved%20-%20Data%20Description.pdf' target='_blank' rel='nofollow ugc noopener noreferrer'><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Lot Fabric Improved - Data Description</span></a></li><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lot Fabric Improved - Documentation.docx' target='_blank' rel='nofollow ugc noopener noreferrer'><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Lot Fabric Improved - Documentation</span></a></li><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Lot%20Fabric%20Improved%20-%20FAQ.pdf' target='_blank' rel='nofollow ugc noopener noreferrer'><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Lot Fabric Improved - FAQ</span></a></li></ul></div><p><br /></p><div></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'><strong>Status</strong></span><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>On going: data is being continually updated</span><br /></div><div><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'><strong>Maintenance and Update Frequency</strong></span><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Annually: data is updated every year</span><br /></div><div><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'><strong>Contact</strong></span><br /></div><div><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>Office of the Surveyor General, </span><a href='mailto:landtenuremapping@ontario.ca' target='_blank' rel='nofollow ugc noopener noreferrer'><span style='display:inline !important; text-decoration-color:initial; text-decoration-style:initial; text-indent:0px;'>landtenuremapping@ontario.ca</span></a></div>",
+        "tags": [
+          "base mapping",
+          "boundaries",
+          "GeospatialOntario",
+          "ODCSYNC",
+          "open data",
+          "planning and cadastral",
+          "townships",
+          "Divisional Support Branch",
+          "MNR",
+          "Ministry of Natural Resources"
+        ],
+        "snippet": "Land identifying a portion of a concession within a geographic township. The townships, concessions and lots comprise the original township fabric of the province.",
+        "thumbnail": "thumbnail/thumbnail1539193032285.png",
+        "documentation": null,
+        "extent": [
+          [
+            -93.753,
+            41.918
+          ],
+          [
+            -75.737,
+            59.934
+          ]
+        ],
+        "categories": [
+          "/Categories/Natural Resources/Regional Operations Division/Office of the Surveyor General"
+        ],
+        "spatialReference": null,
+        "accessInformation": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence – Ontario</a>",
+        "classification": null,
+        "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence – Ontario</a>",
+        "culture": "english (united states)",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open06/MapServer/2",
+        "proxyFilter": null,
+        "access": "public",
+        "size": 108,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "commentsEnabled": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 137467,
+        "contentStatus": "public_authoritative",
+        "scoreCompleteness": 100,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791054000000
+      },
+      "child": {
+        "currentVersion": 10.91,
+        "cimVersion": "2.9.0",
+        "id": 2,
+        "name": "Lot Fabric Improved",
+        "type": "Feature Layer",
+        "description": "This data is subject to terms of use.",
+        "geometryType": "esriGeometryPolygon",
+        "sourceSpatialReference": {
+          "wkid": 4269,
+          "latestWkid": 4269,
+          "xyTolerance": 2e-7,
+          "zTolerance": 2e-7,
+          "mTolerance": 2e-7,
+          "falseX": -399.9999999,
+          "falseY": -399.9999999,
+          "xyUnits": 10000000,
+          "falseZ": 0,
+          "zUnits": 1,
+          "falseM": 0,
+          "mUnits": 1
+        },
+        "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+        "parentLayer": null,
+        "subLayers": [],
+        "minScale": 0,
+        "maxScale": 0,
+        "referenceScale": 0,
+        "drawingInfo": {
+          "renderer": {
+            "type": "simple",
+            "symbol": {
+              "type": "esriSFS",
+              "style": "esriSFSSolid",
+              "color": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "outline": {
+                "type": "esriSLS",
+                "style": "esriSLSSolid",
+                "color": [
+                  112,
+                  168,
+                  0,
+                  255
+                ],
+                "width": 0.4
+              }
+            }
+          },
+          "scaleSymbols": true,
+          "transparency": 0,
+          "labelingInfo": null
+        },
+        "defaultVisibility": false,
+        "extent": {
+          "xmin": -95.15366999999999,
+          "ymin": 41.676559999999995,
+          "xmax": -74.32011,
+          "ymax": 56.859359999999995,
+          "spatialReference": {
+            "wkid": 4269,
+            "latestWkid": 4269,
+            "xyTolerance": 2e-7,
+            "zTolerance": 2,
+            "mTolerance": 0.001,
+            "falseX": -400,
+            "falseY": -400,
+            "xyUnits": 11258999068426.24,
+            "falseZ": 0,
+            "zUnits": 1,
+            "falseM": -100000,
+            "mUnits": 10000
+          }
+        },
+        "hasAttachments": false,
+        "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+        "displayField": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "typeIdField": null,
+        "subtypeFieldName": null,
+        "subtypeField": null,
+        "defaultSubtypeCode": null,
+        "fields": [
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID",
+            "domain": null
+          },
+          {
+            "name": "CLASS_SUBTYPE",
+            "type": "esriFieldTypeString",
+            "alias": "CLASS_SUBTYPE",
+            "length": 75,
+            "domain": null
+          },
+          {
+            "name": "CLASS_SUBTYPE_NUM",
+            "type": "esriFieldTypeInteger",
+            "alias": "CLASS_SUBTYPE_NUM",
+            "domain": null
+          },
+          {
+            "name": "LOT_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "LOT_IDENT",
+            "length": 100,
+            "domain": null
+          },
+          {
+            "name": "CONCESSION_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "CONCESSION_IDENT",
+            "length": 100,
+            "domain": null
+          },
+          {
+            "name": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "length": 100,
+            "domain": null
+          },
+          {
+            "name": "ROAD_ALLOWANCE_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ROAD_ALLOWANCE_STATUS_FLG",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "RELATED_FEATURE_DESCR",
+            "type": "esriFieldTypeString",
+            "alias": "RELATED_FEATURE_DESCR",
+            "length": 200,
+            "domain": null
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25,
+            "domain": null
+          },
+          {
+            "name": "LOCATION_DESCR",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_DESCR",
+            "length": 2000,
+            "domain": null
+          },
+          {
+            "name": "VERIFICATION_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "VERIFICATION_STATUS_FLG",
+            "length": 10,
+            "domain": null
+          },
+          {
+            "name": "VERIFICATION_STATUS_DATE",
+            "type": "esriFieldTypeDate",
+            "alias": "VERIFICATION_STATUS_DATE",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "SYSTEM_CALCULATED_AREA",
+            "type": "esriFieldTypeDouble",
+            "alias": "SYSTEM_CALCULATED_AREA",
+            "domain": null
+          },
+          {
+            "name": "USER_CALCULATED_METRIC",
+            "type": "esriFieldTypeDouble",
+            "alias": "USER_CALCULATED_METRIC",
+            "domain": null
+          },
+          {
+            "name": "GENERAL_COMMENTS",
+            "type": "esriFieldTypeString",
+            "alias": "GENERAL_COMMENTS",
+            "length": 2000,
+            "domain": null
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "SHAPE",
+            "type": "esriFieldTypeGeometry",
+            "alias": "SHAPE",
+            "domain": null
+          },
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID",
+            "domain": null
+          },
+          {
+            "name": "SHAPE.AREA",
+            "type": "esriFieldTypeDouble",
+            "alias": "SHAPE.AREA",
+            "domain": null
+          },
+          {
+            "name": "SHAPE.LEN",
+            "type": "esriFieldTypeDouble",
+            "alias": "SHAPE.LEN",
+            "domain": null
+          }
+        ],
+        "geometryField": {
+          "name": "SHAPE",
+          "type": "esriFieldTypeGeometry",
+          "alias": "SHAPE"
+        },
+        "indexes": [
+          {
+            "name": "GEOGRAPHIC_LOT_FABRIC_PK",
+            "fields": "OGF_ID",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          },
+          {
+            "name": "R202_SDE_ROWID_UK",
+            "fields": "OBJECTID",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          },
+          {
+            "name": "A108_IX1",
+            "fields": "SHAPE",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          }
+        ],
+        "subtypes": [],
+        "relationships": [],
+        "canModifyLayer": true,
+        "canScaleSymbols": false,
+        "hasLabels": false,
+        "capabilities": "Map,Query,Data",
+        "maxRecordCount": 5000,
+        "supportsStatistics": true,
+        "supportsExceedsLimitStatistics": true,
+        "supportsAdvancedQueries": true,
+        "supportedQueryFormats": "JSON, geoJSON, PBF",
+        "isDataVersioned": false,
+        "ownershipBasedAccessControlForFeatures": {
+          "allowOthersToQuery": true
+        },
+        "useStandardizedQueries": true,
+        "supportedSpatialRelationships": [
+          "esriSpatialRelIntersects",
+          "esriSpatialRelContains",
+          "esriSpatialRelCrosses",
+          "esriSpatialRelEnvelopeIntersects",
+          "esriSpatialRelIndexIntersects",
+          "esriSpatialRelOverlaps",
+          "esriSpatialRelTouches",
+          "esriSpatialRelWithin",
+          "esriSpatialRelRelation"
+        ],
+        "advancedQueryCapabilities": {
+          "useStandardizedQueries": true,
+          "supportsStatistics": true,
+          "supportsPercentileStatistics": true,
+          "supportsHavingClause": true,
+          "supportsOrderBy": true,
+          "supportsDistinct": true,
+          "supportsCountDistinct": true,
+          "supportsPagination": true,
+          "supportsLod": false,
+          "supportsQueryWithLodSR": false,
+          "supportsTrueCurve": true,
+          "supportsQueryWithDatumTransformation": true,
+          "supportsReturningQueryExtent": true,
+          "supportsQueryWithDistance": true,
+          "supportsSqlExpression": true,
+          "supportsTimeRelation": true,
+          "supportsSqlFormat": false,
+          "supportsQueryAnalytic": true
+        },
+        "supportsDatumTransformation": true,
+        "advancedQueryAnalyticCapabilities": {
+          "supportsLinearRegression": true,
+          "supportsAsync": false,
+          "supportsPercentileAnalytic": true
+        },
+        "dateFieldsTimeReference": null,
+        "preferredTimeReference": null,
+        "datesInUnknownTimezone": false,
+        "hasGeometryProperties": true,
+        "geometryProperties": {
+          "shapeAreaFieldName": "SHAPE.AREA",
+          "shapeLengthFieldName": "SHAPE.LEN",
+          "units": "esriDecimalDegrees"
+        },
+        "hasMetadata": true,
+        "isDataArchived": false,
+        "archivingInfo": {
+          "supportsQueryWithHistoricMoment": false,
+          "startArchivingMoment": -1
+        },
+        "supportsCoordinatesQuantization": true,
+        "supportsDynamicLegends": true
+      },
+      "rural": {
+        "displayFieldName": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "fieldAliases": {
+          "OBJECTID": "OBJECTID",
+          "OGF_ID": "OGF_ID",
+          "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+          "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+          "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+          "SYSTEM_DATETIME": "SYSTEM_DATETIME",
+          "CLASS_SUBTYPE": "CLASS_SUBTYPE",
+          "LOT_IDENT": "LOT_IDENT",
+          "CONCESSION_IDENT": "CONCESSION_IDENT",
+          "GEOGRAPHIC_TOWNSHIP_NAME": "GEOGRAPHIC_TOWNSHIP_NAME",
+          "ROAD_ALLOWANCE_STATUS_FLG": "ROAD_ALLOWANCE_STATUS_FLG",
+          "VERIFICATION_STATUS_FLG": "VERIFICATION_STATUS_FLG",
+          "VERIFICATION_STATUS_DATE": "VERIFICATION_STATUS_DATE"
+        },
+        "fields": [
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID"
+          },
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID"
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "CLASS_SUBTYPE",
+            "type": "esriFieldTypeString",
+            "alias": "CLASS_SUBTYPE",
+            "length": 75
+          },
+          {
+            "name": "LOT_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "LOT_IDENT",
+            "length": 100
+          },
+          {
+            "name": "CONCESSION_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "CONCESSION_IDENT",
+            "length": 100
+          },
+          {
+            "name": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "length": 100
+          },
+          {
+            "name": "ROAD_ALLOWANCE_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ROAD_ALLOWANCE_STATUS_FLG",
+            "length": 8
+          },
+          {
+            "name": "VERIFICATION_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "VERIFICATION_STATUS_FLG",
+            "length": 10
+          },
+          {
+            "name": "VERIFICATION_STATUS_DATE",
+            "type": "esriFieldTypeDate",
+            "alias": "VERIFICATION_STATUS_DATE",
+            "length": 8
+          }
+        ],
+        "features": [
+          {
+            "attributes": {
+              "OBJECTID": 290594,
+              "OGF_ID": 201246756,
+              "LOCATION_ACCURACY": "Within 100 metres",
+              "GEOMETRY_UPDATE_DATETIME": null,
+              "EFFECTIVE_DATETIME": 1099302225000,
+              "SYSTEM_DATETIME": 1107426432000,
+              "CLASS_SUBTYPE": "Lot, Improved",
+              "LOT_IDENT": "LOT 26",
+              "CONCESSION_IDENT": "CON 5",
+              "GEOGRAPHIC_TOWNSHIP_NAME": "OPS",
+              "ROAD_ALLOWANCE_STATUS_FLG": null,
+              "VERIFICATION_STATUS_FLG": "Verified",
+              "VERIFICATION_STATUS_DATE": 1083758400000
+            }
+          }
+        ]
+      },
+      "remote": {
+        "displayFieldName": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "fieldAliases": {
+          "OBJECTID": "OBJECTID",
+          "OGF_ID": "OGF_ID",
+          "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+          "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+          "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+          "SYSTEM_DATETIME": "SYSTEM_DATETIME",
+          "CLASS_SUBTYPE": "CLASS_SUBTYPE",
+          "LOT_IDENT": "LOT_IDENT",
+          "CONCESSION_IDENT": "CONCESSION_IDENT",
+          "GEOGRAPHIC_TOWNSHIP_NAME": "GEOGRAPHIC_TOWNSHIP_NAME",
+          "ROAD_ALLOWANCE_STATUS_FLG": "ROAD_ALLOWANCE_STATUS_FLG",
+          "VERIFICATION_STATUS_FLG": "VERIFICATION_STATUS_FLG",
+          "VERIFICATION_STATUS_DATE": "VERIFICATION_STATUS_DATE"
+        },
+        "fields": [
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID"
+          },
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID"
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "CLASS_SUBTYPE",
+            "type": "esriFieldTypeString",
+            "alias": "CLASS_SUBTYPE",
+            "length": 75
+          },
+          {
+            "name": "LOT_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "LOT_IDENT",
+            "length": 100
+          },
+          {
+            "name": "CONCESSION_IDENT",
+            "type": "esriFieldTypeString",
+            "alias": "CONCESSION_IDENT",
+            "length": 100
+          },
+          {
+            "name": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "GEOGRAPHIC_TOWNSHIP_NAME",
+            "length": 100
+          },
+          {
+            "name": "ROAD_ALLOWANCE_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ROAD_ALLOWANCE_STATUS_FLG",
+            "length": 8
+          },
+          {
+            "name": "VERIFICATION_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "VERIFICATION_STATUS_FLG",
+            "length": 10
+          },
+          {
+            "name": "VERIFICATION_STATUS_DATE",
+            "type": "esriFieldTypeDate",
+            "alias": "VERIFICATION_STATUS_DATE",
+            "length": 8
+          }
+        ],
+        "features": []
+      },
+      "offer": "<meta name=\"twitter:image\" content=\"https://www.arcgis.com/sharing/rest/content/items/960b8dccf21740e99448e47941ee84d6_2/info/thumbnail/thumbnail1539193032285.png?w=500\">"
+    },
+    "geographic-township-improved": {
+      "package": {
+        "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+        "success": true,
+        "result": {
+          "access_instructions": {
+            "en": "",
+            "fr": ""
+          },
+          "access_level": "open",
+          "asset_type": "dataset",
+          "author": "",
+          "author_email": "",
+          "creator_user_id": "faba29e3-f7ad-4b37-ad77-3ce832d12630",
+          "current_as_of": "2024-12-16",
+          "exemption": "none",
+          "exemption_rationale": {
+            "en": "",
+            "fr": ""
+          },
+          "geographic_coverage_translated": {
+            "en": "Ontario",
+            "fr": "Ontario"
+          },
+          "geographic_granularity": "",
+          "id": "f4a8f715-894b-4b70-8244-7f5b4ca75876",
+          "isopen": false,
+          "keywords": {
+            "en": [
+              "Economy and Business",
+              "Environment and Natural Resources",
+              "Environment and energy",
+              "townships"
+            ],
+            "fr": [
+              "Économie et affaires",
+              "Environnement et richesses naturelles",
+              "Environnement et énergie",
+              "cantons"
+            ]
+          },
+          "license_id": "OGL-ON-1.0",
+          "license_title": "Open Government Licence – Ontario",
+          "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+          "maintainer": null,
+          "maintainer_branch": {
+            "en": "Divisional Support Branch",
+            "fr": "Direction du soutien à la Division"
+          },
+          "maintainer_email": "jennifer.mcmurray@ontario.ca",
+          "maintainer_translated": {
+            "en": "Office of the Surveyor General",
+            "fr": "Bureau de l'arpenteur général"
+          },
+          "metadata_created": "2020-01-11T08:27:45.052614",
+          "metadata_modified": "2025-10-23T17:58:56.714780",
+          "name": "geographic-township-improved",
+          "notes": "A Township is a land subdivision in Ontario.\r\n\r\nThis information was captured through the Ontario Base Mapping Program, is\r\nmaintained by the Ministry of Natural Resources and distributed through Geospatial Ontario (GEO) Warehouse.\r\n\r\nThe spatial accuracy for some of the townships was improved through the\r\nOntario Parcel, Township Realignment and Township Improvement projects.\r\n\r\nImprovements may include:\r\n\r\n  * road allowance widths\r\n  * spatial changes to better represent where the township boundaries are located\r\n  * more consistent concession names\r\n\r\nMaterials used to improve the location of township lines may include:\r\n\r\n  * township Improvement plots\r\n  * survey information i.e. retracements\r\n  * original township plans\r\n  * surveys notes\r\n  * the physical features e.g. fence lines in the corporate editing environment\r\n  * water bodies\r\n  * GPS Ontario Road Network geometry\r\n\r\nThis product requires the use of geographic information system (GIS) software.",
+          "notes_translated": {
+            "en": "A Township is a land subdivision in Ontario.\r\n\r\nThis information was captured through the Ontario Base Mapping Program, is\r\nmaintained by the Ministry of Natural Resources and distributed through Geospatial Ontario (GEO) Warehouse.\r\n\r\nThe spatial accuracy for some of the townships was improved through the\r\nOntario Parcel, Township Realignment and Township Improvement projects.\r\n\r\nImprovements may include:\r\n\r\n  * road allowance widths\r\n  * spatial changes to better represent where the township boundaries are located\r\n  * more consistent concession names\r\n\r\nMaterials used to improve the location of township lines may include:\r\n\r\n  * township Improvement plots\r\n  * survey information i.e. retracements\r\n  * original township plans\r\n  * surveys notes\r\n  * the physical features e.g. fence lines in the corporate editing environment\r\n  * water bodies\r\n  * GPS Ontario Road Network geometry\r\n\r\nThis product requires the use of geographic information system (GIS) software.",
+            "fr": "En Ontario, un canton est un lotissement.\r\n\r\nCes donnees, recueillies dans le cadre du Programme de cartographie de base de\r\nl'Ontario, sont tenues a jour par le ministere des Richesses naturelles et\r\ndiffusees par l'entremise de l'Entrepot d'Information géospatiale de l'Ontario (IGO).\r\n\r\nOn a accru la precision du positionnement spatial de certains cantons dans le\r\ncadre du projet Parcelles de l'Ontario et des projets de realignement et\r\nd'amelioration des cantons.\r\n\r\nLes ameliorations apportees peuvent comprendre :\r\n\r\n  * l'accroissement de la largeur des reserves routieres\r\n  * des modifications spatiales qui visent a mieux representer l'emplacement des limites des cantons\r\n  * l'uniformisation des noms des concessions\r\n\r\nLes elements utilises pour accroitre la precision du positionnement des\r\nlimites des cantons peuvent comprendre :\r\n\r\n  * des plans d'amelioration des cantons\r\n  * des donnees d'arpentage (p. ex., retraces)\r\n  * les plans d'origine des cantons\r\n  * des notes d'arpentage\r\n  * les entites physiques (p. ex., clotures dans l'environnement d'edition d'entreprise)\r\n  * des plans d'eau\r\n  * des donnees GPS geometriques de la base de donnees Reseau routier de l'Ontario.\r\n\r\nCe produit necessite l'utilisation de logiciels du SIG.\r\n\r\n  * [ITO]: Information géospatiale de l'Ontario\r\n  * [SIG]: système d’information géographique\r\n\r\n"
+          },
+          "num_resources": 2,
+          "num_tags": 8,
+          "opened_date": "2013-07-02",
+          "organization": {
+            "id": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+            "name": "natural-resources",
+            "title": "",
+            "type": "organization",
+            "description": "",
+            "image_url": "2022-09-12-211950.429568mnrf-small.jpg",
+            "created": "2022-09-08T20:43:59.845861",
+            "is_organization": true,
+            "approval_status": "approved",
+            "state": "active"
+          },
+          "owner_org": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+          "private": false,
+          "state": "active",
+          "title": "Geographic Township Improved",
+          "title_translated": {
+            "en": "Geographic Township Improved",
+            "fr": "Cantons géographiques (version améliorée)"
+          },
+          "type": "dataset",
+          "update_frequency": "yearly",
+          "url": "",
+          "version": null,
+          "resources": [
+            {
+              "cache_last_updated": null,
+              "cache_url": null,
+              "created": "2019-12-31T10:32:19.997356",
+              "data_last_updated": "2013-07-02",
+              "data_range_end": "2013-04-25",
+              "data_range_start": "1977-01-01",
+              "datastore_active": false,
+              "datastore_contains_all_records_of_source_file": false,
+              "description": "",
+              "description_translated": {
+                "en": "",
+                "fr": ""
+              },
+              "format": "WEB",
+              "hash": "",
+              "id": "ff861d02-dc4d-46da-87dd-e28de58ce96a",
+              "language": "english",
+              "last_modified": null,
+              "metadata_modified": "2025-10-22T18:33:44.409400",
+              "mimetype": null,
+              "mimetype_inner": null,
+              "name": "Geographic Township Improved",
+              "name_translated": {
+                "en": "Geographic Township Improved",
+                "fr": "Geographic Township Improved"
+              },
+              "package_id": "f4a8f715-894b-4b70-8244-7f5b4ca75876",
+              "position": 0,
+              "resource_type": null,
+              "schema": "",
+              "size": null,
+              "state": "active",
+              "type": "data",
+              "url": "https://geohub.lio.gov.on.ca/datasets/geographic-township-improved",
+              "url_type": null,
+              "validation_options": "",
+              "validation_status": "",
+              "validation_timestamp": ""
+            },
+            {
+              "cache_last_updated": null,
+              "cache_url": null,
+              "created": "2019-12-31T10:32:19.997361",
+              "data_last_updated": "2013-07-02",
+              "data_range_end": "2013-04-25",
+              "data_range_start": "1977-01-01",
+              "datastore_active": false,
+              "datastore_contains_all_records_of_source_file": false,
+              "description": "",
+              "description_translated": {
+                "en": "",
+                "fr": ""
+              },
+              "format": "WEB",
+              "hash": "",
+              "id": "e2d045e7-6c85-431c-924a-ebc491d7c4f7",
+              "language": "french",
+              "last_modified": null,
+              "metadata_modified": "2025-10-22T18:33:44.409490",
+              "mimetype": null,
+              "mimetype_inner": null,
+              "name": "Cantons géographiques (version améliorée)",
+              "name_translated": {
+                "en": "Cantons géographiques (version améliorée)",
+                "fr": "Cantons géographiques (version améliorée)"
+              },
+              "package_id": "f4a8f715-894b-4b70-8244-7f5b4ca75876",
+              "position": 1,
+              "resource_type": null,
+              "schema": "",
+              "size": null,
+              "state": "active",
+              "type": "data",
+              "url": "https://geohub-fr.lio.gov.on.ca/datasets/cantons-g%C3%A9ographiques-version-am%C3%A9lior%C3%A9e",
+              "url_type": null,
+              "validation_options": "",
+              "validation_status": "",
+              "validation_timestamp": ""
+            }
+          ],
+          "tags": [
+            {
+              "display_name": "Economy and Business",
+              "id": "af3c51e1-ed85-4b1d-ad87-ae1eef6234e5",
+              "name": "Economy and Business",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environment and Natural Resources",
+              "id": "159d5716-5d3d-4045-a948-22e5bbde0485",
+              "name": "Environment and Natural Resources",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environment and energy",
+              "id": "bdbfe9a5-eaed-4d6e-bc1c-32bb81619817",
+              "name": "Environment and energy",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environnement et richesses naturelles",
+              "id": "7a6f2b04-9cd9-4e1b-a8a6-ded7082fca41",
+              "name": "Environnement et richesses naturelles",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Environnement et énergie",
+              "id": "9f727fdb-438e-444b-bedf-71e7d6621726",
+              "name": "Environnement et énergie",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "cantons",
+              "id": "71626501-6d08-4402-93b7-4cdb707e9329",
+              "name": "cantons",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "townships",
+              "id": "efd9a8b9-e3c8-4cc9-b164-7a1d22a00451",
+              "name": "townships",
+              "state": "active",
+              "vocabulary_id": null
+            },
+            {
+              "display_name": "Économie et affaires",
+              "id": "d6d2f1a2-956a-4938-9670-ebd690a5456e",
+              "name": "Économie et affaires",
+              "state": "active",
+              "vocabulary_id": null
+            }
+          ],
+          "groups": [],
+          "relationships_as_subject": [],
+          "relationships_as_object": []
+        }
+      },
+      "item": {
+        "id": "a159cf53aefb46ac806cda5c5f79792c",
+        "owner": "LandInformationOntario",
+        "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+        "orgId": "a03W7iZ8T3s5vB7p",
+        "created": 1531422859000,
+        "modified": 1784981751000,
+        "guid": null,
+        "name": null,
+        "title": "Geographic Township Improved",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Metadata",
+          "Service"
+        ],
+        "description": "<p>A Township is a land subdivision in Ontario.</p><div><p><br /></p><div><p>This information was captured through the Ontario Base Mapping Program, is maintained by the Ministry of Natural Resources and distributed through Land Information Ontario (LIO) Warehouse.</p><div><p><br /></p><div><p>The spatial accuracy for some of the townships was improved through the Ontario Parcel, Township Realignment and Township Improvement projects.</p><div><p><br /></p><div><p>Improvements may include:</p><ul><li>road allowance widths</li><li>spatial changes to better represent where the township boundaries are located</li><li>more consistent concession names</li></ul><p>Materials used to improve the location of township lines may include:</p><ul><li>township Improvement plots</li><li>survey information i.e. retracements</li><li>original township plans</li><li>surveys notes</li><li>the physical features e.g. fence lines in the corporate editing environment</li><li>water bodies</li><li>GPS Ontario Road Network geometry</li></ul><p>Please see the full metadata record for more information.</p></div><div><p><br /></p><div><div><strong>Additional Documentation</strong><br /></div><div><ul><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Geographic%20Township,%20Improved%20-%20Data%20Description.pdf' target='_blank' rel='nofollow ugc noopener noreferrer'>Geographic Township, Improved - Data Description (PDF)</a><br /></li><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Geographic%20Township,%20Improved%20-%20Documentation.docx' target='_blank' rel='nofollow ugc noopener noreferrer'>Geographic Township, Improved - Documentation (Word)</a><br /></li><li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Geographic%20Township%20Improved%20-%20FAQ.pdf' target='_blank' rel='nofollow ugc noopener noreferrer'>Geographic Township, Improved - FAQ (PDF)</a></li></ul><div><br /></div><div><strong>Status</strong><br /></div><div></div><div>On going: Data is continually being updated<br /></div><div><br /></div><div><strong>Maintenance and Update Frequency</strong><br /></div><div>Annually: Data is updated every year<br /></div><div><br /></div><div>Office of the Surveyor General, <a href='mailto:landtenuremapping@ontario.ca' target='_blank' rel='nofollow ugc noopener noreferrer'>landtenuremapping@ontario.ca</a></div></div></div></div></div></div></div></div></div>",
+        "tags": [
+          "administration",
+          "base mapping",
+          "boundaries",
+          "digital topographic data base",
+          "dtdb",
+          "GeospatialOntario",
+          "land management",
+          "land use planning",
+          "lands",
+          "mapping",
+          "municipal planning",
+          "obm",
+          "ODCSYNC",
+          "ontario basic mapping",
+          "open data",
+          "planning/development",
+          "township fabric",
+          "townships",
+          "Divisional Support Branch",
+          "MNR",
+          "Ministry of Natural Resources"
+        ],
+        "snippet": "A guide to the fundamental land subdivision of the Province. The geographic township fabric is shown as it was originally surveyed, unless it has been annulled upon the instruction of the Surveyor General.",
+        "thumbnail": "thumbnail/thumbnail1531424067549.png",
+        "documentation": null,
+        "extent": [
+          [
+            -95.1569900512695,
+            41.6722984313965
+          ],
+          [
+            -74.3079833984375,
+            56.8501167297363
+          ]
+        ],
+        "categories": [
+          "/Categories/Natural Resources/Regional Operations Division/Office of the Surveyor General"
+        ],
+        "spatialReference": null,
+        "accessInformation": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence – Ontario</a>",
+        "classification": null,
+        "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence – Ontario</a>",
+        "culture": "en-ca",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open06/MapServer/1",
+        "proxyFilter": null,
+        "access": "public",
+        "size": 122,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "commentsEnabled": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 258112,
+        "contentStatus": "public_authoritative",
+        "scoreCompleteness": 100,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791075600000
+      },
+      "child": {
+        "currentVersion": 10.91,
+        "cimVersion": "2.9.0",
+        "id": 1,
+        "name": "Geographic Township Improved",
+        "type": "Feature Layer",
+        "description": "This data is subject to terms of use.",
+        "geometryType": "esriGeometryPolygon",
+        "sourceSpatialReference": {
+          "wkid": 4269,
+          "latestWkid": 4269,
+          "xyTolerance": 2e-7,
+          "zTolerance": 2e-7,
+          "mTolerance": 2e-7,
+          "falseX": -399.9999999,
+          "falseY": -399.9999999,
+          "xyUnits": 10000000,
+          "falseZ": 0,
+          "zUnits": 1,
+          "falseM": 0,
+          "mUnits": 1
+        },
+        "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+        "parentLayer": null,
+        "subLayers": [],
+        "minScale": 0,
+        "maxScale": 0,
+        "referenceScale": 0,
+        "drawingInfo": {
+          "renderer": {
+            "type": "simple",
+            "symbol": {
+              "type": "esriSFS",
+              "style": "esriSFSSolid",
+              "color": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "outline": {
+                "type": "esriSLS",
+                "style": "esriSLSSolid",
+                "color": [
+                  112,
+                  168,
+                  0,
+                  255
+                ],
+                "width": 0.4
+              }
+            }
+          },
+          "scaleSymbols": true,
+          "transparency": 0,
+          "labelingInfo": null
+        },
+        "defaultVisibility": false,
+        "extent": {
+          "xmin": -95.15366999999999,
+          "ymin": 41.676559999999995,
+          "xmax": -74.32011,
+          "ymax": 56.859359999999995,
+          "spatialReference": {
+            "wkid": 4269,
+            "latestWkid": 4269,
+            "xyTolerance": 2e-7,
+            "zTolerance": 2,
+            "mTolerance": 0.001,
+            "falseX": -400,
+            "falseY": -400,
+            "xyUnits": 11258999068426.24,
+            "falseZ": 0,
+            "zUnits": 1,
+            "falseM": -100000,
+            "mUnits": 10000
+          }
+        },
+        "hasAttachments": false,
+        "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+        "displayField": "OFFICIAL_NAME",
+        "typeIdField": null,
+        "subtypeFieldName": null,
+        "subtypeField": null,
+        "defaultSubtypeCode": null,
+        "fields": [
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID",
+            "domain": null
+          },
+          {
+            "name": "OFFICIAL_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "OFFICIAL_NAME",
+            "length": 100,
+            "domain": null
+          },
+          {
+            "name": "TOWNSHIP_SURVEY_SYSTEM",
+            "type": "esriFieldTypeString",
+            "alias": "TOWNSHIP_SURVEY_SYSTEM",
+            "length": 60,
+            "domain": null
+          },
+          {
+            "name": "ANNULMENT_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ANNULMENT_STATUS_FLG",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25,
+            "domain": null
+          },
+          {
+            "name": "LOCATION_DESCR",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_DESCR",
+            "length": 2000,
+            "domain": null
+          },
+          {
+            "name": "SYSTEM_CALCULATED_AREA",
+            "type": "esriFieldTypeDouble",
+            "alias": "SYSTEM_CALCULATED_AREA",
+            "domain": null
+          },
+          {
+            "name": "USER_CALCULATED_METRIC",
+            "type": "esriFieldTypeDouble",
+            "alias": "USER_CALCULATED_METRIC",
+            "domain": null
+          },
+          {
+            "name": "GENERAL_COMMENTS",
+            "type": "esriFieldTypeString",
+            "alias": "GENERAL_COMMENTS",
+            "length": 2000,
+            "domain": null
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8,
+            "domain": null
+          },
+          {
+            "name": "SHAPE",
+            "type": "esriFieldTypeGeometry",
+            "alias": "SHAPE",
+            "domain": null
+          },
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID",
+            "domain": null
+          },
+          {
+            "name": "SHAPE.AREA",
+            "type": "esriFieldTypeDouble",
+            "alias": "SHAPE.AREA",
+            "domain": null
+          },
+          {
+            "name": "SHAPE.LEN",
+            "type": "esriFieldTypeDouble",
+            "alias": "SHAPE.LEN",
+            "domain": null
+          }
+        ],
+        "geometryField": {
+          "name": "SHAPE",
+          "type": "esriFieldTypeGeometry",
+          "alias": "SHAPE"
+        },
+        "indexes": [
+          {
+            "name": "GEOGRAPHIC_TOWNSHIP_IMPR_PK",
+            "fields": "OGF_ID",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          },
+          {
+            "name": "R204_SDE_ROWID_UK",
+            "fields": "OBJECTID",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          },
+          {
+            "name": "A302_IX1",
+            "fields": "SHAPE",
+            "isAscending": true,
+            "isUnique": true,
+            "description": ""
+          }
+        ],
+        "subtypes": [],
+        "relationships": [],
+        "canModifyLayer": true,
+        "canScaleSymbols": false,
+        "hasLabels": false,
+        "capabilities": "Map,Query,Data",
+        "maxRecordCount": 5000,
+        "supportsStatistics": true,
+        "supportsExceedsLimitStatistics": true,
+        "supportsAdvancedQueries": true,
+        "supportedQueryFormats": "JSON, geoJSON, PBF",
+        "isDataVersioned": false,
+        "ownershipBasedAccessControlForFeatures": {
+          "allowOthersToQuery": true
+        },
+        "useStandardizedQueries": true,
+        "supportedSpatialRelationships": [
+          "esriSpatialRelIntersects",
+          "esriSpatialRelContains",
+          "esriSpatialRelCrosses",
+          "esriSpatialRelEnvelopeIntersects",
+          "esriSpatialRelIndexIntersects",
+          "esriSpatialRelOverlaps",
+          "esriSpatialRelTouches",
+          "esriSpatialRelWithin",
+          "esriSpatialRelRelation"
+        ],
+        "advancedQueryCapabilities": {
+          "useStandardizedQueries": true,
+          "supportsStatistics": true,
+          "supportsPercentileStatistics": true,
+          "supportsHavingClause": true,
+          "supportsOrderBy": true,
+          "supportsDistinct": true,
+          "supportsCountDistinct": true,
+          "supportsPagination": true,
+          "supportsLod": false,
+          "supportsQueryWithLodSR": false,
+          "supportsTrueCurve": true,
+          "supportsQueryWithDatumTransformation": true,
+          "supportsReturningQueryExtent": true,
+          "supportsQueryWithDistance": true,
+          "supportsSqlExpression": true,
+          "supportsTimeRelation": true,
+          "supportsSqlFormat": false,
+          "supportsQueryAnalytic": true
+        },
+        "supportsDatumTransformation": true,
+        "advancedQueryAnalyticCapabilities": {
+          "supportsLinearRegression": true,
+          "supportsAsync": false,
+          "supportsPercentileAnalytic": true
+        },
+        "dateFieldsTimeReference": null,
+        "preferredTimeReference": null,
+        "datesInUnknownTimezone": false,
+        "hasGeometryProperties": true,
+        "geometryProperties": {
+          "shapeAreaFieldName": "SHAPE.AREA",
+          "shapeLengthFieldName": "SHAPE.LEN",
+          "units": "esriDecimalDegrees"
+        },
+        "hasMetadata": true,
+        "isDataArchived": false,
+        "archivingInfo": {
+          "supportsQueryWithHistoricMoment": false,
+          "startArchivingMoment": -1
+        },
+        "supportsCoordinatesQuantization": true,
+        "supportsDynamicLegends": true
+      },
+      "rural": {
+        "displayFieldName": "OFFICIAL_NAME",
+        "fieldAliases": {
+          "OBJECTID": "OBJECTID",
+          "OGF_ID": "OGF_ID",
+          "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+          "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+          "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+          "SYSTEM_DATETIME": "SYSTEM_DATETIME",
+          "OFFICIAL_NAME": "OFFICIAL_NAME",
+          "TOWNSHIP_SURVEY_SYSTEM": "TOWNSHIP_SURVEY_SYSTEM",
+          "ANNULMENT_STATUS_FLG": "ANNULMENT_STATUS_FLG"
+        },
+        "fields": [
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID"
+          },
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID"
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "OFFICIAL_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "OFFICIAL_NAME",
+            "length": 100
+          },
+          {
+            "name": "TOWNSHIP_SURVEY_SYSTEM",
+            "type": "esriFieldTypeString",
+            "alias": "TOWNSHIP_SURVEY_SYSTEM",
+            "length": 60
+          },
+          {
+            "name": "ANNULMENT_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ANNULMENT_STATUS_FLG",
+            "length": 8
+          }
+        ],
+        "features": [
+          {
+            "attributes": {
+              "OBJECTID": 585,
+              "OGF_ID": 55338849,
+              "LOCATION_ACCURACY": "Within 100 metres",
+              "GEOMETRY_UPDATE_DATETIME": null,
+              "EFFECTIVE_DATETIME": 1106307873000,
+              "SYSTEM_DATETIME": 1108558149000,
+              "OFFICIAL_NAME": "OPS",
+              "TOWNSHIP_SURVEY_SYSTEM": "DOUBLE FT.",
+              "ANNULMENT_STATUS_FLG": null
+            }
+          }
+        ]
+      },
+      "remote": {
+        "displayFieldName": "OFFICIAL_NAME",
+        "fieldAliases": {
+          "OBJECTID": "OBJECTID",
+          "OGF_ID": "OGF_ID",
+          "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+          "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+          "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+          "SYSTEM_DATETIME": "SYSTEM_DATETIME",
+          "OFFICIAL_NAME": "OFFICIAL_NAME",
+          "TOWNSHIP_SURVEY_SYSTEM": "TOWNSHIP_SURVEY_SYSTEM",
+          "ANNULMENT_STATUS_FLG": "ANNULMENT_STATUS_FLG"
+        },
+        "fields": [
+          {
+            "name": "OBJECTID",
+            "type": "esriFieldTypeOID",
+            "alias": "OBJECTID"
+          },
+          {
+            "name": "OGF_ID",
+            "type": "esriFieldTypeDouble",
+            "alias": "OGF_ID"
+          },
+          {
+            "name": "LOCATION_ACCURACY",
+            "type": "esriFieldTypeString",
+            "alias": "LOCATION_ACCURACY",
+            "length": 25
+          },
+          {
+            "name": "GEOMETRY_UPDATE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "GEOMETRY_UPDATE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "EFFECTIVE_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "EFFECTIVE_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "SYSTEM_DATETIME",
+            "type": "esriFieldTypeDate",
+            "alias": "SYSTEM_DATETIME",
+            "length": 8
+          },
+          {
+            "name": "OFFICIAL_NAME",
+            "type": "esriFieldTypeString",
+            "alias": "OFFICIAL_NAME",
+            "length": 100
+          },
+          {
+            "name": "TOWNSHIP_SURVEY_SYSTEM",
+            "type": "esriFieldTypeString",
+            "alias": "TOWNSHIP_SURVEY_SYSTEM",
+            "length": 60
+          },
+          {
+            "name": "ANNULMENT_STATUS_FLG",
+            "type": "esriFieldTypeString",
+            "alias": "ANNULMENT_STATUS_FLG",
+            "length": 8
+          }
+        ],
+        "features": []
+      },
+      "offer": "<meta name=\"twitter:image\" content=\"https://www.arcgis.com/sharing/rest/content/items/a159cf53aefb46ac806cda5c5f79792c_1/info/thumbnail/thumbnail1531424067549.png?w=500\">"
+    }
+  },
+  "grantBodyHtml": "<main id=\"main-content\"><div class=\"body-field\"><h2>Using Information under this licence</h2><ol><li>Use of any Information indicates your acceptance of the terms below.</li><li>The Information Provider grants you a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information, including for commercial purposes, subject to the terms below.</li></ol><h3>You are free to:</h3><ol><li value=\"3\">Copy, modify, publish, translate, adapt, distribute or otherwise use the Information in any medium, mode or format for any lawful purpose.</li></ol><h3>You must, where you do any of the above:</h3><ol><li value=\"4\">Acknowledge the source of the Information by including any attribution statement specified by the Information Provider(s) and, where possible, provide a link to this licence.</li></ol><p>If the Information Provider does not provide a specific attribution statement, or if you are using Information from several Information Providers and multiple attributions are not practical for your product or application, you must use the following attribution statement:</p><p class=\"rteindent2\">Contains information licensed under the Open Government Licence&#xa0;&#x2013; Ontario.</p><ol><li value=\"5\">The terms of this licence are important, and if you fail to comply with any of them, the rights granted to you under this licence, or any similar licence granted by the Information Provider, will end automatically.</li></ol><h2>Exemptions</h2><ol><li value=\"6\">This licence does not grant you any right to use:<ol type=\"a\"><li>Personal Information;</li><li>Information or Records not accessible under the <cite>Freedom of Information and Protection of Privacy Act</cite> (Ontario);</li><li>third party rights the Information Provider is not authorized to license;</li><li>the names, crests, logos, or other official symbols of the Information Provider; and</li><li>Information subject to other intellectual property rights, including patents, trade-marks and official marks.</li></ol></li></ol><h2>Non-endorsement</h2><ol><li value=\"7\">This licence does not grant you any right to use the Information in a way that suggests any official status or that the Information Provider endorses you or your use of the Information.</li></ol><h2>No warranty</h2><ol><li value=\"8\">The Information is licensed &quot;as is&quot;, and the Information Provider excludes all representations, warranties, obligations, and liabilities, whether express or implied, to the maximum extent permitted by law.</li><li value=\"9\">The Information Provider is not liable for any errors or omissions in the Information, and will not under any circumstances be liable for any direct, indirect, special, incidental, consequential, or other loss, injury or damage caused by its use or otherwise arising in connection with this licence or the Information, even if specifically advised of the possibility of such loss, injury or damage.</li></ol><h2>Governing Law</h2><ol><li value=\"10\">This licence is governed by the laws of the Province of Ontario and the applicable laws of Canada.</li><li value=\"11\">Legal proceedings related to this licence may only be brought in the courts of Ontario.</li></ol><h2>Definitions</h2><ol><li value=\"12\">In this licence, the terms below have the following meanings:</li></ol><dl><dt><strong>&quot;Information&quot;</strong></dt><dd>means information resources or Records protected by copyright or other information or Records that are offered for use under the terms of this licence.</dd><dt><strong>&quot;Information Provider&quot;</strong></dt><dd>means His Majesty the King&#xa0;in right of Ontario.</dd><dt><strong>&quot;Personal Information&quot;</strong></dt><dd>has the meaning set out in section&#xa0;2(1) of <cite>Freedom of Information and Protection of Privacy Act</cite> (Ontario).</dd><dt><strong>&quot;Records&quot;</strong></dt><dd>has the meaning of &quot;record&quot; as set out in the <cite>Freedom of Information and Protection of Privacy Act</cite> (Ontario).</dd><dt><strong>&quot;You&quot;</strong></dt><dd>means the natural or legal person, or body of persons corporate or incorporate, acquiring rights under this licence.</dd></dl><h2>Versioning</h2><ol><li value=\"13\">This is version&#xa0;1.0 of the Open Government Licence &#x2013; Ontario. The Information Provider may make changes to the terms of this licence from time to time and issue a new version of the licence. Your use of the Information will be governed by the terms of the licence in force as of the date you accessed the information.</li></ol></div></main>",
+  "provenance": {
+    "auditDate": "2026-10-03",
+    "scope": "Native publisher JSON; complete native OGL body-field and original resource thumbnail excerpts. Full original receipts retained in Kawartha audit folder.",
+    "sources": [
+      "https://data.ontario.ca/en/dataset/lot-fabric-improved",
+      "https://data.ontario.ca/en/dataset/geographic-township-improved",
+      "https://www.ontario.ca/page/open-government-licence-ontario"
+    ]
+  }
+}
