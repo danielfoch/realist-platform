@@ -10,6 +10,7 @@ import { torontoHeritage, nearbyDevelopment, extendedCoverage } from "./extended
 import { refreshHealth } from "./snapshots";
 import { preShowingBrief } from "./brief";
 import { hamiltonLocation, hamiltonLayers, hamiltonCoverage } from "./hamilton";
+import { ontarioWellRecordsLayer, ontarioWellRecordsCoverage } from "./ontario-wells";
 import { provincialPlanningLayer, provincialPlanningCoverage } from "./provincial-planning";
 import { ontarioMunicipalLocation, ontarioMunicipalLayers, ontarioMunicipalCoverage, ontarioMarket } from "./ontario-municipal";
 import { ontarioMarketRoadmap } from "./ontario-market-roadmap";
@@ -81,6 +82,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const simcoeResult = simcoeLayers(input, location.data);
   const sarniaResult = sarniaLayers(input.address?.split(",")[0] ?? null, city, province, location.data, queryCity);
   const planningResult = provincialPlanningLayer(location.data);
+  const wellRecordsResult = ontarioWellRecordsLayer(location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
   const heritageResult = torontoHeritage(address, city, province);
@@ -103,7 +105,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const hamilton = await hamiltonResult;
   const halton = await haltonResult;
   const haltonHills = await haltonHillsResult;
-  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills, ...await yorkResult, ...await markhamResult, ...await kingstonResult, ...await waterlooResult, ...await guelphResult, ...await niagaraResult, ...await wellandResult, ...await windsorResult, ...await barrieResult, ...await bramptonResult, ...await brantfordResult, ...await quinteWestResult, ...await sudburyResult, ...await thunderBayResult, ...await sarniaResult, ...await cornwallResult, ...await simcoeResult, ...await orilliaResult, ...await orilliaCivicResult, ...bellevilleLayers(queryCity ?? city, province), ...peterboroughLayers(queryCity ?? city, province), ...northernAuditLayers(queryCity ?? city, province), ...chathamKentLayers(queryCity ?? city, province) };
+  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, ontarioWellRecords: await wellRecordsResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills, ...await yorkResult, ...await markhamResult, ...await kingstonResult, ...await waterlooResult, ...await guelphResult, ...await niagaraResult, ...await wellandResult, ...await windsorResult, ...await barrieResult, ...await bramptonResult, ...await brantfordResult, ...await quinteWestResult, ...await sudburyResult, ...await thunderBayResult, ...await sarniaResult, ...await cornwallResult, ...await simcoeResult, ...await orilliaResult, ...await orilliaCivicResult, ...bellevilleLayers(queryCity ?? city, province), ...peterboroughLayers(queryCity ?? city, province), ...northernAuditLayers(queryCity ?? city, province), ...chathamKentLayers(queryCity ?? city, province) };
   const available = Object.entries(layers).filter(([, v]) => v.status === "available").map(([name]) => name);
   const missing = Object.entries(layers).filter(([, v]) => v.status !== "available").map(([name, v]) => ({ layer: name, status: v.status }));
   const followUpQuestions = [
@@ -162,6 +164,7 @@ export async function enrichProperty(input: PropertyRequest) {
       ...(layers.heritageGrants?.status === "available" ? [{ topic: "heritage_grants", question: "Can the seller provide the historic grant agreement, invoices and records of the conservation work, including any continuing obligations?", evidenceLayers: ["heritageGrants"] }] : []),
       ...(layers.ruralSettlement?.status === "available" ? [{ topic: "rural_settlement", question: "Can the City confirm the current settlement boundary, official-plan policies, servicing and any lot-creation restrictions for this parcel?", evidenceLayers: ["ruralSettlement"] }] : []),
       ...(layers.wastewaterCatchment?.status === "available" ? [{ topic: "servicing", question: "What actual sewer or septic connection serves the property, and is capacity available for the proposed use?", evidenceLayers: ["wastewaterCatchment"] }] : []),
+      ...(layers.ontarioWellRecords.status === "available" ? [{ topic: "reported_wells", question: "Which actual well serves the property, and can the seller provide its confirmed identity, maintenance/abandonment history, recent water-quality tests and performance records? Nearby historic records do not confirm a connection or current water safety.", evidenceLayers: ["ontarioWellRecords"] }] : []),
       ...(layers.provincialPlanning.status === "available" ? [{ topic: "provincial_planning", question: "Can the City and Niagara Escarpment Commission verify current parcel-wide plan designations and any development-control requirements using legal maps, given the published mapping accuracy?", evidenceLayers: ["provincialPlanning"] }] : []),
       ...(layers.hamiltonConservation ? [{ topic: "hamilton_conservation", question: "Which of Hamilton's four conservation authorities has jurisdiction over the parcel, and what current regulation or permits apply to the planned work?", evidenceLayers: ["hamiltonConservation"] }] : []),
       ...(layers.permits.status === "available" ? [{ topic: "permits", question: "Can the seller provide final inspections and occupancy approval for the work described in the permit records?", evidenceLayers: ["permits"] }] : []),
@@ -213,6 +216,7 @@ export async function coverage() {
       sarnia,
       cornwall,
       simcoe,
+      await ontarioWellRecordsCoverage(),
       await orilliaCoverage(),
       await orilliaCivicCoverage(),
       bellevilleCoverage(),

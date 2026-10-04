@@ -1,0 +1,1072 @@
+{
+  "catalogue": {
+    "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+    "success": true,
+    "result": {
+      "access_instructions": {
+        "en": "",
+        "fr": ""
+      },
+      "access_level": "open",
+      "asset_type": "dataset",
+      "author": "",
+      "author_email": "",
+      "creator_user_id": "faba29e3-f7ad-4b37-ad77-3ce832d12630",
+      "exemption": "none",
+      "exemption_rationale": {
+        "en": "",
+        "fr": ""
+      },
+      "geographic_coverage_translated": {
+        "en": "Ontario",
+        "fr": "Ontario"
+      },
+      "geographic_granularity": "",
+      "id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+      "isopen": false,
+      "keywords": {
+        "en": [
+          "Economy and Business",
+          "wells",
+          "water",
+          "water management",
+          "land",
+          "land management",
+          "aquifer",
+          "water supply"
+        ],
+        "fr": [
+          "\u00c9conomie et affaires",
+          "puits",
+          "eau",
+          "gestion de l'eau",
+          "terres",
+          "am\u00e9nagement du territoire",
+          "aquif\u00e8re",
+          "approvisionnement en eau"
+        ]
+      },
+      "license_id": "OGL-ON-1.0",
+      "license_title": "Open Government Licence \u2013 Ontario",
+      "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "maintainer": null,
+      "maintainer_branch": {
+        "en": "",
+        "fr": ""
+      },
+      "maintainer_email": "wellshelpdesk@ontario.ca",
+      "maintainer_translated": {
+        "en": "",
+        "fr": ""
+      },
+      "metadata_created": "2020-01-11T01:53:01.335771",
+      "metadata_modified": "2026-08-13T19:14:59.056453",
+      "name": "well-records",
+      "notes": "This dataset provides information submitted by well contractors as prescribed\r\nby Regulation 903, and is stored in the Water Well Information System (WWIS).\r\nSpatial information for all of the well records reported in Ontario are also\r\nprovided.\r\n\r\n[Well record map](https://www.ontario.ca/page/map-well-records) \r\n\r\n  *[WWIS]: Water Well Information System\r\n\r\nThis data is related to: \r\n\r\n* [Well records](https://www.ontario.ca/page/well-records) \r\n* [Map: Well records](https://www.ontario.ca/environment-and-energy/map-well-records) \r\n* [Topic: Drinking water](https://www.ontario.ca/page/drinking-water) \r\n* Law: [Reg. 903: Wells](https://www.ontario.ca/laws/regulation/900903) \r\n\r\nRelated data:\r\n\r\n* [Petroleum wells](https://www.ontario.ca/data/petroleum-wells) \r\n\r\n",
+      "notes_translated": {
+        "en": "This dataset provides information submitted by well contractors as prescribed\r\nby Regulation 903, and is stored in the Water Well Information System (WWIS).\r\nSpatial information for all of the well records reported in Ontario are also\r\nprovided.\r\n\r\n[Well record map](https://www.ontario.ca/page/map-well-records) \r\n\r\n  *[WWIS]: Water Well Information System\r\n\r\nThis data is related to: \r\n\r\n* [Well records](https://www.ontario.ca/page/well-records) \r\n* [Map: Well records](https://www.ontario.ca/environment-and-energy/map-well-records) \r\n* [Topic: Drinking water](https://www.ontario.ca/page/drinking-water) \r\n* Law: [Reg. 903: Wells](https://www.ontario.ca/laws/regulation/900903) \r\n\r\nRelated data:\r\n\r\n* [Petroleum wells](https://www.ontario.ca/data/petroleum-wells) \r\n\r\n",
+        "fr": "Cet ensemble de donnees sur les registres de puits fournit des renseignements\r\nqui ont ete soumis par les entrepreneurs de puits comme l'exige le Reglement\r\n903, et est conserve dans le Systeme d'information sur les puits d'eau (SIPE).\r\nDes donnees spatiales relatives a tous les registres de puits soumis en\r\nOntario sont egalement fournies.\r\n\r\n[Carte des registres de puits](https://www.ontario.ca/fr/page/registre-de-puits)\r\n\r\n  *[SIPE]: Syst\u00e8me d\u2019information sur les puits d\u2019eau\r\n\r\nCes donn\u00e9es sont li\u00e9es \u00e0 :\r\n\r\n* [Registres de puits](https://www.ontario.ca/fr/page/registres-de-puits) \r\n* [Carte : Registre de puits](https://www.ontario.ca/fr/environnement-et-energie/registre-de-puits)\r\n* [Sujet : Eau potable](https://www.ontario.ca/fr/recherche/resultats-de-recherche?balise=Eau%20potable) \r\n* Loi : [R\u00e8gl. 903 : Puits](https://www.ontario.ca/fr/lois/reglement/900903) \r\n\r\nDonn\u00e9es connexes :\r\n\r\n* [Puits de p\u00e9trole](https://www.ontario.ca/fr/donnees/puits-de-petrole) \r\n\r\n"
+      },
+      "num_resources": 5,
+      "num_tags": 16,
+      "opened_date": "2013-11-16",
+      "organization": {
+        "id": "0f5368c3-b553-4f82-8909-80e8756f24f4",
+        "name": "environment-conservation-and-parks",
+        "title": "Environment, Conservation and Parks",
+        "type": "organization",
+        "description": "Leading to healthier communities and economic prosperity through protecting Ontario\u2019s air, land and water.",
+        "image_url": "2020-03-19-202918.141808environment.jpg",
+        "created": "2019-12-31T09:18:30.191952",
+        "is_organization": true,
+        "approval_status": "approved",
+        "state": "active"
+      },
+      "owner_org": "0f5368c3-b553-4f82-8909-80e8756f24f4",
+      "private": false,
+      "state": "active",
+      "title": "Well Records",
+      "title_translated": {
+        "en": "Well Records",
+        "fr": "Registres de puits"
+      },
+      "type": "dataset",
+      "update_frequency": "biannually",
+      "url": "",
+      "version": null,
+      "resources": [
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:00:34.629194",
+          "data_last_updated": "2026-07-31",
+          "data_range_end": "2026-06-30",
+          "data_range_start": "1899-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "ZIP",
+          "hash": "",
+          "id": "0ba34f33-6c7a-467d-b5bb-aac1499c8e1a",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2026-07-31T14:59:01.538006",
+          "mimetype": "application/zip",
+          "mimetype_inner": null,
+          "name": "WWIS - Microsoft Access",
+          "name_translated": {
+            "en": "WWIS - Microsoft Access",
+            "fr": "WWIS - Microsoft Access"
+          },
+          "package_id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+          "position": 0,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://files.ontario.ca/moe_mapping/downloads/2Water/Well_Records/WWIS2_2026a.zip",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:00:34.629199",
+          "data_last_updated": "2026-07-31",
+          "data_range_end": "2026-06-30",
+          "data_range_start": "1899-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "SHP",
+          "hash": "",
+          "id": "eff25bb8-d7d3-412d-a2ac-18c0a1a7bccc",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2026-07-31T14:59:40.015550",
+          "mimetype": "application/zip",
+          "mimetype_inner": null,
+          "name": "WWIS - GIS Shapefile",
+          "name_translated": {
+            "en": "WWIS - GIS Shapefile",
+            "fr": "WWIS - GIS Shapefile"
+          },
+          "package_id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+          "position": 1,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://files.ontario.ca/moe_mapping/downloads/2Water/Well_Records/WWIS_2026a.zip",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:00:34.629202",
+          "data_last_updated": "2016-07-31",
+          "data_range_end": "2026-06-30",
+          "data_range_start": "1899-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "ZIP",
+          "hash": "",
+          "id": "291d4199-42f3-4617-a9f5-4ca72f6f1f38",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2026-07-31T14:59:40.015624",
+          "mimetype": "application/zip",
+          "mimetype_inner": null,
+          "name": "Well Record Data Report",
+          "name_translated": {
+            "en": "Well Record Data Report",
+            "fr": "Well Record Data Report"
+          },
+          "package_id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+          "position": 2,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://files.ontario.ca/moe_mapping/downloads/2Water/Well_Records/WW_Reports_2026a.zip",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:00:34.629204",
+          "data_last_updated": "2026-07-21",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "PDF",
+          "hash": "",
+          "id": "3031344e-e3f2-48d5-888c-c1deadfd2f77",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2026-07-31T11:45:47.194482",
+          "mimetype": "application/pdf",
+          "mimetype_inner": null,
+          "name": "Metadata record",
+          "name_translated": {
+            "en": "Metadata record",
+            "fr": "record de m\u00e9tadonn\u00e9es"
+          },
+          "package_id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+          "position": 3,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "technical_document",
+          "url": "https://files.ontario.ca/moe_mapping/downloads/metadata/opendata/Wells_Records_metadata_EN_2026a.pdf",
+          "url_type": "",
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2021-11-22T22:25:02.619984",
+          "data_last_updated": "2026-07-31",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "PDF",
+          "hash": "",
+          "id": "2ebe6510-a21d-4f69-a11b-b648dfb6bd2f",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2026-07-31T11:55:43.791160",
+          "mimetype": "application/pdf",
+          "mimetype_inner": null,
+          "name": "Metadata record",
+          "name_translated": {
+            "en": "Metadata record",
+            "fr": "record de m\u00e9tadonn\u00e9es"
+          },
+          "package_id": "c1a624a7-fbd4-4bc8-8e65-41b294443123",
+          "position": 4,
+          "publically_available_date": "2021-10-28",
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "technical_document",
+          "url": "https://files.ontario.ca/moe_mapping/downloads/metadata/opendata/Wels_Records_metadata_FR_2026a.pdf",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        }
+      ],
+      "tags": [
+        {
+          "display_name": "Economy and Business",
+          "id": "af3c51e1-ed85-4b1d-ad87-ae1eef6234e5",
+          "name": "Economy and Business",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "am\u00e9nagement du territoire",
+          "id": "92063ac7-b7f2-496f-98ac-6d046d0dc15f",
+          "name": "am\u00e9nagement du territoire",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "approvisionnement en eau",
+          "id": "19f5e1cf-8794-42af-8ff6-02ee7dd94b20",
+          "name": "approvisionnement en eau",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "aquifer",
+          "id": "5a47c46a-141a-476a-aa59-754d9f4c25c7",
+          "name": "aquifer",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "aquif\u00e8re",
+          "id": "becaef52-c75e-4cc1-8219-98f82be5e63a",
+          "name": "aquif\u00e8re",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "eau",
+          "id": "8860dfe0-943e-4ccd-8b0a-58bafbe27dc6",
+          "name": "eau",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "gestion de l'eau",
+          "id": "7560cbcc-2c8b-4378-a7bd-140b52a08396",
+          "name": "gestion de l'eau",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "land",
+          "id": "4eb10cc2-2e55-439e-ba27-a8ec80a8fe0c",
+          "name": "land",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "land management",
+          "id": "82074a3b-c2be-49ee-8e7b-523a4b74701b",
+          "name": "land management",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "puits",
+          "id": "e9b5413b-a9d8-41e8-b1bd-52c7c4944a8b",
+          "name": "puits",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "terres",
+          "id": "39865c91-4480-43a6-bfce-9967a49bbd70",
+          "name": "terres",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "water",
+          "id": "27d3e02a-4005-4ccf-afe7-4e7aca4172b4",
+          "name": "water",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "water management",
+          "id": "a3af1d9c-5d05-4ec7-8a5d-6a7e8098457b",
+          "name": "water management",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "water supply",
+          "id": "63ca2bfa-7db7-4bd3-8b9a-fa350da76021",
+          "name": "water supply",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "wells",
+          "id": "d939222f-71cc-4caa-91f6-7837f17903ac",
+          "name": "wells",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "\u00c9conomie et affaires",
+          "id": "d6d2f1a2-956a-4938-9670-ebd690a5456e",
+          "name": "\u00c9conomie et affaires",
+          "state": "active",
+          "vocabulary_id": null
+        }
+      ],
+      "groups": [],
+      "relationships_as_subject": [],
+      "relationships_as_object": []
+    }
+  },
+  "root": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "serviceDescription": "<div><p>Version: n/a</p><p>Build: 2026-08-31 11:06:54</p></div>",
+    "mapName": "Wells",
+    "description": "<div><p id='serviceVersion'>Version: n/a</p><p id='serviceBuild'>Build: 2026-08-31 11:06:54</p></div>",
+    "copyrightText": "",
+    "supportsDynamicLayers": true,
+    "layers": [
+      {
+        "id": 0,
+        "name": "Wells",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 300000,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "Wells_Report",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 50,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": [],
+    "spatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857,
+      "xyTolerance": 0.001,
+      "zTolerance": 0.001,
+      "mTolerance": 0.001,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "xyUnits": 10000,
+      "falseZ": -100000,
+      "zUnits": 10000,
+      "falseM": -100000,
+      "mUnits": 10000
+    },
+    "singleFusedMapCache": false,
+    "initialExtent": {
+      "xmin": -11500122.92136151,
+      "ymin": 5036242.1443993375,
+      "xmax": -7366484.50153849,
+      "ymax": 7643339.618800662,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857,
+        "xyTolerance": 0.001,
+        "zTolerance": 0.001,
+        "mTolerance": 0.001,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "xyUnits": 10000,
+        "falseZ": -100000,
+        "zUnits": 10000,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "fullExtent": {
+      "xmin": -10590558.4933,
+      "ymin": 5122812.8336,
+      "xmax": -8276037.6774,
+      "ymax": 7556801.780000001,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857,
+        "xyTolerance": 0.001,
+        "zTolerance": 0.001,
+        "mTolerance": 0.001,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "xyUnits": 10000,
+        "falseZ": -100000,
+        "zUnits": 10000,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "datesInUnknownTimezone": false,
+    "minScale": 300000,
+    "maxScale": 0,
+    "units": "esriMeters",
+    "supportedImageFormatTypes": "PNG32,PNG24,PNG,JPG,DIB,TIFF,EMF,PS,PDF,GIF,SVG,SVGZ,BMP",
+    "documentInfo": {
+      "Title": "Map",
+      "Author": "",
+      "Comments": "",
+      "Subject": "",
+      "Category": "",
+      "AntialiasingMode": "None",
+      "TextAntialiasingMode": "Force",
+      "Version": "2.9.0",
+      "Keywords": ""
+    },
+    "supportsQueryDomains": true,
+    "capabilities": "Map,Query,Data",
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "exportTilesAllowed": false,
+    "referenceScale": 0.0,
+    "supportsDatumTransformation": true,
+    "archivingInfo": {
+      "supportsHistoricMoment": false
+    },
+    "supportsClipping": true,
+    "supportsSpatialFilter": true,
+    "supportsTimeRelation": true,
+    "supportsQueryDataElements": true,
+    "maxRecordCount": 2000,
+    "maxImageHeight": 4096,
+    "maxImageWidth": 4096,
+    "supportedExtensions": "WMSServer"
+  },
+  "metadata": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "id": 0,
+    "name": "Wells",
+    "type": "Feature Layer",
+    "description": "",
+    "geometryType": "esriGeometryPoint",
+    "sourceSpatialReference": {
+      "wkid": 102100,
+      "latestWkid": 3857,
+      "xyTolerance": 0.001,
+      "zTolerance": 0.001,
+      "mTolerance": 0.001,
+      "falseX": -20037700,
+      "falseY": -30241100,
+      "xyUnits": 10000,
+      "falseZ": -100000,
+      "zUnits": 10000,
+      "falseM": -100000,
+      "mUnits": 10000
+    },
+    "copyrightText": "",
+    "parentLayer": null,
+    "subLayers": [],
+    "minScale": 300000,
+    "maxScale": 0,
+    "referenceScale": 0.0,
+    "drawingInfo": {
+      "renderer": {
+        "type": "simple",
+        "symbol": {
+          "type": "esriSMS",
+          "style": "esriSMSCircle",
+          "color": [
+            0,
+            112,
+            255,
+            255
+          ],
+          "size": 8,
+          "angle": 0,
+          "xoffset": 0,
+          "yoffset": 0,
+          "outline": {
+            "color": [
+              0,
+              0,
+              0,
+              255
+            ],
+            "width": 1
+          }
+        }
+      },
+      "scaleSymbols": true,
+      "transparency": 0,
+      "labelingInfo": null
+    },
+    "defaultVisibility": true,
+    "extent": {
+      "xmin": -10590558.4933,
+      "ymin": 5122812.8336,
+      "xmax": -8276037.6774,
+      "ymax": 7556801.780000001,
+      "spatialReference": {
+        "wkid": 102100,
+        "latestWkid": 3857,
+        "xyTolerance": 0.001,
+        "zTolerance": 0.001,
+        "mTolerance": 0.001,
+        "falseX": -20037700,
+        "falseY": -30241100,
+        "xyUnits": 10000,
+        "falseZ": -100000,
+        "zUnits": 10000,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "hasAttachments": false,
+    "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+    "displayField": "WELL_ID",
+    "typeIdField": null,
+    "subtypeFieldName": null,
+    "subtypeField": null,
+    "defaultSubtypeCode": null,
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "Shape",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Shape",
+        "domain": null
+      },
+      {
+        "name": "BORE_HOLE_ID",
+        "type": "esriFieldTypeInteger",
+        "alias": "BORE_HOLE_ID",
+        "domain": null
+      },
+      {
+        "name": "WELL_ID",
+        "type": "esriFieldTypeString",
+        "alias": "WELL_ID",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "WELL_COMPLETED_DATE",
+        "type": "esriFieldTypeString",
+        "alias": "WELL_COMPLETED_DATE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "RECEIVED_DATE",
+        "type": "esriFieldTypeString",
+        "alias": "RECEIVED_DATE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "AUDIT_NO",
+        "type": "esriFieldTypeString",
+        "alias": "AUDIT_NO",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "TAG",
+        "type": "esriFieldTypeString",
+        "alias": "TAG",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CONTRACTOR",
+        "type": "esriFieldTypeString",
+        "alias": "CONTRACTOR",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SWL",
+        "type": "esriFieldTypeString",
+        "alias": "SWL",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "FINAL_STATUS_DESCR",
+        "type": "esriFieldTypeString",
+        "alias": "FINAL_STATUS_DESCR",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "USE1",
+        "type": "esriFieldTypeString",
+        "alias": "USE1",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "USE2",
+        "type": "esriFieldTypeString",
+        "alias": "USE2",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "MOE_COUNTY_DESCR",
+        "type": "esriFieldTypeString",
+        "alias": "MOE_COUNTY_DESCR",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "MOE_MUNICIPALITY_DESCR",
+        "type": "esriFieldTypeString",
+        "alias": "MOE_MUNICIPALITY_DESCR",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CON",
+        "type": "esriFieldTypeString",
+        "alias": "CON",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LOT",
+        "type": "esriFieldTypeString",
+        "alias": "LOT",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "STREET",
+        "type": "esriFieldTypeString",
+        "alias": "STREET",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CITY",
+        "type": "esriFieldTypeString",
+        "alias": "CITY",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "UTMZONE",
+        "type": "esriFieldTypeString",
+        "alias": "UTMZONE",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "EAST83",
+        "type": "esriFieldTypeString",
+        "alias": "EAST83",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "NORTH83",
+        "type": "esriFieldTypeString",
+        "alias": "NORTH83",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "GEO",
+        "type": "esriFieldTypeString",
+        "alias": "GEO",
+        "length": 3000,
+        "domain": null
+      },
+      {
+        "name": "PLUG",
+        "type": "esriFieldTypeString",
+        "alias": "PLUG",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "HOLE",
+        "type": "esriFieldTypeString",
+        "alias": "HOLE",
+        "length": 500,
+        "domain": null
+      },
+      {
+        "name": "CM",
+        "type": "esriFieldTypeString",
+        "alias": "CM",
+        "length": 300,
+        "domain": null
+      },
+      {
+        "name": "CAS",
+        "type": "esriFieldTypeString",
+        "alias": "CAS",
+        "length": 600,
+        "domain": null
+      },
+      {
+        "name": "SCRN",
+        "type": "esriFieldTypeString",
+        "alias": "SCRN",
+        "length": 500,
+        "domain": null
+      },
+      {
+        "name": "WAT",
+        "type": "esriFieldTypeString",
+        "alias": "WAT",
+        "length": 400,
+        "domain": null
+      },
+      {
+        "name": "PT",
+        "type": "esriFieldTypeString",
+        "alias": "PT",
+        "length": 300,
+        "domain": null
+      },
+      {
+        "name": "PTD",
+        "type": "esriFieldTypeString",
+        "alias": "PTD",
+        "length": 500,
+        "domain": null
+      },
+      {
+        "name": "DISINFECTED",
+        "type": "esriFieldTypeString",
+        "alias": "DISINFECTED",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "BHK",
+        "type": "esriFieldTypeString",
+        "alias": "BHK",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "DEPTH_M",
+        "type": "esriFieldTypeDouble",
+        "alias": "DEPTH_M",
+        "domain": null
+      },
+      {
+        "name": "PATH",
+        "type": "esriFieldTypeString",
+        "alias": "PATH",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "COMPLETED_DATE",
+        "type": "esriFieldTypeInteger",
+        "alias": "COMPLETED_DATE",
+        "domain": null
+      },
+      {
+        "name": "COMPLETED_YEAR",
+        "type": "esriFieldTypeInteger",
+        "alias": "COMPLETED_YEAR",
+        "domain": null
+      },
+      {
+        "name": "LONGITUDE",
+        "type": "esriFieldTypeDouble",
+        "alias": "LONGITUDE",
+        "domain": null
+      },
+      {
+        "name": "LATITUDE",
+        "type": "esriFieldTypeDouble",
+        "alias": "LATITUDE",
+        "domain": null
+      },
+      {
+        "name": "LOT_IDENT",
+        "type": "esriFieldTypeString",
+        "alias": "LOT_IDENT",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "CONCESSION_IDENT",
+        "type": "esriFieldTypeString",
+        "alias": "CONCESSION_IDENT",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "type": "esriFieldTypeString",
+        "alias": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "length": 100,
+        "domain": null
+      }
+    ],
+    "geometryField": {
+      "name": "Shape",
+      "type": "esriFieldTypeGeometry",
+      "alias": "Shape"
+    },
+    "indexes": [
+      {
+        "name": "FDO_OBJECTID",
+        "fields": "OBJECTID",
+        "isAscending": true,
+        "isUnique": true,
+        "description": ""
+      },
+      {
+        "name": "FDO_Shape",
+        "fields": "Shape",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "BORE_HOLE_ID_Index",
+        "fields": "BORE_HOLE_ID",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "WELL_ID_Index",
+        "fields": "WELL_ID",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "DEPTH_M_Index",
+        "fields": "DEPTH_M",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "COMPLETED_DATE_Index",
+        "fields": "COMPLETED_DATE",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "COMPLETED_YEAR_Index",
+        "fields": "COMPLETED_YEAR",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "AUDIT_NO_Index",
+        "fields": "AUDIT_NO",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "TAG_Index",
+        "fields": "TAG",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "CONTRACTOR_Index",
+        "fields": "CONTRACTOR",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "LOT_IDENT_Index",
+        "fields": "LOT_IDENT",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "CONCESSION_IDENT_Index",
+        "fields": "CONCESSION_IDENT",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      },
+      {
+        "name": "GEOGRAPHIC_TOWNSHIP_NAME_Index",
+        "fields": "GEOGRAPHIC_TOWNSHIP_NAME",
+        "isAscending": true,
+        "isUnique": false,
+        "description": ""
+      }
+    ],
+    "subtypes": [],
+    "relationships": [],
+    "canModifyLayer": true,
+    "canScaleSymbols": false,
+    "hasLabels": false,
+    "capabilities": "Map,Query,Data",
+    "maxRecordCount": 2000,
+    "supportsStatistics": true,
+    "supportsExceedsLimitStatistics": true,
+    "supportsAdvancedQueries": true,
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "isDataVersioned": false,
+    "ownershipBasedAccessControlForFeatures": {
+      "allowOthersToQuery": true
+    },
+    "useStandardizedQueries": true,
+    "supportedSpatialRelationships": [
+      "esriSpatialRelIntersects",
+      "esriSpatialRelContains",
+      "esriSpatialRelCrosses",
+      "esriSpatialRelEnvelopeIntersects",
+      "esriSpatialRelIndexIntersects",
+      "esriSpatialRelOverlaps",
+      "esriSpatialRelTouches",
+      "esriSpatialRelWithin",
+      "esriSpatialRelRelation"
+    ],
+    "advancedQueryCapabilities": {
+      "useStandardizedQueries": true,
+      "supportsStatistics": true,
+      "supportsPercentileStatistics": true,
+      "supportsHavingClause": true,
+      "supportsOrderBy": true,
+      "supportsDistinct": true,
+      "supportsCountDistinct": true,
+      "supportsPagination": true,
+      "supportsLod": false,
+      "supportsQueryWithLodSR": false,
+      "supportsTrueCurve": true,
+      "supportsQueryWithDatumTransformation": true,
+      "supportsReturningQueryExtent": true,
+      "supportsQueryWithDistance": true,
+      "supportsSqlExpression": true,
+      "supportsTimeRelation": true,
+      "supportsSqlFormat": false,
+      "supportsQueryAnalytic": false
+    },
+    "supportsDatumTransformation": true,
+    "dateFieldsTimeReference": null,
+    "preferredTimeReference": null,
+    "datesInUnknownTimezone": false,
+    "hasMetadata": true,
+    "isDataArchived": false,
+    "archivingInfo": {
+      "supportsQueryWithHistoricMoment": false,
+      "startArchivingMoment": -1
+    },
+    "supportsCoordinatesQuantization": true,
+    "supportsDynamicLegends": true
+  }
+}
