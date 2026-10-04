@@ -42,12 +42,58 @@ const ssHeritage = `${SS}/government/historic-sites-and-heritage/heritage-proper
 const ssPlanning = `${SS}/work/municipal-land-use/amendments/`;
 const ssAdu = `${SS}/government/planning-policies/housing-action-plan/additional-dwelling-unit-adu-initiative/`;
 const sooMaps = "https://www.soomaps.com/";
+const TM = "https://www.timmins.ca";
+const tmTerms = `${TM}/find_or_learn_about/web_service_use_agreement`;
+const tmPlanning = `${TM}/our_services/building_and_planning/planning`;
+const tmZoning = `${tmPlanning}/zoning_by_law`;
+const tmPlan = `${tmPlanning}/official_plan`;
+const tmPermits = `${TM}/our_services/building_and_planning/building/building_permits`;
+const tmHeritage = `${TM}/find_or_learn_about/municipal_heritage_register`;
+const tmMap = "https://www.cgis.com/cpal/Default.aspx?CLIENT=Timmins";
+const tmRestriction = "Timmins' originating web agreement covers website/app/API content and asserts City ownership; no compatible specific commercial redistribution grant was established. City-linked CGIS map access redirected to UnsupportedBrowser, without agreement acceptance or a bypass. Public viewing and information-request access do not establish API reuse rights. No City/CGIS property records, counts or geometry are queried.";
+const minesTerms = "https://www.geologyontario.mines.gov.on.ca/mmd/mines/ogs/mem-disclaimer-terms_of_use_en.pdf";
 
 const nbRestriction = "North Bay's originating City terms restrict commercial reuse, redistribution and incorporation into a commercial service without written consent. The current City-linked Hub explicitly links those terms. Inspected app/map and parcel-item metadata does not supply a compatible specific redistribution grant. No municipal property records, counts or geometry are queried.";
 const ssRestriction = "The current City-linked SooMaps disclaimer explicitly restricts commercial use, including the map services it consumes. City website information also requires consent for reproduction. No compatible property-level redistribution grant was established. No municipal property records, counts or geometry are queried; the map agreement was not accepted.";
 const scope = (layer: string, url: string, termsUrl: string, reason: string): WithheldScope => ({ layer, url, termsUrl, reason });
 
 export const NORTHERN_REUSE_AUDITS: NorthernAudit[] = [
+  {
+    city: "Timmins", auditedAt: "2026-10-04", terms: tmTerms, catalogue: tmMap,
+    recordsQueried: false, countsQueried: false, geometryQueried: false, rightsFinding: tmRestriction,
+    metadata: {
+      officialOffer: `${TM}/find_or_learn_about/maps_and_locations`, mapAgreementAccepted: false,
+      scope: "City original terms and ten planning/building/heritage guidance pages; not an exhaustive CGIS/City catalogue audit.",
+      zoningReference: "City names By-law 2011-7100 as amended; current complete text, exceptions, holds, schedules, amendments and appeal outcomes remain unverified.",
+      zoningInstrumentDirectory: "https://timmins.civicweb.net/Documents/DocumentList.aspx?ID=13810",
+      officialPlanReference: "City reports approval July 16, 2010 and in-force August 10, 2010; the offered ZIP filename includes 06-07-2019. These are separate dates, not verified current consolidation or complete amendments.",
+      permitApplicationService: "https://cgis.com/permits/start?m=timmins",
+      permitScope: "Applying for a permit and arranging inspections do not expose a licensed reusable complete property history, inspection outcomes or occupancy evidence.",
+      heritageRegisterOffer: "https://timmins.civicweb.net/filepro/documents/?expanded=114620&preview=114621",
+      heritageScope: "City directs users to CommunityPAL Heritage Register and separate designation by-laws/Schedule B; no current statutory property records are copied or queried.",
+      additionalUnitScope: "City guidance discusses up to three units in serviced residential areas, parking and permit approval; it does not establish this property's legal unit count or rural/servicing applicability.",
+      unresolvedTransport: "Original City-offered current Committee/source-protection/MRCA links returned HTTP403; CGIS redirected to UnsupportedBrowser. No retry, alternate endpoint, authentication/TLS bypass or agreement acceptance.",
+      abandonedMines: { catalogue: "https://data.ontario.ca/dataset/abandoned-mines-information", packageId: "6bc94d99-9c55-4e6d-a320-b5e4cfbbd25c", licence: "King's Printer for Ontario", originalOffer: "https://www.hub.geologyontario.mines.gov.on.ca/pages/abandoned-mines", terms: minesTerms, finding: "The original GeologyOntario offer links complete MEM terms requiring prior written permission for commercial use, including value-added products. No AMIS records, counts, KML or geometry were queried." },
+    },
+    withheld: [
+      ...["municipalAddresses", "parcel"].map(name => scope(name, tmMap, tmTerms, tmRestriction)),
+      scope("zoning", tmZoning, tmTerms, `${tmRestriction} Confirm current 2011-7100 text, schedules, exceptions/holds, amendments and appeals; an instrument directory or proposed rezoning notice is not present permission.`),
+      scope("currentPlanningInstruments", tmPlan, tmTerms, `${tmRestriction} The 2010 effective date and 2019-labelled ZIP do not establish a current complete plan; obtain operative schedules and later amendments/appeals.`),
+      scope("permits", tmPermits, tmTerms, `${tmRestriction} The CGIS application service is separate from complete permit/inspection/occupancy evidence.`),
+      scope("planningApplications", tmPlanning, tmTerms, `${tmRestriction} Obtain complete decisions, cleared conditions and appeal outcomes; proposed-use notices do not establish approval.`),
+      ...["variance", "consentToSever"].map(name => scope(name, `${TM}/doing_business/committee_of_adjustment`, tmTerms, `${tmRestriction} The original current Committee link returned HTTP403 without retry/bypass; complete decisions, conditions, expiry, registration and appeals remain unresolved.`)),
+      scope("heritage", tmHeritage, tmTerms, `${tmRestriction} Obtain the current statutory register, designated/listed/district status and designation/amending instruments with Schedule B attributes from the Clerk.`),
+      scope("additionalUnits", tmPlanning, tmTerms, `${tmRestriction} Serviced-area unit guidance and incentives do not prove legal units, approved conversion, inspections, occupancy or grant eligibility.`),
+      scope("sitePlanDrawings", `${tmPlanning}/site_plan_control`, tmTerms, `${tmRestriction} Obtain the signed/registered agreement, approved drawings and discharged obligations; an application is not an operative agreement.`),
+      ...["timminsConservationRegulation", "floodplainOverlay", "intakeProtection", "wellheadProtection"].map(name => scope(name, `${TM}/find_or_learn_about/mrca`, tmTerms, "Current original authority and City source-protection links could not be verified: City-offered links returned HTTP403 without retry/bypass. No reusable typed lineage, applicable current instruments or parcel-wide screen was established. Confirm relevant jurisdiction, regulation, source-protection policies and servicing for proposed work; no flood/water safety or clearance conclusion.")),
+      scope("abandonedMineRecords", "https://data.ontario.ca/dataset/abandoned-mines-information", minesTerms, "Ontario AMIS is labelled King's Printer copyright, not OGL. Its original offered GeologyOntario terms prohibit commercial/value-added reuse without prior written permission. No mine records/counts/KML/geometry were queried or integrated. Obtain appropriate mining-history, closure/rehabilitation and property-wide professional investigations separately; no mine absence, current hazard, contamination, safety, tenure or title conclusion is available."),
+    ],
+    questions: [
+      { topic: "timmins_current_files", question: "Can the City provide current zoning 2011-7100 text/schedules/exceptions/holds/amendments/appeals, current adopted Official Plan instruments, complete planning/Committee decisions with cleared conditions, and the signed/registered site-plan agreement and approved drawings?", evidenceLayers: ["zoning", "currentPlanningInstruments", "planningApplications", "variance", "consentToSever", "sitePlanDrawings"] },
+      { topic: "timmins_units_and_heritage", question: "Can the seller and City supply full permit/inspection/occupancy files and confirm the advertised legal unit count and actual servicing? Can the Clerk provide current statutory heritage status, designation/amending instruments and Schedule B attributes?", evidenceLayers: ["permits", "additionalUnits", "heritage"] },
+      { topic: "timmins_constraints_and_mining", question: "Can the relevant authority confirm current parcel-wide regulation, source-protection policies and servicing requirements? Can the seller provide mining-history, closure/rehabilitation and professional property investigations where relevant? AMIS is not screened by this API, and nearby aggregate data is a separate source.", evidenceLayers: ["parcel", "timminsConservationRegulation", "floodplainOverlay", "intakeProtection", "wellheadProtection", "abandonedMineRecords"] },
+    ],
+  },
   {
     city: "North Bay", auditedAt: "2026-10-03", terms: nbTerms,
     catalogue: "https://explore.northbay.ca/", recordsQueried: false, countsQueried: false, geometryQueried: false,

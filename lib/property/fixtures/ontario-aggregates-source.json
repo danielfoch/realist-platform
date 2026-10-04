@@ -1,0 +1,1879 @@
+{
+  "catalogue": {
+    "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+    "success": true,
+    "result": {
+      "access_instructions": {
+        "en": "",
+        "fr": ""
+      },
+      "access_level": "open",
+      "asset_type": "dataset",
+      "author": "",
+      "author_email": "",
+      "creator_user_id": "faba29e3-f7ad-4b37-ad77-3ce832d12630",
+      "current_as_of": "2020-07-17",
+      "exemption": "none",
+      "exemption_rationale": {
+        "en": "",
+        "fr": ""
+      },
+      "geographic_coverage_translated": {
+        "en": "Ontario",
+        "fr": "Ontario"
+      },
+      "geographic_granularity": "",
+      "id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+      "isopen": false,
+      "keywords": {
+        "en": [
+          "Economy and Business",
+          "Environment and Natural Resources",
+          "Environment and energy"
+        ],
+        "fr": [
+          "\u00c9conomie et affaires",
+          "Environnement et richesses naturelles",
+          "Environnement et \u00e9nergie"
+        ]
+      },
+      "license_id": "OGL-ON-1.0",
+      "license_title": "Open Government Licence \u2013 Ontario",
+      "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "maintainer": null,
+      "maintainer_branch": {
+        "en": "Divisional Support Branch",
+        "fr": "Direction du soutien \u00e0 la Division"
+      },
+      "maintainer_email": "",
+      "maintainer_translated": {
+        "en": "Divisional Support Branch",
+        "fr": "Direction du soutien \u00e0 la Division"
+      },
+      "metadata_created": "2020-01-11T11:47:01.895087",
+      "metadata_modified": "2025-10-07T19:57:43.227417",
+      "name": "aggregate-site-authorized",
+      "notes": "This dataset represents the locations of  licenced and permitted pits and quarries regulated by the Ministry of Natural Resources and Forestry under the Aggregate Resources Act, R.S.O. 1990. \r\n\r\nAggregate site data has been divided into active and inactive sites. Active sites may be further subdivided into partial surrenders. In partial surrenders, defined areas of a site are inactive while the rest of the site remains active. \r\n\r\nThe data includes:\r\n\r\n* site location and size\r\n* licensee name\r\n* approval type (licence or permit)\r\n* operation type (pit or quarry)\r\n* maximum annual tonnage limit\r\n* the MNRF district responsible for the site\r\n\r\nUse our interactive [pits and quarries map](https://www.ontario.ca/page/find-pits-and-quarries) to find active sites.\r\n\r\nThis data does not include [aggregate sites regulated by the Ministry of Transportation](https://data.ontario.ca/dataset/ministry-of-transportation-aggregate-sites).\r\n",
+      "notes_translated": {
+        "en": "This dataset represents the locations of  licenced and permitted pits and quarries regulated by the Ministry of Natural Resources and Forestry under the Aggregate Resources Act, R.S.O. 1990. \r\n\r\nAggregate site data has been divided into active and inactive sites. Active sites may be further subdivided into partial surrenders. In partial surrenders, defined areas of a site are inactive while the rest of the site remains active. \r\n\r\nThe data includes:\r\n\r\n* site location and size\r\n* licensee name\r\n* approval type (licence or permit)\r\n* operation type (pit or quarry)\r\n* maximum annual tonnage limit\r\n* the MNRF district responsible for the site\r\n\r\nUse our interactive [pits and quarries map](https://www.ontario.ca/page/find-pits-and-quarries) to find active sites.\r\n\r\nThis data does not include [aggregate sites regulated by the Ministry of Transportation](https://data.ontario.ca/dataset/ministry-of-transportation-aggregate-sites).\r\n",
+        "fr": "Cet ensemble de donn\u00e9es renferme les emplacements des puits d\u2019extraction et des carri\u00e8res faisant l\u2019objet d\u2019un permis et d\u2019une licence et r\u00e9glement\u00e9s par le minist\u00e8re des Richesses naturelles et des For\u00eats en vertu de la Loi de 1990 sur les ressources en agr\u00e9gats, L.R.O. \r\n\r\nLes donn\u00e9es visant les sites d\u2019agr\u00e9gats ont \u00e9t\u00e9 r\u00e9parties selon les sites en activit\u00e9 et les sites inactifs. Les sites en activit\u00e9 peuvent \u00eatre subdivis\u00e9s en cessions partielles. Dans les cessions partielles, les zones d\u00e9finies d\u2019un site sont inactives tandis que le reste du site reste actif.\r\n\r\nLes donn\u00e9es comprennent :\r\n\r\n* l\u2019emplacement du site et sa superficie;\r\n* le nom du titulaire de licence;\r\n* le type d\u2019autorisation (licence ou permis);\r\n* le type d\u2019exploitation (puits d\u2019extraction ou carri\u00e8re);\r\n* le tonnage annuel maximal;\r\n* le district du MRNF auquel appartient le site.\r\n\r\nUtilisez notre [carte interactive des puits d\u2019extraction et des carri\u00e8res](https://www.ontario.ca/fr/page/trouver-un-puits-dextraction-ou-une-carriere) pour trouver \r\ndes sites en activit\u00e9.\r\n\r\nCes donn\u00e9es n\u2019incluent pas les [sites d\u2019agr\u00e9gats r\u00e9glement\u00e9s par le minist\u00e8re des Transports](https://data.ontario.ca/fr/dataset/ministry-of-transportation-aggregate-sites)."
+      },
+      "num_resources": 6,
+      "num_tags": 6,
+      "opened_date": "2013-07-02",
+      "organization": {
+        "id": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+        "name": "natural-resources",
+        "title": "",
+        "type": "organization",
+        "description": "",
+        "image_url": "2022-09-12-211950.429568mnrf-small.jpg",
+        "created": "2022-09-08T20:43:59.845861",
+        "is_organization": true,
+        "approval_status": "approved",
+        "state": "active"
+      },
+      "owner_org": "22ec1874-e3bb-4368-8db2-e4b0a77eff15",
+      "private": false,
+      "state": "active",
+      "title": "Aggregate Site Authorized",
+      "title_translated": {
+        "en": "Aggregate Site Authorized",
+        "fr": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s"
+      },
+      "type": "dataset",
+      "update_frequency": "as_required",
+      "url": "",
+      "version": null,
+      "resources": [
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:29:25.373089",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "06de3b90-e453-4871-9f48-bf2f68fd23cb",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:56:35.164133",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Aggregate Site Authorized - Active",
+          "name_translated": {
+            "en": "Aggregate Site Authorized - Active",
+            "fr": "Aggregate Site Authorized - Active"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 0,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub.lio.gov.on.ca/datasets/874e7fa67ce94cc5b1e8e98c59ca06eb_17",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:29:25.373095",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "c8d36603-2c3f-42ef-9935-925caaedc06a",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:56:51.657516",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Aggregate Site Authorized - Inactive",
+          "name_translated": {
+            "en": "Aggregate Site Authorized - Inactive",
+            "fr": "Aggregate Site Authorized - Inactive"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 1,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub.lio.gov.on.ca/datasets/b83d0aef05fa49da9e12288bdb36992b_16",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2020-07-17T17:50:46.051740",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "15b92ab7-563c-44d3-a92d-b31bfdbf3247",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:57:10.405448",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Aggregate Site Authorized \u2013 Partial Surrender",
+          "name_translated": {
+            "en": "Aggregate Site Authorized \u2013 Partial Surrender",
+            "fr": "Aggregate Site Authorized \u2013 Partial Surrender"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 2,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub.lio.gov.on.ca/datasets/4a83d157a2c24b4b9f32266d997e3632_23",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2019-12-31T10:29:25.373098",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "de4f0f5e-a684-4c76-bc22-757f1869e725",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:57:27.502670",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites en activit\u00e9",
+          "name_translated": {
+            "en": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites en activit\u00e9",
+            "fr": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites en activit\u00e9"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 3,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub-fr.lio.gov.on.ca/datasets/6902188326e0416a8a921ac1d55f19c0_17",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2020-06-05T17:18:28.426588",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "5fc353c0-2106-48f4-8c2f-107ac41e7e78",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:57:43.238093",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites inactif",
+          "name_translated": {
+            "en": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites inactif",
+            "fr": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 sites inactif"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 4,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub-fr.lio.gov.on.ca/datasets/82fdb5486ba64f64ad7daa303e0edc57_16",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "created": "2020-07-17T17:52:45.488802",
+          "data_last_updated": "2013-07-02",
+          "data_range_end": "2006-12-05",
+          "data_range_start": "1990-01-01",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "en": "",
+            "fr": ""
+          },
+          "format": "WEB",
+          "hash": "",
+          "id": "db84aee6-127d-4c5a-bffa-394b033a57a3",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2025-10-07T19:57:43.238164",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 cessions partielles",
+          "name_translated": {
+            "en": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 cessions partielles",
+            "fr": "Sites d\u2019extraction d\u2019agr\u00e9gats autoris\u00e9s \u2013 cessions partielles"
+          },
+          "package_id": "69b95513-a28a-4d0c-b70c-483ea17882f3",
+          "position": 5,
+          "resource_type": null,
+          "schema": "",
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub-fr.lio.gov.on.ca/datasets/dc43d42442a84a9d8735c8d5dd4d74cf_23",
+          "url_type": null,
+          "validation_options": "",
+          "validation_status": "",
+          "validation_timestamp": ""
+        }
+      ],
+      "tags": [
+        {
+          "display_name": "Economy and Business",
+          "id": "af3c51e1-ed85-4b1d-ad87-ae1eef6234e5",
+          "name": "Economy and Business",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environment and Natural Resources",
+          "id": "159d5716-5d3d-4045-a948-22e5bbde0485",
+          "name": "Environment and Natural Resources",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environment and energy",
+          "id": "bdbfe9a5-eaed-4d6e-bc1c-32bb81619817",
+          "name": "Environment and energy",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environnement et richesses naturelles",
+          "id": "7a6f2b04-9cd9-4e1b-a8a6-ded7082fca41",
+          "name": "Environnement et richesses naturelles",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environnement et \u00e9nergie",
+          "id": "9f727fdb-438e-444b-bedf-71e7d6621726",
+          "name": "Environnement et \u00e9nergie",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "\u00c9conomie et affaires",
+          "id": "d6d2f1a2-956a-4938-9670-ebd690a5456e",
+          "name": "\u00c9conomie et affaires",
+          "state": "active",
+          "vocabulary_id": null
+        }
+      ],
+      "groups": [],
+      "relationships_as_subject": [],
+      "relationships_as_object": []
+    }
+  },
+  "root": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "serviceDescription": "<div><p>Version: n/a</p><p>Build: 2026-01-20 09:49:28</p></div>",
+    "mapName": "service05",
+    "description": "<div><p id='serviceVersion'>Version: n/a</p><p id='serviceBuild'>Build: 2026-01-20 09:49:28</p></div>",
+    "copyrightText": "",
+    "supportsDynamicLayers": true,
+    "layers": [
+      {
+        "id": 20,
+        "name": "Emergency Management Historical Event",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryMultipoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 21,
+        "name": "Fire Aviation and Emergency Facility Point",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 10,
+        "name": "Utility Site",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 11,
+        "name": "Utility Line",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 19,
+        "name": "Aggregate Designated Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 18,
+        "name": "Aggregate Inspector Jurisdiction",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 17,
+        "name": "Aggregate Site Authorized Active",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 16,
+        "name": "Aggregate Site Authorized Inactive",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 23,
+        "name": "Aggregate Site Authorized Partial Surrender",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 24,
+        "name": "Aggregate Extraction Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 25,
+        "name": "Aggregate Site Unrehabilitated",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 0,
+        "name": "Airport Official",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "Airport Other",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "ANSI",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 15,
+        "name": "Cadastral Location",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 8,
+        "name": "Caribou Range Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 7,
+        "name": "Crown Game Preserve",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 14,
+        "name": "Designated Gas Storage Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 13,
+        "name": "Fire Management Agreement Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 9,
+        "name": "Soil Survey Complex",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "Source Protection Area Generalized",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "Wildlife Management Unit",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": [
+      {
+        "id": 4,
+        "name": "AREA_AND_SPECIES",
+        "type": "Table"
+      },
+      {
+        "id": 6,
+        "name": "WMU_BOUNDARY_NOTE",
+        "type": "Table"
+      }
+    ],
+    "spatialReference": {
+      "wkid": 4269,
+      "latestWkid": 4269,
+      "xyTolerance": 2e-07,
+      "zTolerance": 2,
+      "mTolerance": 0.001,
+      "falseX": -400,
+      "falseY": -400,
+      "xyUnits": 11258999068426.24,
+      "falseZ": 0,
+      "zUnits": 1,
+      "falseM": -100000,
+      "mUnits": 10000
+    },
+    "singleFusedMapCache": false,
+    "initialExtent": {
+      "xmin": -116.23427354014599,
+      "ymin": 45.81743162299919,
+      "xmax": -89.44549740875912,
+      "ymax": 63.01951947189129,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "fullExtent": {
+      "xmin": -95.15366999999999,
+      "ymin": 41.6765556,
+      "xmax": -74.320109,
+      "ymax": 56.8593649,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "datesInUnknownTimezone": false,
+    "minScale": 0,
+    "maxScale": 0,
+    "units": "esriDecimalDegrees",
+    "supportedImageFormatTypes": "PNG32,PNG24,PNG,JPG,DIB,TIFF,EMF,PS,PDF,GIF,SVG,SVGZ,BMP",
+    "documentInfo": {
+      "Title": "Default.aprx",
+      "Author": "",
+      "Comments": "",
+      "Subject": "",
+      "Category": "",
+      "AntialiasingMode": "None",
+      "TextAntialiasingMode": "Force",
+      "Version": "2.9.0",
+      "Keywords": ""
+    },
+    "supportsQueryDomains": true,
+    "capabilities": "Map,Query,Data",
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "exportTilesAllowed": false,
+    "referenceScale": 0.0,
+    "supportsDatumTransformation": true,
+    "archivingInfo": {
+      "supportsHistoricMoment": false
+    },
+    "supportsClipping": true,
+    "supportsSpatialFilter": true,
+    "supportsTimeRelation": true,
+    "supportsQueryDataElements": true,
+    "maxRecordCount": 2000,
+    "maxImageHeight": 4096,
+    "maxImageWidth": 4096,
+    "supportedExtensions": "WMSServer",
+    "resampling": false
+  },
+  "items": {
+    "17": {
+      "id": "874e7fa67ce94cc5b1e8e98c59ca06eb",
+      "owner": "LandInformationOntario",
+      "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+      "orgId": "a03W7iZ8T3s5vB7p",
+      "created": 1542393637000,
+      "modified": 1787227933000,
+      "guid": null,
+      "name": null,
+      "title": "Aggregate site authorized - active",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Metadata",
+        "Service"
+      ],
+      "description": "<span style='text-indent:0px; text-decoration-style:initial; text-decoration-color:initial; display:inline !important;'>\n\n<div><div>This dataset represents the locations of licenced and permitted pits and quarries regulated by the Ministry of Natural Resources and Forestry (MNRF) under the Aggregate Resources Act, R.S.O. 1990. \n\nAggregate site data has been divided into active and inactive sites. Active sites may be further subdivided into partial surrenders. In partial surrenders, defined areas of a site are inactive while the rest of the site remains active. \n\n<div><br />\nThe data includes:\n\n<ul>\n<li>site location and size</li>\n<li>licensee name</li>\n<li>approval type (licence or permit)</li>\n<li>operation type (pit or quarry)</li>\n<li>maximum annual tonnage limit</li>\n<li>the MNRF district responsible for the site</li>\n</ul></div>\n\n<div>Use our interactive <a href='https://www.ontario.ca/page/find-pits-and-quarries' rel='nofollow ugc' target='_blank'>Pits and Quarries map</a> to find active sites.</div><br />\n\n<div>This data does not include <a href='https://data.ontario.ca/dataset/ministry-of-transportation-aggregate-sites' rel='nofollow ugc' target='_blank'>aggregate sites regulated by the Ministry of Transportation</a>.</div><br />\n\n<div><br /> </div>\n\n<div><strong>Additional Documentation </strong></div>\n\n<div><ul>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate%20Layers%20User%20Guide.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - User Guide (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Active - Data Description.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Active - Data Description (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Active - Documentation.docx' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Active - Documentation (Word)</a><br /></li>\n\n</ul></div>\n\n\n\n<div><br /></div>\n\n<div><strong>Status</strong><br /></div>\n\n<div>On going: Data is continually being updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Maintenance and Update Frequency</strong><br /></div>\n\n<div>Continual: Data is repeatedly and frequently updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Contact</strong><br /></div>\n\n<div>Ryan Lenethen, Policy Analyst, <a href='mailto:ryan.lenethen@Ontario.ca' rel='nofollow ugc' target='_blank'>ryan.lenethen@Ontario.ca</a></div></div></div></span>",
+      "tags": [
+        "open data",
+        "Integration Branch",
+        "aggregates",
+        "aggregate",
+        "MNR",
+        "Ministry of Natural Resources"
+      ],
+      "snippet": "",
+      "thumbnail": "thumbnail/thumbnail1542393703765.png",
+      "documentation": null,
+      "extent": [
+        [
+          -95.1537,
+          41.6766
+        ],
+        [
+          -74.3201,
+          56.8594
+        ]
+      ],
+      "categories": [
+        "/Categories/Natural Resources/Regional Operations Division/Divisional Support Branch"
+      ],
+      "spatialReference": null,
+      "accessInformation": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "classification": null,
+      "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/17",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 122,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": false,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 59228,
+      "contentStatus": "public_authoritative",
+      "scoreCompleteness": 83,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791064800000
+    },
+    "16": {
+      "id": "b83d0aef05fa49da9e12288bdb36992b",
+      "owner": "LandInformationOntario",
+      "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+      "orgId": "a03W7iZ8T3s5vB7p",
+      "created": 1542394525000,
+      "modified": 1785933898000,
+      "guid": null,
+      "name": null,
+      "title": "Aggregate site authorized - inactive",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Metadata",
+        "Service"
+      ],
+      "description": "<span style='text-indent:0px; text-decoration-style:initial; text-decoration-color:initial; display:inline !important;'>\n\n<div>This dataset represents the locations of licenced and permitted pits and quarries regulated by the Ministry of Natural Resources and Forestry (MNRF) under the Aggregate Resources Act, R.S.O. 1990. \n\nAggregate site data has been divided into active and inactive sites. Active sites may be further subdivided into partial surrenders. In partial surrenders, defined areas of a site are inactive while the rest of the site remains active. \n\n<div><br />\nThe data includes:\n\n<ul>\n<li>site location and size</li>\n<li>licensee name</li>\n<li>approval type (licence or permit)</li>\n<li>operation type (pit or quarry)</li>\n<li>maximum annual tonnage limit</li>\n<li>the MNRF district responsible for the site</li>\n</ul></div>\n\n<div>Use our interactive <a href='https://www.ontario.ca/page/find-pits-and-quarries' rel='nofollow ugc' target='_blank'>Pits and Quarries map</a> to find active sites.</div><br />\n\n<div>This data does not include <a href='https://data.ontario.ca/dataset/ministry-of-transportation-aggregate-sites' rel='nofollow ugc' target='_blank'>aggregate sites regulated by the Ministry of Transportation</a>.</div><br />\n\n<div><br /> </div>\n\n<div><strong>Additional Documentation </strong></div>\n\n<div><ul>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate%20Layers%20User%20Guide.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - User Guide (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Inactive - Data Description.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Inactive - Data Description (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Inactive - Documentation.docx' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Inactive - Documentation (Word)</a><br /></li>\n\n</ul></div>\n\n\n\n<div><br /></div>\n\n<div><strong>Status</strong><br /></div>\n\n<div>On going: Data is continually being updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Maintenance and Update Frequency</strong><br /></div>\n\n<div>Continual: Data is repeatedly and frequently updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Contact</strong><br /></div>\n\n<div>Ryan Lenethen, Policy Analyst, <a href='mailto:ryan.lenethen@Ontario.ca' rel='nofollow ugc' target='_blank'>ryan.lenethen@Ontario.ca</a></div></div></span>",
+      "tags": [
+        "open data",
+        "Integration Branch",
+        "aggregate",
+        "aggregates",
+        "MNR",
+        "Ministry of Natural Resources"
+      ],
+      "snippet": "Contains all the Licenced and Permitted Pits and Quarries under the Aggregate Resources Act of Ontario that are regulated by Ministry of Natural Resources.",
+      "thumbnail": "thumbnail/thumbnail1542394584012.png",
+      "documentation": null,
+      "extent": [
+        [
+          -95.1537,
+          41.6766
+        ],
+        [
+          -74.3201,
+          56.8594
+        ]
+      ],
+      "categories": [
+        "/Categories/Natural Resources/Regional Operations Division/Divisional Support Branch"
+      ],
+      "spatialReference": null,
+      "accessInformation": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "classification": null,
+      "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/16",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 122,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": false,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 0,
+      "contentStatus": "public_authoritative",
+      "scoreCompleteness": 100,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": -1
+    },
+    "23": {
+      "id": "4a83d157a2c24b4b9f32266d997e3632",
+      "owner": "LandInformationOntario",
+      "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+      "orgId": "a03W7iZ8T3s5vB7p",
+      "created": 1594346691000,
+      "modified": 1787227938000,
+      "guid": null,
+      "name": null,
+      "title": "Aggregate site authorized - partial surrender",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Metadata",
+        "Service"
+      ],
+      "description": "<span style='text-indent:0px; text-decoration-style:initial; text-decoration-color:initial; display:inline !important;'>\n\n<div>This dataset represents the locations of licenced and permitted pits and quarries regulated by the Ministry of Natural Resources and Forestry (MNRF) under the Aggregate Resources Act, R.S.O. 1990. \n\nAggregate site data has been divided into active and inactive sites. Active sites may be further subdivided into partial surrenders. In partial surrenders, defined areas of a site are inactive while the rest of the site remains active. \n\n<div><br />\nThe data includes:\n\n<ul>\n<li>site location and size</li>\n<li>licensee name</li>\n<li>approval type (licence or permit)</li>\n<li>operation type (pit or quarry)</li>\n<li>maximum annual tonnage limit</li>\n<li>the MNRF district responsible for the site</li>\n</ul></div>\n\n<div>Use our interactive <a href='https://www.ontario.ca/page/find-pits-and-quarries' rel='nofollow ugc' target='_blank'>Pits and Quarries map</a> to find active sites.</div><br />\n\n<div>This data does not include <a href='https://data.ontario.ca/dataset/ministry-of-transportation-aggregate-sites' rel='nofollow ugc' target='_blank'>aggregate sites regulated by the Ministry of Transportation</a>.</div><br />\n\n<div><br /> </div>\n\n<div><strong>Additional Documentation </strong></div>\n\n<div><ul>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate%20Layers%20User%20Guide.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - User Guide (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Partial Surrender - Data Description.pdf' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Partial Surrender - Data Description (PDF)</a><br /></li>\n\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Aggregate Site Authorized - Partial Surrender - Documentation.docx' rel='nofollow ugc' target='_blank'>Aggregate Site Authorized - Partial Surrender - Documentation (Word)</a><br /></li>\n\n</ul></div>\n\n\n\n<div><br /></div>\n\n<div><strong>Status</strong><br /></div>\n\n<div>On going: Data is continually being updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Maintenance and Update Frequency</strong><br /></div>\n\n<div>Continual: Data is repeatedly and frequently updated<br /></div>\n\n<div><br /></div>\n\n<div><strong>Contact</strong><br /></div>\n\n<div>Ryan Lenethen, Policy Analyst, <a href='mailto:ryan.lenethen@Ontario.ca' rel='nofollow ugc' target='_blank'>ryan.lenethen@Ontario.ca</a></div></div></span>",
+      "tags": [
+        "open data",
+        "Integration Branch",
+        "aggregate",
+        "aggregates",
+        "MNR",
+        "Ministry of Natural Resources"
+      ],
+      "snippet": "",
+      "thumbnail": "thumbnail/thumbnail1622130938823.png",
+      "documentation": null,
+      "extent": [
+        [
+          -95.1537,
+          41.6766
+        ],
+        [
+          -74.3201,
+          56.8594
+        ]
+      ],
+      "categories": [
+        "/Categories/Natural Resources/Regional Operations Division/Divisional Support Branch"
+      ],
+      "spatialReference": null,
+      "accessInformation": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "classification": null,
+      "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/23",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 100,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": false,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 8795,
+      "contentStatus": "public_authoritative",
+      "scoreCompleteness": 83,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791072000000
+    }
+  },
+  "metadata": {
+    "17": {
+      "currentVersion": 10.91,
+      "cimVersion": "2.9.0",
+      "id": 17,
+      "name": "Aggregate Site Authorized Active",
+      "type": "Feature Layer",
+      "description": "This data is subject to terms of use.",
+      "geometryType": "esriGeometryPolygon",
+      "sourceSpatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2e-07,
+        "mTolerance": 2e-07,
+        "falseX": -399.9999999,
+        "falseY": -399.9999999,
+        "xyUnits": 10000000,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": 0,
+        "mUnits": 1
+      },
+      "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "parentLayer": null,
+      "subLayers": [],
+      "minScale": 0,
+      "maxScale": 0,
+      "drawingInfo": {
+        "renderer": {
+          "type": "simple",
+          "symbol": {
+            "type": "esriSFS",
+            "style": "esriSFSSolid",
+            "color": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "outline": {
+              "type": "esriSLS",
+              "style": "esriSLSSolid",
+              "color": [
+                130,
+                130,
+                130,
+                255
+              ],
+              "width": 0.4
+            }
+          }
+        },
+        "scaleSymbols": false,
+        "transparency": 0,
+        "labelingInfo": null
+      },
+      "defaultVisibility": false,
+      "extent": {
+        "xmin": -95.15366999999999,
+        "ymin": 41.676559999999995,
+        "xmax": -74.32011,
+        "ymax": 56.859359999999995,
+        "spatialReference": {
+          "wkid": 4269,
+          "latestWkid": 4269,
+          "xyTolerance": 2e-07,
+          "zTolerance": 2,
+          "mTolerance": 0.001,
+          "falseX": -400,
+          "falseY": -400,
+          "xyUnits": 11258999068426.24,
+          "falseZ": 0,
+          "zUnits": 1,
+          "falseM": -100000,
+          "mUnits": 10000
+        }
+      },
+      "hasAttachments": false,
+      "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+      "displayField": "ALPS_ID",
+      "typeIdField": null,
+      "subtypeFieldName": null,
+      "subtypeField": null,
+      "defaultSubtypeCode": null,
+      "fields": [
+        {
+          "name": "OGF_ID",
+          "type": "esriFieldTypeDouble",
+          "alias": "OGF ID",
+          "domain": null
+        },
+        {
+          "name": "ALPS_ID",
+          "type": "esriFieldTypeInteger",
+          "alias": "ALPS ID",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_ACCURACY",
+          "type": "esriFieldTypeString",
+          "alias": "Location Accuracy",
+          "length": 25,
+          "domain": null
+        },
+        {
+          "name": "SOURCE_DETAIL",
+          "type": "esriFieldTypeString",
+          "alias": "Source Detail",
+          "length": 254,
+          "domain": null
+        },
+        {
+          "name": "CURRENT_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "Current Status",
+          "length": 11,
+          "domain": null
+        },
+        {
+          "name": "CLIENT_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Client Name",
+          "length": 200,
+          "domain": null
+        },
+        {
+          "name": "OPERATION_TYPE",
+          "type": "esriFieldTypeString",
+          "alias": "Operation Type",
+          "length": 21,
+          "domain": null
+        },
+        {
+          "name": "AUTH_TYPE_DESCR",
+          "type": "esriFieldTypeString",
+          "alias": "Authority Type Description",
+          "length": 40,
+          "domain": null
+        },
+        {
+          "name": "UNLIMITED_TONNAGE_IND",
+          "type": "esriFieldTypeString",
+          "alias": "Unlimited Tonnage Indicator",
+          "length": 3,
+          "domain": null
+        },
+        {
+          "name": "MAX_TONNAGE",
+          "type": "esriFieldTypeInteger",
+          "alias": "Maximum Tonnage",
+          "domain": null
+        },
+        {
+          "name": "LICENCED_AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Licenced Area",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Location Name",
+          "length": 35,
+          "domain": null
+        },
+        {
+          "name": "EFFECTIVE_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "Effective DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SYSTEM_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "System DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SHAPE",
+          "type": "esriFieldTypeGeometry",
+          "alias": "SHAPE",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.LEN",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Length",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Area",
+          "domain": null
+        },
+        {
+          "name": "OBJECTID",
+          "type": "esriFieldTypeOID",
+          "alias": "OBJECTID",
+          "domain": null
+        },
+        {
+          "name": "WATER_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "WATER_STATUS",
+          "length": 25,
+          "domain": null
+        }
+      ],
+      "geometryField": {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE"
+      },
+      "indexes": [
+        {
+          "name": "GGST_THRZD_CTV_FT_SPIX",
+          "fields": "SHAPE",
+          "isAscending": true,
+          "isUnique": true,
+          "description": ""
+        }
+      ],
+      "subtypes": [],
+      "relationships": [],
+      "canModifyLayer": true,
+      "canScaleSymbols": false,
+      "hasLabels": false,
+      "capabilities": "Map,Query,Data",
+      "maxRecordCount": 2000,
+      "supportsStatistics": true,
+      "supportsExceedsLimitStatistics": true,
+      "supportsAdvancedQueries": true,
+      "supportedQueryFormats": "JSON, geoJSON, PBF",
+      "isDataVersioned": false,
+      "ownershipBasedAccessControlForFeatures": {
+        "allowOthersToQuery": true
+      },
+      "useStandardizedQueries": true,
+      "supportedSpatialRelationships": [
+        "esriSpatialRelIntersects",
+        "esriSpatialRelContains",
+        "esriSpatialRelCrosses",
+        "esriSpatialRelEnvelopeIntersects",
+        "esriSpatialRelIndexIntersects",
+        "esriSpatialRelOverlaps",
+        "esriSpatialRelTouches",
+        "esriSpatialRelWithin",
+        "esriSpatialRelRelation"
+      ],
+      "advancedQueryCapabilities": {
+        "useStandardizedQueries": true,
+        "supportsStatistics": true,
+        "supportsPercentileStatistics": true,
+        "supportsHavingClause": true,
+        "supportsOrderBy": true,
+        "supportsDistinct": true,
+        "supportsCountDistinct": true,
+        "supportsPagination": true,
+        "supportsLod": false,
+        "supportsQueryWithLodSR": false,
+        "supportsTrueCurve": true,
+        "supportsQueryWithDatumTransformation": true,
+        "supportsReturningQueryExtent": true,
+        "supportsQueryWithDistance": true,
+        "supportsSqlExpression": true,
+        "supportsTimeRelation": true,
+        "supportsSqlFormat": false,
+        "supportsQueryAnalytic": true
+      },
+      "supportsDatumTransformation": true,
+      "advancedQueryAnalyticCapabilities": {
+        "supportsLinearRegression": true,
+        "supportsAsync": false,
+        "supportsPercentileAnalytic": true
+      },
+      "dateFieldsTimeReference": null,
+      "preferredTimeReference": null,
+      "datesInUnknownTimezone": false,
+      "hasGeometryProperties": true,
+      "geometryProperties": {
+        "shapeAreaFieldName": "SHAPE.AREA",
+        "shapeLengthFieldName": "SHAPE.LEN",
+        "units": "esriDecimalDegrees"
+      },
+      "hasMetadata": true,
+      "isDataArchived": false,
+      "archivingInfo": {
+        "supportsQueryWithHistoricMoment": false,
+        "startArchivingMoment": -1
+      },
+      "supportsCoordinatesQuantization": true,
+      "supportsDynamicLegends": true
+    },
+    "16": {
+      "currentVersion": 10.91,
+      "cimVersion": "2.9.0",
+      "id": 16,
+      "name": "Aggregate Site Authorized Inactive",
+      "type": "Feature Layer",
+      "description": "This data is subject to terms of use.",
+      "geometryType": "esriGeometryPolygon",
+      "sourceSpatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2e-07,
+        "mTolerance": 2e-07,
+        "falseX": -399.9999999,
+        "falseY": -399.9999999,
+        "xyUnits": 10000000,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": 0,
+        "mUnits": 1
+      },
+      "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "parentLayer": null,
+      "subLayers": [],
+      "minScale": 0,
+      "maxScale": 0,
+      "drawingInfo": {
+        "renderer": {
+          "type": "simple",
+          "symbol": {
+            "type": "esriSFS",
+            "style": "esriSFSSolid",
+            "color": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "outline": {
+              "type": "esriSLS",
+              "style": "esriSLSSolid",
+              "color": [
+                130,
+                130,
+                130,
+                255
+              ],
+              "width": 0.4
+            }
+          }
+        },
+        "scaleSymbols": false,
+        "transparency": 0,
+        "labelingInfo": null
+      },
+      "defaultVisibility": false,
+      "extent": {
+        "xmin": -95.15366999999999,
+        "ymin": 41.676559999999995,
+        "xmax": -74.32011,
+        "ymax": 56.859359999999995,
+        "spatialReference": {
+          "wkid": 4269,
+          "latestWkid": 4269,
+          "xyTolerance": 2e-07,
+          "zTolerance": 2,
+          "mTolerance": 0.001,
+          "falseX": -400,
+          "falseY": -400,
+          "xyUnits": 11258999068426.24,
+          "falseZ": 0,
+          "zUnits": 1,
+          "falseM": -100000,
+          "mUnits": 10000
+        }
+      },
+      "hasAttachments": false,
+      "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+      "displayField": "ALPS_ID",
+      "typeIdField": null,
+      "subtypeFieldName": null,
+      "subtypeField": null,
+      "defaultSubtypeCode": null,
+      "fields": [
+        {
+          "name": "OGF_ID",
+          "type": "esriFieldTypeDouble",
+          "alias": "OGF ID",
+          "domain": null
+        },
+        {
+          "name": "ALPS_ID",
+          "type": "esriFieldTypeInteger",
+          "alias": "ALPS ID",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_ACCURACY",
+          "type": "esriFieldTypeString",
+          "alias": "Location Accuracy",
+          "length": 25,
+          "domain": null
+        },
+        {
+          "name": "SOURCE_DETAIL",
+          "type": "esriFieldTypeString",
+          "alias": "Source Detail",
+          "length": 254,
+          "domain": null
+        },
+        {
+          "name": "CURRENT_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "Current Status",
+          "length": 11,
+          "domain": null
+        },
+        {
+          "name": "CLIENT_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Client Name",
+          "length": 200,
+          "domain": null
+        },
+        {
+          "name": "OPERATION_TYPE",
+          "type": "esriFieldTypeString",
+          "alias": "Operation Type",
+          "length": 21,
+          "domain": null
+        },
+        {
+          "name": "AUTH_TYPE_DESCR",
+          "type": "esriFieldTypeString",
+          "alias": "Authority Type Description",
+          "length": 40,
+          "domain": null
+        },
+        {
+          "name": "UNLIMITED_TONNAGE_IND",
+          "type": "esriFieldTypeString",
+          "alias": "Unlimited Tonnage Indicator",
+          "length": 3,
+          "domain": null
+        },
+        {
+          "name": "MAX_TONNAGE",
+          "type": "esriFieldTypeInteger",
+          "alias": "Maximum Tonnage",
+          "domain": null
+        },
+        {
+          "name": "LICENCED_AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Licenced Area",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Location Name",
+          "length": 35,
+          "domain": null
+        },
+        {
+          "name": "EFFECTIVE_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "Effective DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SYSTEM_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "System DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SHAPE",
+          "type": "esriFieldTypeGeometry",
+          "alias": "SHAPE",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.LEN",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Length",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Area",
+          "domain": null
+        },
+        {
+          "name": "OBJECTID",
+          "type": "esriFieldTypeOID",
+          "alias": "OBJECTID",
+          "domain": null
+        },
+        {
+          "name": "WATER_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "WATER_STATUS",
+          "length": 25,
+          "domain": null
+        }
+      ],
+      "geometryField": {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE"
+      },
+      "indexes": [
+        {
+          "name": "GGST_THRZD_NCTV_FT_SPIX",
+          "fields": "SHAPE",
+          "isAscending": true,
+          "isUnique": true,
+          "description": ""
+        }
+      ],
+      "subtypes": [],
+      "relationships": [],
+      "canModifyLayer": true,
+      "canScaleSymbols": false,
+      "hasLabels": false,
+      "capabilities": "Map,Query,Data",
+      "maxRecordCount": 2000,
+      "supportsStatistics": true,
+      "supportsExceedsLimitStatistics": true,
+      "supportsAdvancedQueries": true,
+      "supportedQueryFormats": "JSON, geoJSON, PBF",
+      "isDataVersioned": false,
+      "ownershipBasedAccessControlForFeatures": {
+        "allowOthersToQuery": true
+      },
+      "useStandardizedQueries": true,
+      "supportedSpatialRelationships": [
+        "esriSpatialRelIntersects",
+        "esriSpatialRelContains",
+        "esriSpatialRelCrosses",
+        "esriSpatialRelEnvelopeIntersects",
+        "esriSpatialRelIndexIntersects",
+        "esriSpatialRelOverlaps",
+        "esriSpatialRelTouches",
+        "esriSpatialRelWithin",
+        "esriSpatialRelRelation"
+      ],
+      "advancedQueryCapabilities": {
+        "useStandardizedQueries": true,
+        "supportsStatistics": true,
+        "supportsPercentileStatistics": true,
+        "supportsHavingClause": true,
+        "supportsOrderBy": true,
+        "supportsDistinct": true,
+        "supportsCountDistinct": true,
+        "supportsPagination": true,
+        "supportsLod": false,
+        "supportsQueryWithLodSR": false,
+        "supportsTrueCurve": true,
+        "supportsQueryWithDatumTransformation": true,
+        "supportsReturningQueryExtent": true,
+        "supportsQueryWithDistance": true,
+        "supportsSqlExpression": true,
+        "supportsTimeRelation": true,
+        "supportsSqlFormat": false,
+        "supportsQueryAnalytic": true
+      },
+      "supportsDatumTransformation": true,
+      "advancedQueryAnalyticCapabilities": {
+        "supportsLinearRegression": true,
+        "supportsAsync": false,
+        "supportsPercentileAnalytic": true
+      },
+      "dateFieldsTimeReference": null,
+      "preferredTimeReference": null,
+      "datesInUnknownTimezone": false,
+      "hasGeometryProperties": true,
+      "geometryProperties": {
+        "shapeAreaFieldName": "SHAPE.AREA",
+        "shapeLengthFieldName": "SHAPE.LEN",
+        "units": "esriDecimalDegrees"
+      },
+      "hasMetadata": true,
+      "isDataArchived": false,
+      "archivingInfo": {
+        "supportsQueryWithHistoricMoment": false,
+        "startArchivingMoment": -1
+      },
+      "supportsCoordinatesQuantization": true,
+      "supportsDynamicLegends": true
+    },
+    "23": {
+      "currentVersion": 10.91,
+      "cimVersion": "2.9.0",
+      "id": 23,
+      "name": "Aggregate Site Authorized Partial Surrender",
+      "type": "Feature Layer",
+      "description": "This data is subject to terms of use.",
+      "geometryType": "esriGeometryPolygon",
+      "sourceSpatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2e-07,
+        "mTolerance": 2e-07,
+        "falseX": -399.9999999,
+        "falseY": -399.9999999,
+        "xyUnits": 10000000,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": 0,
+        "mUnits": 1
+      },
+      "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "parentLayer": null,
+      "subLayers": [],
+      "minScale": 0,
+      "maxScale": 0,
+      "drawingInfo": {
+        "renderer": {
+          "type": "simple",
+          "symbol": {
+            "type": "esriSFS",
+            "style": "esriSFSSolid",
+            "color": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "outline": {
+              "type": "esriSLS",
+              "style": "esriSLSSolid",
+              "color": [
+                130,
+                130,
+                130,
+                255
+              ],
+              "width": 0.4
+            }
+          }
+        },
+        "scaleSymbols": false,
+        "transparency": 0,
+        "labelingInfo": null
+      },
+      "defaultVisibility": false,
+      "extent": {
+        "xmin": -95.15366999999999,
+        "ymin": 41.676559999999995,
+        "xmax": -74.32011,
+        "ymax": 56.859359999999995,
+        "spatialReference": {
+          "wkid": 4269,
+          "latestWkid": 4269,
+          "xyTolerance": 2e-07,
+          "zTolerance": 2,
+          "mTolerance": 0.001,
+          "falseX": -400,
+          "falseY": -400,
+          "xyUnits": 11258999068426.24,
+          "falseZ": 0,
+          "zUnits": 1,
+          "falseM": -100000,
+          "mUnits": 10000
+        }
+      },
+      "hasAttachments": false,
+      "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+      "displayField": "ALPS_ID",
+      "typeIdField": null,
+      "subtypeFieldName": null,
+      "subtypeField": null,
+      "defaultSubtypeCode": null,
+      "fields": [
+        {
+          "name": "OGF_ID",
+          "type": "esriFieldTypeDouble",
+          "alias": "OGF ID",
+          "domain": null
+        },
+        {
+          "name": "ALPS_ID",
+          "type": "esriFieldTypeInteger",
+          "alias": "ALPS ID",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_ACCURACY",
+          "type": "esriFieldTypeString",
+          "alias": "Location Accuracy",
+          "length": 25,
+          "domain": null
+        },
+        {
+          "name": "SOURCE_DETAIL",
+          "type": "esriFieldTypeString",
+          "alias": "Source Detail",
+          "length": 254,
+          "domain": null
+        },
+        {
+          "name": "PARTIAL_SURRENDER_IND",
+          "type": "esriFieldTypeString",
+          "alias": "Partial Surrender Indicator",
+          "length": 3,
+          "domain": null
+        },
+        {
+          "name": "CURRENT_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "Current Status",
+          "length": 11,
+          "domain": null
+        },
+        {
+          "name": "CLIENT_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Client Name",
+          "length": 200,
+          "domain": null
+        },
+        {
+          "name": "OPERATION_TYPE",
+          "type": "esriFieldTypeString",
+          "alias": "Operation Type",
+          "length": 21,
+          "domain": null
+        },
+        {
+          "name": "AUTH_TYPE_DESCR",
+          "type": "esriFieldTypeString",
+          "alias": "Authority Type Description",
+          "length": 40,
+          "domain": null
+        },
+        {
+          "name": "UNLIMITED_TONNAGE_IND",
+          "type": "esriFieldTypeString",
+          "alias": "Unlimited Tonnage Indicator",
+          "length": 3,
+          "domain": null
+        },
+        {
+          "name": "MAX_TONNAGE",
+          "type": "esriFieldTypeInteger",
+          "alias": "Maximum Tonnage",
+          "domain": null
+        },
+        {
+          "name": "WATER_STATUS",
+          "type": "esriFieldTypeString",
+          "alias": "Water Status",
+          "length": 25,
+          "domain": null
+        },
+        {
+          "name": "LICENCED_AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Licenced Area",
+          "domain": null
+        },
+        {
+          "name": "LOCATION_NAME",
+          "type": "esriFieldTypeString",
+          "alias": "Location Name",
+          "length": 35,
+          "domain": null
+        },
+        {
+          "name": "EFFECTIVE_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "Effective DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SYSTEM_DATETIME",
+          "type": "esriFieldTypeDate",
+          "alias": "System DateTime",
+          "length": 8,
+          "domain": null
+        },
+        {
+          "name": "SHAPE",
+          "type": "esriFieldTypeGeometry",
+          "alias": "SHAPE",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.LEN",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Length",
+          "domain": null
+        },
+        {
+          "name": "SHAPE.AREA",
+          "type": "esriFieldTypeDouble",
+          "alias": "Shape Area",
+          "domain": null
+        },
+        {
+          "name": "OBJECTID",
+          "type": "esriFieldTypeOID",
+          "alias": "OBJECTID",
+          "domain": null
+        }
+      ],
+      "geometryField": {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE"
+      },
+      "indexes": [
+        {
+          "name": "GGST_THRZD_PRT_SR_FT_SPIX",
+          "fields": "SHAPE",
+          "isAscending": true,
+          "isUnique": true,
+          "description": ""
+        }
+      ],
+      "subtypes": [],
+      "relationships": [],
+      "canModifyLayer": true,
+      "canScaleSymbols": false,
+      "hasLabels": false,
+      "capabilities": "Map,Query,Data",
+      "maxRecordCount": 2000,
+      "supportsStatistics": true,
+      "supportsExceedsLimitStatistics": true,
+      "supportsAdvancedQueries": true,
+      "supportedQueryFormats": "JSON, geoJSON, PBF",
+      "isDataVersioned": false,
+      "ownershipBasedAccessControlForFeatures": {
+        "allowOthersToQuery": true
+      },
+      "useStandardizedQueries": true,
+      "supportedSpatialRelationships": [
+        "esriSpatialRelIntersects",
+        "esriSpatialRelContains",
+        "esriSpatialRelCrosses",
+        "esriSpatialRelEnvelopeIntersects",
+        "esriSpatialRelIndexIntersects",
+        "esriSpatialRelOverlaps",
+        "esriSpatialRelTouches",
+        "esriSpatialRelWithin",
+        "esriSpatialRelRelation"
+      ],
+      "advancedQueryCapabilities": {
+        "useStandardizedQueries": true,
+        "supportsStatistics": true,
+        "supportsPercentileStatistics": true,
+        "supportsHavingClause": true,
+        "supportsOrderBy": true,
+        "supportsDistinct": true,
+        "supportsCountDistinct": true,
+        "supportsPagination": true,
+        "supportsLod": false,
+        "supportsQueryWithLodSR": false,
+        "supportsTrueCurve": true,
+        "supportsQueryWithDatumTransformation": true,
+        "supportsReturningQueryExtent": true,
+        "supportsQueryWithDistance": true,
+        "supportsSqlExpression": true,
+        "supportsTimeRelation": true,
+        "supportsSqlFormat": false,
+        "supportsQueryAnalytic": true
+      },
+      "supportsDatumTransformation": true,
+      "advancedQueryAnalyticCapabilities": {
+        "supportsLinearRegression": true,
+        "supportsAsync": false,
+        "supportsPercentileAnalytic": true
+      },
+      "dateFieldsTimeReference": null,
+      "preferredTimeReference": null,
+      "datesInUnknownTimezone": false,
+      "hasGeometryProperties": true,
+      "geometryProperties": {
+        "shapeAreaFieldName": "SHAPE.AREA",
+        "shapeLengthFieldName": "SHAPE.LEN",
+        "units": "esriDecimalDegrees"
+      },
+      "hasMetadata": true,
+      "isDataArchived": false,
+      "archivingInfo": {
+        "supportsQueryWithHistoricMoment": false,
+        "startArchivingMoment": -1
+      },
+      "supportsCoordinatesQuantization": true,
+      "supportsDynamicLegends": true
+    }
+  }
+}

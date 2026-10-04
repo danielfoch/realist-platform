@@ -11,6 +11,8 @@ describe("northern markets with restrictive originating grants", () => {
   it("requires Ontario and a known municipality, preserving Canadian Sault identity", () => {
     expect(northernReuseAudit("CITY OF NORTH BAY", "Ontario")?.city).toBe("North Bay");
     expect(northernReuseAudit("Sault Ste Marie", "ON")?.city).toBe("Sault Ste. Marie");
+    expect(northernReuseAudit("CITY OF TIMMINS", "ON")?.city).toBe("Timmins");
+    expect(northernReuseAudit("Timmins", "QC")).toBeNull();
     for (const [city, province] of [["North Bay", "AB"], ["Sault Ste. Marie", "Michigan"], ["North Bay Village", "ON"], ["Sault", "ON"], ["Thunder Bay", "ON"]]) {
       expect(northernAuditLayers(city, province)).toEqual({});
       expect(northernAuditQuestions(city, province)).toEqual([]);
@@ -19,7 +21,7 @@ describe("northern markets with restrictive originating grants", () => {
   it("cannot turn public map access into fetched property evidence, counts or a clean no-match", () => {
     const fetch = vi.fn(() => { throw new Error("Forbidden municipal request"); });
     vi.stubGlobal("fetch", fetch);
-    for (const city of ["North Bay", "Sault Ste. Marie"]) {
+    for (const city of ["North Bay", "Sault Ste. Marie", "Timmins"]) {
       const layers = northernAuditLayers(city, "ON");
       expect(layers.zoning.status).toBe("unavailable");
       expect(layers.permits.status).toBe("unavailable");
@@ -59,10 +61,24 @@ describe("northern markets with restrictive originating grants", () => {
     expect(html).toContain("<dt>coverage Complete</dt><dd>false</dd>");
     expect(html).not.toContain("no_match");
   });
-  it("moves both centres to audited reuse gaps without declaring major-market completion", () => {
+  it("keeps Timmins City guidance, original transport failures and restricted AMIS separate from property evidence", () => {
+    const a = northernReuseAudit("Timmins", "ON")!;
+    expect(a.rightsFinding).toContain("no compatible specific commercial redistribution grant");
+    expect(a.rightsFinding).not.toContain("noncommercial-only");
+    expect(a.metadata.unresolvedTransport).toContain("HTTP403");
+    const layers = northernAuditLayers("Timmins", "ON");
+    expect(layers.abandonedMineRecords.note).toContain("prior written permission");
+    expect(layers.heritage.note).toContain("Schedule B");
+    expect(layers.sitePlanDrawings.note).toContain("signed/registered");
+    const brief = preShowingBrief(layers, northernAuditQuestions("Timmins", "ON"));
+    expect(brief.findings).toHaveLength(0);
+    expect(brief.documentsToRequest.some(d => d.reason.includes("2019 ZIP label"))).toBe(true);
+    expect(brief.documentsToRequest.some(d => d.reason.includes("Neither screen was performed"))).toBe(true);
+  });
+  it("moves audited centres to audited reuse gaps without declaring major-market completion", () => {
     const roadmap = ontarioMarketRoadmap();
     expect(roadmap.majorMarketsComplete).toBe(false);
-    for (const city of ["North Bay", "Sault Ste. Marie"]) {
+    for (const city of ["North Bay", "Sault Ste. Marie", "Timmins"]) {
       const market = roadmap.municipalities.find(m => m.city === city)!;
       expect(market).toMatchObject({ stage: "audited_reuse_gap", complete: false, configuredLayers: [] });
       expect(market.withheldLayers.some(g => g.layer === "zoning")).toBe(true);
