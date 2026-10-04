@@ -13,7 +13,7 @@ const CAUTION = "Published point screening against the conceptual 2025 regulatio
 export async function trcaLayer(location: Location | null): Promise<Layer> {
   if (!location || location.latitude === null || location.longitude === null) return layer("skipped", null, TRCA_SOURCE, "No resolved coordinates.");
   if (location.province && provinceKey(location.province) !== "ontario") return layer("not_supported", null, TRCA_SOURCE, "TRCA mapping is in Ontario.");
-  if (!["source_building_point", "caller_supplied"].includes(location.accuracy)) return layer("skipped", null, TRCA_SOURCE, "Street/blockface interpolation cannot screen constraint boundaries.");
+  if (!["source_building_point", "caller_supplied"].includes(location.accuracy)) return layer("skipped", null, TRCA_SOURCE, "This adapter requires a published building point or verified caller coordinates. Municipal civic, street and blockface points are not used for this TRCA screen.");
   if (location.latitude < 43.5 || location.latitude > 44.3 || location.longitude < -80.1 || location.longitude > -78.6) return layer("not_supported", null, TRCA_SOURCE, "Outside this source's search envelope; other authorities are not searched by this layer.");
   try {
     const metadata = await fetchJson(new URL(`${BASE}?f=json`), 5000) as { name?: string; fields?: { name: string }[]; editingInfo?: { dataLastEditDate?: number } };

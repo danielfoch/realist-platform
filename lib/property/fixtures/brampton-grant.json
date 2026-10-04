@@ -1,0 +1,4474 @@
+{
+  "https://www.arcgis.com/sharing/rest/content/items/05c59502187b44d288f00b2aa43fc5d1": {
+    "id": "05c59502187b44d288f00b2aa43fc5d1",
+    "title": "Bramptons GeoHub",
+    "type": "Web Mapping Application",
+    "url": "https://geohub-brampton.opendata.arcgis.com",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<p>DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the Open Data application. To make changes to this site, please visit <a target='_blank' href='https://opendata.arcgis.com/admin/' rel='nofollow ugc noopener noreferrer'>https://opendata.arcgis.com/admin/</a></p><p>This Production GeoHub site is linked by name, not by ID, so the name of this asset should remain “Bramptons GeoHub”. &nbsp;This AGOL hub asset is stored as a “Web Mapping Application” and not handled like the current “Site” content, the way the DEV and UAT sites operate. &nbsp;This version of GeoHub was created before the Hub platform was updated, so asset names should remain the same, while the content can be updated using the page editing suite on the Hub manager site.</p>",
+    "licenseInfo": "<a href='https://creativecommons.org/licenses/by-sa/4.0/' target='_blank' rel='nofollow ugc noopener noreferrer'>CC-BY-SA</a>",
+    "accessInformation": "null"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/05c59502187b44d288f00b2aa43fc5d1/data": {
+    "values": {
+      "defaultHostname": "geohub-brampton.opendata.arcgis.com",
+      "customHostname": "geohub.brampton.ca"
+    },
+    "catalog": {
+      "groups": [
+        "a4f2e37cdb4846f8b240e2af717851f7",
+        "8cfebb20725c43d0b7be6963f98daa3a",
+        "2554645265d44df48b6ef386100bd9cc",
+        "b47c0ccf02044f059e6d9ebbaa21ad93",
+        "0d1813a89f1b4dd98dacdeafdd9fd26b"
+      ]
+    },
+    "catalogV2": {
+      "schemaVersion": 1,
+      "title": "Default Site Catalog",
+      "scopes": {
+        "item": {
+          "targetEntity": "item",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "a4f2e37cdb4846f8b240e2af717851f7",
+                    "8cfebb20725c43d0b7be6963f98daa3a",
+                    "2554645265d44df48b6ef386100bd9cc",
+                    "b47c0ccf02044f059e6d9ebbaa21ad93",
+                    "0d1813a89f1b4dd98dacdeafdd9fd26b"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "event": {
+          "targetEntity": "event",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "a4f2e37cdb4846f8b240e2af717851f7",
+                    "8cfebb20725c43d0b7be6963f98daa3a",
+                    "2554645265d44df48b6ef386100bd9cc",
+                    "b47c0ccf02044f059e6d9ebbaa21ad93",
+                    "0d1813a89f1b4dd98dacdeafdd9fd26b"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "collections": [
+        {
+          "label": "Initiatives",
+          "key": "site",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$site"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": true
+          }
+        },
+        {
+          "label": "Data",
+          "key": "dataset",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$dataset"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": "Documents",
+          "key": "document",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$document"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": "Apps & Maps",
+          "key": "appAndMap",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$app",
+                        "$map"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        }
+      ]
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/community/groups/a4f2e37cdb4846f8b240e2af717851f7": {
+    "id": "a4f2e37cdb4846f8b240e2af717851f7",
+    "title": "Brampton Open Data",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public"
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/56bd6b5ac117445db5e64d14b72e061e": {
+    "id": "56bd6b5ac117445db5e64d14b72e061e",
+    "title": "Address Points",
+    "type": "Map Service",
+    "url": "https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'>Municipal address points are accurately captured and attributed with street names, detailed unit numbers and property information.  The data model follows standardized rules and naming conventions and is the master addressing data source.</span>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:56bd6b5ac117445db5e64d14b72e061e": {
+    "total": 1,
+    "results": [
+      {
+        "id": "56bd6b5ac117445db5e64d14b72e061e",
+        "owner": "BramptonMaps",
+        "created": 1557171732000,
+        "modified": 1769192962000,
+        "guid": null,
+        "name": null,
+        "title": "Address Points",
+        "type": "Map Service",
+        "typeKeywords": [
+          "ArcGIS API for JavaScript",
+          "ArcGIS Server",
+          "Data",
+          "Dynamic",
+          "Map Service",
+          "Service"
+        ],
+        "description": "<span style='font-family: &quot;Avenir Next W01&quot;, &quot;Avenir Next W00&quot;, &quot;Avenir Next&quot;, Avenir, &quot;Helvetica Neue&quot;, sans-serif; font-size: 16px;'>Municipal address points are accurately captured and attributed with street names, detailed unit numbers and property information.  The data model follows standardized rules and naming conventions and is the master addressing data source.</span>",
+        "tags": [
+          "address",
+          "points",
+          "addresses",
+          "information",
+          "addressing",
+          "centralized",
+          "property",
+          "system",
+          "data",
+          "Infrastructure",
+          "Land Use and Development",
+          "city staff",
+          "mail"
+        ],
+        "snippet": "Municipal address points for the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1557172281219.png",
+        "documentation": null,
+        "extent": [
+          [
+            -79.887,
+            43.6013
+          ],
+          [
+            -79.6301,
+            43.8495
+          ]
+        ],
+        "categories": [],
+        "spatialReference": "102100",
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 96086,
+        "scoreCompleteness": 93,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791028800000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer": {
+    "serviceItemId": "",
+    "copyrightText": "City of Brampton",
+    "description": "Address Point Open Data content.",
+    "layers": [
+      {
+        "id": 14,
+        "name": "Address Points",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": []
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/COB/OpenData_Address_Points/MapServer/14": {
+    "id": 14,
+    "type": "Feature Layer",
+    "name": "Address Points",
+    "geometryType": "esriGeometryPoint",
+    "serviceItemId": "",
+    "copyrightText": "City of Brampton",
+    "description": "Address point data with municipal addressing details, and property descriptions.",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "Object ID",
+        "domain": null
+      },
+      {
+        "name": "FULL_ADDRESS",
+        "type": "esriFieldTypeString",
+        "alias": "Full Address",
+        "length": 200,
+        "domain": null
+      },
+      {
+        "name": "UNIT_NO",
+        "type": "esriFieldTypeString",
+        "alias": "Unit Number",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "CIVIC_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Civic Number",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "STREET_NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Street Name",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "STREET_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Street Type",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "STREET_DIRECTION",
+        "type": "esriFieldTypeString",
+        "alias": "Street Direction",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "CITY",
+        "type": "esriFieldTypeString",
+        "alias": "City",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "PROVINCE",
+        "type": "esriFieldTypeString",
+        "alias": "Province",
+        "length": 25,
+        "domain": null
+      },
+      {
+        "name": "POSTAL_CODE",
+        "type": "esriFieldTypeString",
+        "alias": "Postal Code",
+        "length": 10,
+        "domain": null
+      },
+      {
+        "name": "PROP_CODE_DESC",
+        "type": "esriFieldTypeString",
+        "alias": "Property Description",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "PERMIT_NO",
+        "type": "esriFieldTypeString",
+        "alias": "Permit Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PERMIT_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Permit Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SUB_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Sub-Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "WORK_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Work Type",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "PERMIT_ISSUEDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Permit Issue Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "OCCUPANCY_DATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Occupancy Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "ADDRESS_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Address Type",
+        "length": 40,
+        "domain": null
+      },
+      {
+        "name": "ADDRESS_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "Address ID",
+        "domain": null
+      },
+      {
+        "name": "TOWNSHIP",
+        "type": "esriFieldTypeString",
+        "alias": "Township",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "LOT_NUM",
+        "type": "esriFieldTypeString",
+        "alias": "Lot Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CON_NUM",
+        "type": "esriFieldTypeString",
+        "alias": "Concession Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CITY_GRID",
+        "type": "esriFieldTypeString",
+        "alias": "City Grid",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SEC_PLAN_AREA",
+        "type": "esriFieldTypeString",
+        "alias": "Secondary Plan Area",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "REG_PLAN_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Registered Plan Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "REG_PLAN_ASSUMP_DATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Registered Plan Assumption Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "DRAFT_PLAN_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Draft Plan Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "SITE_PLAN_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Site Plan Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "CONDO_PLAN_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Condominium Plan Number",
+        "length": 255,
+        "domain": null
+      },
+      {
+        "name": "C_OF_A",
+        "type": "esriFieldTypeString",
+        "alias": "Committee of Adjustment Number",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "CITY_FILE",
+        "type": "esriFieldTypeString",
+        "alias": "City File",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "BLOCK_PLAN",
+        "type": "esriFieldTypeString",
+        "alias": "Block Plan Number",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "HERITAGE",
+        "type": "esriFieldTypeString",
+        "alias": "Heritage Designation",
+        "length": 100,
+        "domain": null
+      },
+      {
+        "name": "GIS_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "GIS ID",
+        "domain": null
+      },
+      {
+        "name": "GEOMETRY",
+        "type": "esriFieldTypeGeometry",
+        "alias": "Geometry",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/d837bf1134444bf1b22d69257480dfd0": {
+    "id": "d837bf1134444bf1b22d69257480dfd0",
+    "title": "City Limit",
+    "type": "Feature Service",
+    "url": "https://maps1.brampton.ca/arcgis/rest/services/COB/Common/MapServer/2",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "City of Brampton municipal boundary",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:d837bf1134444bf1b22d69257480dfd0": {
+    "total": 1,
+    "results": [
+      {
+        "id": "d837bf1134444bf1b22d69257480dfd0",
+        "owner": "BramptonMaps",
+        "created": 1477078715000,
+        "modified": 1590616112000,
+        "guid": null,
+        "name": null,
+        "title": "City Limit",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "City of Brampton municipal boundary",
+        "tags": [
+          "city",
+          "limit",
+          "municipal",
+          "boundary",
+          "Local Government",
+          "Brampton",
+          "Topography and Borders",
+          "city limit"
+        ],
+        "snippet": "City of Brampton municipal boundary",
+        "thumbnail": "thumbnail/data-city-limit-thumb.jpg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.87,
+            43.61
+          ],
+          [
+            -79.63,
+            43.84
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://maps1.brampton.ca/arcgis/rest/services/COB/Common/MapServer/2",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 3658226,
+        "scoreCompleteness": 80,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791028800000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/COB/Common/MapServer": {
+    "copyrightText": "City of Brampton",
+    "description": "New wards as of December 1, 2014",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Address Points",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "Streets",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "City Limit",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "Brampton Grid",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 7,
+        "name": "Downtown Special Policy Area",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": []
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/COB/Common/MapServer/2": {
+    "id": 2,
+    "type": "Feature Layer",
+    "name": "City Limit",
+    "geometryType": "esriGeometryPolygon",
+    "copyrightText": "City of Brampton",
+    "description": "",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "GEOMETRY",
+        "type": "esriFieldTypeGeometry",
+        "alias": "GEOMETRY",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/f1c647c68b0f429a8575f200a803bce8": {
+    "id": "f1c647c68b0f429a8575f200a803bce8",
+    "title": "Building Permits",
+    "type": "Feature Service",
+    "url": "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/0",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>Building Permits for addresses within the City of Brampton.</div><div>Updated using a live service.<br /></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:f1c647c68b0f429a8575f200a803bce8": {
+    "total": 1,
+    "results": [
+      {
+        "id": "f1c647c68b0f429a8575f200a803bce8",
+        "owner": "BramptonMaps",
+        "created": 1516042694000,
+        "modified": 1650555028000,
+        "guid": null,
+        "name": null,
+        "title": "Building Permits",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "<div>Building Permits for addresses within the City of Brampton.</div><div>Updated using a live service.<br /></div>",
+        "tags": [
+          "Building Permits",
+          "Land Use and Development",
+          "permits",
+          "property",
+          "parcel",
+          "building",
+          "land developers",
+          "city staff"
+        ],
+        "snippet": "Building Permits for addresses within the City of Brampton.",
+        "thumbnail": "thumbnail/thumbnail1530807260660.png",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8869,
+            43.6041
+          ],
+          [
+            -79.6343,
+            43.838
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/0",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 484597,
+        "scoreCompleteness": 90,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer": {
+    "copyrightText": "",
+    "description": "Building Permits for addresses within the City of Brampton and the related status and activities.",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Building Permits",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": [
+      {
+        "id": 1,
+        "name": "Building Permits Activity",
+        "type": "Table"
+      },
+      {
+        "id": 2,
+        "name": "Upcoming Inspections",
+        "type": "Table"
+      }
+    ]
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/0": {
+    "id": 0,
+    "type": "Feature Layer",
+    "name": "Building Permits",
+    "geometryType": "esriGeometryPoint",
+    "copyrightText": "City of Brampton",
+    "description": "Building Permits for addresses within the City of Brampton.Updated using a live service.",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "GIS_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "GIS_ID",
+        "domain": null
+      },
+      {
+        "name": "ADDRESS",
+        "type": "esriFieldTypeString",
+        "alias": "Address",
+        "length": 1073741822,
+        "domain": null
+      },
+      {
+        "name": "FOLDERRSN",
+        "type": "esriFieldTypeDouble",
+        "alias": "FOLDERRSN",
+        "domain": null
+      },
+      {
+        "name": "PERMITNUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Permit Number",
+        "length": 18,
+        "domain": null
+      },
+      {
+        "name": "SUBDESC",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "length": 80,
+        "domain": null
+      },
+      {
+        "name": "WORKDESC",
+        "type": "esriFieldTypeString",
+        "alias": "Work Description",
+        "length": 80,
+        "domain": null
+      },
+      {
+        "name": "ISSUEDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Issue Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "INDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Input Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "STATUSDESC",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "length": 80,
+        "domain": null
+      },
+      {
+        "name": "PROCESSDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Processed",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "BUILDER",
+        "type": "esriFieldTypeString",
+        "alias": "Builder",
+        "length": 150,
+        "domain": null
+      },
+      {
+        "name": "CONTRACTOR",
+        "type": "esriFieldTypeString",
+        "alias": "Contractor",
+        "length": 150,
+        "domain": null
+      },
+      {
+        "name": "EXPIRYDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "Expiry Date",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "GFA",
+        "type": "esriFieldTypeString",
+        "alias": "Gross Floor Area (Sq.M)",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "SECOND_UNIT",
+        "type": "esriFieldTypeString",
+        "alias": "Second Unit Created",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "BEDROOMS",
+        "type": "esriFieldTypeString",
+        "alias": "# of Bedrooms",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "STOREYS",
+        "type": "esriFieldTypeString",
+        "alias": "# of Storeys",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "DWELLINGS",
+        "type": "esriFieldTypeString",
+        "alias": "# of Dwellings",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/e655e590937a487aab54ff6a4091a8a4": {
+    "id": "e655e590937a487aab54ff6a4091a8a4",
+    "title": "Building Permit Activities",
+    "type": "Feature Service",
+    "url": "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/1",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>Building Permit Activities related to building permits within the City of Brampton.</div><div>Updated using a live service.</div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:e655e590937a487aab54ff6a4091a8a4": {
+    "total": 1,
+    "results": [
+      {
+        "id": "e655e590937a487aab54ff6a4091a8a4",
+        "owner": "BramptonMaps",
+        "created": 1516042896000,
+        "modified": 1650555200000,
+        "guid": null,
+        "name": null,
+        "title": "Building Permit Activities",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service",
+          "Singlelayer",
+          "Table"
+        ],
+        "description": "<div>Building Permit Activities related to building permits within the City of Brampton.</div><div>Updated using a live service.</div>",
+        "tags": [
+          "Land Use and Development",
+          "Building Permits",
+          "building",
+          "permits",
+          "parcel",
+          "permit activity",
+          "activity",
+          "land developers"
+        ],
+        "snippet": "Building Permit Activities related to building permits within the City of Brampton.",
+        "thumbnail": "thumbnail/thumbnail.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.886,
+            43.608
+          ],
+          [
+            -79.612,
+            43.847
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/1",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 192872,
+        "scoreCompleteness": 93,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://maps1.brampton.ca/arcgis/rest/services/BuildingPermit/Building_Permits/MapServer/1": {
+    "id": 1,
+    "type": "Table",
+    "name": "Building Permits Activity",
+    "copyrightText": null,
+    "description": null,
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "FOLDERRSN",
+        "type": "esriFieldTypeDouble",
+        "alias": "FOLDERRSN",
+        "domain": null
+      },
+      {
+        "name": "DISPLAYORDER",
+        "type": "esriFieldTypeInteger",
+        "alias": "DISPLAYORDER",
+        "domain": null
+      },
+      {
+        "name": "PROCESSRSN",
+        "type": "esriFieldTypeInteger",
+        "alias": "PROCESSRSN",
+        "domain": null
+      },
+      {
+        "name": "PROCESSDESC",
+        "type": "esriFieldTypeString",
+        "alias": "PROCESSDESC",
+        "length": 80,
+        "domain": null
+      },
+      {
+        "name": "STATUSDESC",
+        "type": "esriFieldTypeString",
+        "alias": "STATUSDESC",
+        "length": 80,
+        "domain": null
+      },
+      {
+        "name": "ACTIVITYDATE",
+        "type": "esriFieldTypeDate",
+        "alias": "ACTIVITYDATE",
+        "length": 8,
+        "domain": null
+      }
+    ]
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6a4c6f9af0104e12941d67251e20ab8b": {
+    "id": "6a4c6f9af0104e12941d67251e20ab8b",
+    "title": "Heritage Points",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/2",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "Locations of designated and listed heritage properties within the City of Brampton. Designated properties are those that that are designated cultural heritage resources under the <em>Ontario Heritage Act</em>. Listed properties are identified or &quot;listed&quot; as \ncultural heritage resources and may be considered for designation. The <em>Ontario Heritage Act </em>requires municipalities to maintain a \ncurrent, publicly accessible register of properties of cultural heritage\n value or interest situated in the municipality. The municipal register \nis the official list or record of cultural heritage properties that have\n been identified as being important to the community.<div>Refer to the <a href='https://www.brampton.ca/EN/City-Hall/Bylaws/Pages/Archive/Archive.aspx' rel='nofollow ugc' target='_blank'>City of Brampton By-Law archive</a> to look up by-laws referenced in the dataset.</div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:6a4c6f9af0104e12941d67251e20ab8b": {
+    "total": 1,
+    "results": [
+      {
+        "id": "6a4c6f9af0104e12941d67251e20ab8b",
+        "owner": "BramptonMaps",
+        "created": 1469730731000,
+        "modified": 1583164442000,
+        "guid": null,
+        "name": null,
+        "title": "Heritage Points",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "Locations of designated and listed heritage properties within the City of Brampton. Designated properties are those that that are designated cultural heritage resources under the <em>Ontario Heritage Act</em>. Listed properties are identified or &quot;listed&quot; as \ncultural heritage resources and may be considered for designation. The <em>Ontario Heritage Act </em>requires municipalities to maintain a \ncurrent, publicly accessible register of properties of cultural heritage\n value or interest situated in the municipality. The municipal register \nis the official list or record of cultural heritage properties that have\n been identified as being important to the community.<div>Refer to the <a href='https://www.brampton.ca/EN/City-Hall/Bylaws/Pages/Archive/Archive.aspx' rel='nofollow ugc' target='_blank'>City of Brampton By-Law archive</a> to look up by-laws referenced in the dataset.</div>",
+        "tags": [
+          "arts",
+          "culture",
+          "tourism",
+          "heritage",
+          "cultural",
+          "history",
+          "historic",
+          "archeology",
+          "architecture",
+          "Arts Culture Tourism",
+          "land developers"
+        ],
+        "snippet": "Designated and listed heritage properties within the City of Brampton",
+        "thumbnail": "thumbnail/data-heritage-points-thumb.jpg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8662,
+            43.6089
+          ],
+          [
+            -79.6509,
+            43.8481
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/2",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 393296,
+        "scoreCompleteness": 100,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer": {
+    "serviceItemId": "584b6af140ff4db3a52382d999c1ad65",
+    "copyrightText": "City of Brampton",
+    "description": "Open data datasets from City of Brampton relating to local government, including schools, public facilities, theatres, heritage points and ward boundaries.",
+    "layers": [
+      {
+        "id": 1,
+        "name": "Schools",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 2,
+        "name": "Heritage Points",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 5,
+        "name": "Libraries",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 6,
+        "name": "Recreation Centres",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 7,
+        "name": "Transit",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 8,
+        "name": "Go Stations",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 9,
+        "name": "Hospitals",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 3,
+        "name": "Ward Boundaries",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 13,
+        "name": "Heritage Properties",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 15,
+        "name": "Supplementary City Facilities",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      }
+    ],
+    "tables": [
+      {
+        "id": 14,
+        "name": "Term of Council Recorded Votes (2014-2018)",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0
+      },
+      {
+        "id": 4,
+        "name": "Term of Council Recorded Votes",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0
+      },
+      {
+        "id": 12,
+        "name": "Term of Council Expense Reports",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0
+      },
+      {
+        "id": 17,
+        "name": "Term of Council Recorded Votes (2018-2022)",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/2": {
+    "id": 2,
+    "type": "Feature Layer",
+    "name": "Heritage Points",
+    "geometryType": "esriGeometryPoint",
+    "serviceItemId": "584b6af140ff4db3a52382d999c1ad65",
+    "copyrightText": "",
+    "description": "",
+    "fields": [
+      {
+        "name": "ADDRESS",
+        "type": "esriFieldTypeString",
+        "alias": "ADDRESS",
+        "sqlType": "sqlTypeOther",
+        "length": 255,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPERTY_NAME",
+        "type": "esriFieldTypeString",
+        "alias": "PROPERTY NAME",
+        "sqlType": "sqlTypeOther",
+        "length": 255,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "HERITAGE_STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "HERITAGE STATUS",
+        "sqlType": "sqlTypeOther",
+        "length": 255,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_OF_DESIGNATION",
+        "type": "esriFieldTypeDate",
+        "alias": "DATE OF DESIGNATION",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "BYLAW_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "BYLAW NUMBER",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "BUILT_HERITAGE",
+        "type": "esriFieldTypeString",
+        "alias": "BUILT HERITAGE",
+        "sqlType": "sqlTypeOther",
+        "length": 10,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "NATURAL_HERITAGE",
+        "type": "esriFieldTypeString",
+        "alias": "NATURAL HERITAGE",
+        "sqlType": "sqlTypeOther",
+        "length": 10,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CULTURAL_HERITAGE_LANDSCAPE",
+        "type": "esriFieldTypeString",
+        "alias": "CULTURAL HERITAGE LANDSCAPE",
+        "sqlType": "sqlTypeOther",
+        "length": 10,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "YEAR_PLAQUE_DISTRIBUTED",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "YEAR PLAQUE DISTRIBUTED",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "ADDITIONAL_INFORMATION",
+        "type": "esriFieldTypeString",
+        "alias": "ADDITIONAL INFORMATION",
+        "sqlType": "sqlTypeOther",
+        "length": 1000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLYGON_ID",
+        "type": "esriFieldTypeBigInteger",
+        "alias": "POLYGON ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "ONT_HERITAGE_ACT",
+        "type": "esriFieldTypeString",
+        "alias": "ONTARIO HERITAGE ACT",
+        "sqlType": "sqlTypeOther",
+        "length": 255,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AWARD_OF_MERIT_YEAR",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "AWARD OF MERIT YEAR",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "ARCHITECTURE_STYLE",
+        "type": "esriFieldTypeString",
+        "alias": "ARCHITECTURE STYLE",
+        "sqlType": "sqlTypeOther",
+        "length": 255,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CONSTRUCTION_DATE",
+        "type": "esriFieldTypeString",
+        "alias": "CONSTRUCTION DATE",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "OBJECTID",
+    "editingInfo": {
+      "lastEditDate": 1789959672534,
+      "schemaLastEditDate": 1789959653778,
+      "dataLastEditDate": 1789959672534
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/61b3e12fb4d74d078a15512dc3baf568": {
+    "id": "61b3e12fb4d74d078a15512dc3baf568",
+    "title": "Ward Boundaries",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/3",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<span><span style='font-size:11.0pt;\nline-height:115%;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;mso-ascii-theme-font:minor-latin;\nmso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:\nminor-latin;mso-bidi-font-family:&quot;Times New Roman&quot;;mso-bidi-theme-font:minor-bidi;\nmso-ansi-language:EN-CA;mso-fareast-language:EN-US;mso-bidi-language:AR-SA'>City\nof Brampton Ward Boundaries as of December 1, 2014</span></span>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:61b3e12fb4d74d078a15512dc3baf568": {
+    "total": 1,
+    "results": [
+      {
+        "id": "61b3e12fb4d74d078a15512dc3baf568",
+        "owner": "BramptonMaps",
+        "created": 1469804158000,
+        "modified": 1540169421000,
+        "guid": null,
+        "name": null,
+        "title": "Ward Boundaries",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "<span><span style='font-size:11.0pt;\nline-height:115%;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;mso-ascii-theme-font:minor-latin;\nmso-fareast-font-family:Calibri;mso-fareast-theme-font:minor-latin;mso-hansi-theme-font:\nminor-latin;mso-bidi-font-family:&quot;Times New Roman&quot;;mso-bidi-theme-font:minor-bidi;\nmso-ansi-language:EN-CA;mso-fareast-language:EN-US;mso-bidi-language:AR-SA'>City\nof Brampton Ward Boundaries as of December 1, 2014</span></span>",
+        "tags": [
+          "Ward Boundaries",
+          "Wards",
+          "Local Government",
+          "Topography and Boundaries"
+        ],
+        "snippet": "City of Brampton Ward Boundaries as of December 1, 2014",
+        "thumbnail": "thumbnail/data-wards-thumb.jpg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6001
+          ],
+          [
+            -79.6277,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/3",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 2590598,
+        "scoreCompleteness": 91,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/3": {
+    "id": 3,
+    "type": "Feature Layer",
+    "name": "Ward Boundaries",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "584b6af140ff4db3a52382d999c1ad65",
+    "copyrightText": "City of Brampton",
+    "description": "",
+    "fields": [
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "WARD",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "ELECTORAL_AREA",
+        "type": "esriFieldTypeString",
+        "alias": "ELECTORAL AREA",
+        "sqlType": "sqlTypeOther",
+        "length": 60,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "OBJECTID",
+    "editingInfo": {
+      "lastEditDate": 1789959672868,
+      "schemaLastEditDate": 1789959654294,
+      "dataLastEditDate": 1789959672868
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/a9bc9e70bd7c4587bcfe6400a9f2f138": {
+    "id": "a9bc9e70bd7c4587bcfe6400a9f2f138",
+    "title": "Consent to Sever",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/5",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>This planning and development dataset contains locations and tabular details of committee of adjustment approved consent to sever applications.</div><div>A <a href='https://www.google.com/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=&amp;cad=rja&amp;uact=8&amp;ved=2ahUKEwjA56WI7q_uAhUfSzABHeeOAkIQFjABegQICBAC&amp;url=https%3A%2F%2Fwww.ontario.ca%2Fdocument%2Fcitizens-guide-land-use-planning%2Fland-severances&amp;usg=AOvVaw3aoBBGNNmpWndOcCNkYn_L' target='_blank' rel='nofollow ugc noopener noreferrer'>land severance</a> is the authorized separation of a piece of land to form a new lot or a new parcel of land. This is commonly known as a consent.  The City Clerks coordinate committee meetings to determine severance approvals on a regular basis.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Other related planning layers:</div><div><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Minor Variance Applications<br /></li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:a9bc9e70bd7c4587bcfe6400a9f2f138": {
+    "total": 1,
+    "results": [
+      {
+        "id": "a9bc9e70bd7c4587bcfe6400a9f2f138",
+        "owner": "BramptonMaps",
+        "created": 1610547877000,
+        "modified": 1732042731000,
+        "guid": null,
+        "name": null,
+        "title": "Consent to Sever",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "<div>This planning and development dataset contains locations and tabular details of committee of adjustment approved consent to sever applications.</div><div>A <a href='https://www.google.com/url?sa=t&amp;rct=j&amp;q=&amp;esrc=s&amp;source=web&amp;cd=&amp;cad=rja&amp;uact=8&amp;ved=2ahUKEwjA56WI7q_uAhUfSzABHeeOAkIQFjABegQICBAC&amp;url=https%3A%2F%2Fwww.ontario.ca%2Fdocument%2Fcitizens-guide-land-use-planning%2Fland-severances&amp;usg=AOvVaw3aoBBGNNmpWndOcCNkYn_L' target='_blank' rel='nofollow ugc noopener noreferrer'>land severance</a> is the authorized separation of a piece of land to form a new lot or a new parcel of land. This is commonly known as a consent.  The City Clerks coordinate committee meetings to determine severance approvals on a regular basis.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Other related planning layers:</div><div><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Minor Variance Applications<br /></li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "consent"
+        ],
+        "snippet": "Consent applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610641379878.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/5",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 9167,
+        "scoreCompleteness": 95,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791000000000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer": {
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "Open data for Planning containing land use development layers, including: site plan approval applications, registered plan of condominium, committee of adjustment applications for consent to sever and minor variances,  registered plan of subdivision, OPA/ZBA and subdivision applications, pre-consultations, Sustainable Neighbourhood Action Plan (SNAP) areas, GTAA zoning regulation areas and the GTAA Airport Operating Area.<div>Updated Daily.</div>",
+    "layers": [
+      {
+        "id": 5,
+        "name": "Consent to Sever",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 6,
+        "name": "Development Permit System",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 7,
+        "name": "Draft Plan of Condo",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 8,
+        "name": "Minor Variance",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 9,
+        "name": "OPA ZBA Subdivision",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 10,
+        "name": "Pre Consultation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 11,
+        "name": "Site Plan Approval",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 1,
+        "name": "Registered Plan of Condominium",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 4,
+        "name": "Registered Plan of Subdivision",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 12,
+        "name": "SNAP Areas",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 13,
+        "name": "GTAA Airport Zoning Regulations",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 14,
+        "name": "GTAA Airport Operating Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ],
+    "tables": []
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/5": {
+    "id": 5,
+    "type": "Feature Layer",
+    "name": "Consent to Sever",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development dataset contains locations and tabular details of committee of adjustment approved consent to sever applications.\nA land severance is the authorized separation of a piece of land to form a new lot or a new parcel of land. This is commonly known as a consent.  The City Clerks coordinate committee meetings to determine severance approvals on a regular basis.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972107449,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6a47cf8918ca4b83b74980372ab7a4e6": {
+    "id": "6a47cf8918ca4b83b74980372ab7a4e6",
+    "title": "Development Permit System",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/6",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "This\n planning and development related data-set contains locations and tabular\n details related to Development Permit System applications.<br /><div><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>Sustainable Neighbourhood Action Plan areas (SNAP)</li><li>GTAA Airport Zoning Regulation area</li><li>GTAA Airport Operating Area</li></ul><div>Updated Daily.</div></div></div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:6a47cf8918ca4b83b74980372ab7a4e6": {
+    "total": 1,
+    "results": [
+      {
+        "id": "6a47cf8918ca4b83b74980372ab7a4e6",
+        "owner": "BramptonMaps",
+        "created": 1610410353000,
+        "modified": 1732049651000,
+        "guid": null,
+        "name": null,
+        "title": "Development Permit System",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "This\n planning and development related data-set contains locations and tabular\n details related to Development Permit System applications.<br /><div><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>Sustainable Neighbourhood Action Plan areas (SNAP)</li><li>GTAA Airport Zoning Regulation area</li><li>GTAA Airport Operating Area</li></ul><div>Updated Daily.</div></div></div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "development permit system"
+        ],
+        "snippet": "Development permit system applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610638990821.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/6",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 311518,
+        "scoreCompleteness": 96,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer/6": {
+    "id": 6,
+    "type": "Feature Layer",
+    "name": "Development Permit System",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development related data-set contains locations and tabular details related to Development Permit System applications.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972099143,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/d7de0f885829431f839d3b4624366158": {
+    "id": "d7de0f885829431f839d3b4624366158",
+    "title": "Draft Plan of Condominium",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/7",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>This planning and development related dataset contains draft plan of condominium application locations and tabular details.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li></ul>Update Daily.<br /></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:d7de0f885829431f839d3b4624366158": {
+    "total": 1,
+    "results": [
+      {
+        "id": "d7de0f885829431f839d3b4624366158",
+        "owner": "BramptonMaps",
+        "created": 1610548079000,
+        "modified": 1732042381000,
+        "guid": null,
+        "name": null,
+        "title": "Draft Plan of Condominium",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "<div>This planning and development related dataset contains draft plan of condominium application locations and tabular details.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li></ul>Update Daily.<br /></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "draft plan of condo"
+        ],
+        "snippet": "Draft plan of condo applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610641250372.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/7",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 12353,
+        "scoreCompleteness": 98,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer": {
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "Open data for Planning containing land use development layers, including: site plan approval applications, registered plan of condominium, committee of adjustment applications for consent to sever and minor variances,  registered plan of subdivision, OPA/ZBA and subdivision applications, pre-consultations, Sustainable Neighbourhood Action Plan (SNAP) areas, GTAA zoning regulation areas and the GTAA Airport Operating Area.<div>Updated Daily.</div>",
+    "layers": [
+      {
+        "id": 5,
+        "name": "Consent to Sever",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 6,
+        "name": "Development Permit System",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 7,
+        "name": "Draft Plan of Condo",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 8,
+        "name": "Minor Variance",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 9,
+        "name": "OPA ZBA Subdivision",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 10,
+        "name": "Pre Consultation",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 11,
+        "name": "Site Plan Approval",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 1,
+        "name": "Registered Plan of Condominium",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 4,
+        "name": "Registered Plan of Subdivision",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 12,
+        "name": "SNAP Areas",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 13,
+        "name": "GTAA Airport Zoning Regulations",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 14,
+        "name": "GTAA Airport Operating Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ],
+    "tables": []
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/7": {
+    "id": 7,
+    "type": "Feature Layer",
+    "name": "Draft Plan of Condo",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development related dataset contains draft plan of condominium application locations and tabular details.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972099143,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/7a3f7464562b488c9f39ab2243a405e9": {
+    "id": "7a3f7464562b488c9f39ab2243a405e9",
+    "title": "Minor Variance",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/8",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>This planning and development related dataset contains locations and tabular details related to committee of adjustment minor variance applications.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Related Planning Applications:</div><div><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Site Plan Approval Applications<br /></li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:7a3f7464562b488c9f39ab2243a405e9": {
+    "total": 1,
+    "results": [
+      {
+        "id": "7a3f7464562b488c9f39ab2243a405e9",
+        "owner": "BramptonMaps",
+        "created": 1610548601000,
+        "modified": 1732042183000,
+        "guid": null,
+        "name": null,
+        "title": "Minor Variance",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Metadata",
+          "Service"
+        ],
+        "description": "<div>This planning and development related dataset contains locations and tabular details related to committee of adjustment minor variance applications.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Related Planning Applications:</div><div><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Site Plan Approval Applications<br /></li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "minor variance"
+        ],
+        "snippet": "Minor variance applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610639040814.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/8",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 9418,
+        "scoreCompleteness": 95,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1790992800000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/8": {
+    "id": 8,
+    "type": "Feature Layer",
+    "name": "Minor Variance",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development related dataset contains locations and tabular details related to committee of adjustment minor variance applications.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972099143,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/fe228c35bac14b03bfed732ababbb06d": {
+    "id": "fe228c35bac14b03bfed732ababbb06d",
+    "title": "OPA ZBA Subdivision",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/9",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "This\n planning and development related dataset contains locations and tabular\n details related to Official Plan Amendment (OPA), Zoning By-Law Amendment (ZBA) or Draft Plan of Subdivision applications.<br /><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul>Update Daily.<br /><ul><div><br /></div></ul></div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:fe228c35bac14b03bfed732ababbb06d": {
+    "total": 1,
+    "results": [
+      {
+        "id": "fe228c35bac14b03bfed732ababbb06d",
+        "owner": "BramptonMaps",
+        "created": 1610548379000,
+        "modified": 1732042530000,
+        "guid": null,
+        "name": null,
+        "title": "OPA ZBA Subdivision",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "This\n planning and development related dataset contains locations and tabular\n details related to Official Plan Amendment (OPA), Zoning By-Law Amendment (ZBA) or Draft Plan of Subdivision applications.<br /><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul>Update Daily.<br /><ul><div><br /></div></ul></div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "opa zba subdivision"
+        ],
+        "snippet": "OPA ZBA subdivision applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610639889485.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/9",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 17511,
+        "scoreCompleteness": 98,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791007200000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/9": {
+    "id": 9,
+    "type": "Feature Layer",
+    "name": "OPA ZBA Subdivision",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development related dataset contains locations and tabular details related to Official Plan Amendment (OPA), Zoning By-Law Amendment (ZBA) or Draft Plan of Subdivision applications.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 30,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962061,
+      "schemaLastEditDate": 1790999847803,
+      "dataLastEditDate": 1790999962061
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6dbde95afccd49bbb510ab4c7017eb7d": {
+    "id": "6dbde95afccd49bbb510ab4c7017eb7d",
+    "title": "Pre Consultation",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/10",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div>This planning and development dataset contains the locations and tabular details related to pre-consultation applications, which occur ahead of a full development application to investigate the feasibility of the project.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>OPA ZBA Subdivision Applications<br /></li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:6dbde95afccd49bbb510ab4c7017eb7d": {
+    "total": 1,
+    "results": [
+      {
+        "id": "6dbde95afccd49bbb510ab4c7017eb7d",
+        "owner": "BramptonMaps",
+        "created": 1610548248000,
+        "modified": 1732042297000,
+        "guid": null,
+        "name": null,
+        "title": "Pre Consultation",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "<div>This planning and development dataset contains the locations and tabular details related to pre-consultation applications, which occur ahead of a full development application to investigate the feasibility of the project.<br /></div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>OPA ZBA Subdivision Applications<br /></li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul><div>Update Daily.</div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "pre consultation"
+        ],
+        "snippet": "Pre consultation applications within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610640009125.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/10",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 11000,
+        "scoreCompleteness": 96,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791014400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/10": {
+    "id": 10,
+    "type": "Feature Layer",
+    "name": "Pre Consultation",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development dataset contains the locations and tabular details related to pre-consultation applications, which occur ahead of a full development application to investigate the feasibility of the project.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972099143,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/63c2acbac6e74daaad23aa1d2787f90a": {
+    "id": "63c2acbac6e74daaad23aa1d2787f90a",
+    "title": "Site Plan Approval",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/11",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "This\n planning and development related dataset contains locations and tabular\n details related to Site Plan Approval applications.<br /><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul>Update Daily.<br /></div></div>",
+    "licenseInfo": "CC BY",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:63c2acbac6e74daaad23aa1d2787f90a": {
+    "total": 1,
+    "results": [
+      {
+        "id": "63c2acbac6e74daaad23aa1d2787f90a",
+        "owner": "BramptonMaps",
+        "created": 1610548498000,
+        "modified": 1732042580000,
+        "guid": null,
+        "name": null,
+        "title": "Site Plan Approval",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Service"
+        ],
+        "description": "This\n planning and development related dataset contains locations and tabular\n details related to Site Plan Approval applications.<br /><div><div>Please refer to the <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/welcome.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>Planning and Development webpage</a> for more information, notices and <a href='https://www.brampton.ca/EN/Business/planning-development/Pages/Contact-Us.aspx' target='_blank' rel='nofollow ugc noopener noreferrer'>contact information</a>.</div><div><br /></div><div>Development Application data-sets have been retired and are now broken down into:<br /><ul><li>Pre-Consultation Applications</li><li>OPA ZBA Subdivision Applications</li><li>Draft Plan of Condominium Applications</li><li>Development Permit System<br /></li><li>Consent to Sever Applications</li><li>Minor Variance Applications</li><li>Site Plan Approval Applications</li><li>SNAP Areas</li><li>GTAA Zoning Regulation Area</li><li>GTAA Airport Operating Area</li><li>Registered Plans of Subdivision</li><li>Registered Plans of Condominium</li></ul>Update Daily.<br /></div></div>",
+        "tags": [
+          "development",
+          "application",
+          "planning",
+          "Land Use and Development",
+          "land developers",
+          "elected officials",
+          "site plan approval"
+        ],
+        "snippet": "Site plan approvals within the City of Brampton",
+        "thumbnail": "thumbnail/thumbnail1610639433097.jpeg",
+        "documentation": null,
+        "extent": [
+          [
+            -79.8902,
+            43.6002
+          ],
+          [
+            -79.6292,
+            43.8507
+          ]
+        ],
+        "categories": [],
+        "spatialReference": null,
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "CC BY",
+        "culture": "en-us",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/11",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 17476,
+        "scoreCompleteness": 95,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791021600000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Planning_Land_Use_Development/FeatureServer/11": {
+    "id": 11,
+    "type": "Feature Layer",
+    "name": "Site Plan Approval",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "6b38d99be0484aada17668992f51e3c7",
+    "copyrightText": "City of Brampton",
+    "description": "This planning and development related dataset contains locations and tabular details related to Site Plan Approval applications.",
+    "fields": [
+      {
+        "name": "FILE_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "File Number",
+        "sqlType": "sqlTypeOther",
+        "length": 100,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "REGIONAL_NUMBER",
+        "type": "esriFieldTypeString",
+        "alias": "Regional Number",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LOCATION",
+        "type": "esriFieldTypeString",
+        "alias": "Location",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DATE_RECEIVED",
+        "type": "esriFieldTypeDate",
+        "alias": "Date Received",
+        "sqlType": "sqlTypeOther",
+        "length": 8,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null,
+        "precision": 1
+      },
+      {
+        "name": "APPLICATION_TYPE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Type",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICATION_TITLE",
+        "type": "esriFieldTypeString",
+        "alias": "Application Title",
+        "sqlType": "sqlTypeOther",
+        "length": 2000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "STATUS",
+        "type": "esriFieldTypeString",
+        "alias": "Status",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CITY_PLANNER",
+        "type": "esriFieldTypeString",
+        "alias": "City Planner",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PROPOSAL_DESCRIPTION",
+        "type": "esriFieldTypeString",
+        "alias": "Proposal Description",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AGENT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Agent Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "APPLICANT_COMPANY",
+        "type": "esriFieldTypeString",
+        "alias": "Applicant Company",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "WARD",
+        "type": "esriFieldTypeString",
+        "alias": "Ward",
+        "sqlType": "sqlTypeOther",
+        "length": 4000,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "POLY_ID",
+        "type": "esriFieldTypeOID",
+        "alias": "POLY_ID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "POLY_ID",
+    "editingInfo": {
+      "lastEditDate": 1790999962615,
+      "schemaLastEditDate": 1776972099143,
+      "dataLastEditDate": 1790999962615
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/a75bad2305f64ea38ec3a873b09025dc": {
+    "id": "a75bad2305f64ea38ec3a873b09025dc",
+    "title": "Brampton Plan Schedule 2 Designations",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div style='font-size:12pt; text-align:Left;'><p><span>Mapping depicts Brampton Plan Schedule “2” general land use designations to guide development activities.</span></p><p><strong>Layers:</strong></p><ul><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/0?token=[redacted] rel='nofollow ugc noopener noreferrer'>TransCanada Pipeline</a> (0)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/1?token=[redacted] rel='nofollow ugc noopener noreferrer'>LBPIA</a> (1)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/2?token=[redacted] rel='nofollow ugc noopener noreferrer'>Northwest Brampton Development Area</a> (2)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/3?token=[redacted] rel='nofollow ugc noopener noreferrer'>Land Use Designations Schedule 2</a> (3)</li></ul></div>",
+    "licenseInfo": "<div style='text-align:Left;font-size:12pt'><p><span>CC BY</span></p></div>",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:a75bad2305f64ea38ec3a873b09025dc": {
+    "total": 1,
+    "results": [
+      {
+        "id": "a75bad2305f64ea38ec3a873b09025dc",
+        "owner": "BramptonMaps",
+        "created": 1781190360000,
+        "modified": 1790689530000,
+        "guid": null,
+        "name": "Brampton_Plan_Schedule_2_Designations",
+        "title": "Brampton Plan Schedule 2 Designations",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Metadata",
+          "Multilayer",
+          "Service",
+          "Hosted Service"
+        ],
+        "description": "<div style='font-size:12pt; text-align:Left;'><p><span>Mapping depicts Brampton Plan Schedule “2” general land use designations to guide development activities.</span></p><p><strong>Layers:</strong></p><ul><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/0?token=[redacted] rel='nofollow ugc noopener noreferrer'>TransCanada Pipeline</a> (0)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/1?token=[redacted] rel='nofollow ugc noopener noreferrer'>LBPIA</a> (1)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/2?token=[redacted] rel='nofollow ugc noopener noreferrer'>Northwest Brampton Development Area</a> (2)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/3?token=[redacted] rel='nofollow ugc noopener noreferrer'>Land Use Designations Schedule 2</a> (3)</li></ul></div>",
+        "tags": [
+          "Brampton Plan",
+          "land use",
+          "designations",
+          "schedule 2"
+        ],
+        "snippet": "Brampton Plan Schedule “2” identifies the general land use designations committing the use of land.",
+        "thumbnail": "thumbnail/thumbnail.png",
+        "documentation": null,
+        "extent": [
+          [
+            -93.56483634550385,
+            43.10228469315687
+          ],
+          [
+            -79.3947305456501,
+            51.96870624324688
+          ]
+        ],
+        "categories": [],
+        "spatialReference": "102100",
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "<div style='text-align:Left;font-size:12pt'><p><span>CC BY</span></p></div>",
+        "culture": "en-ca",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 1180,
+        "scoreCompleteness": 96,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791028800000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer": {
+    "serviceItemId": "a75bad2305f64ea38ec3a873b09025dc",
+    "copyrightText": "City of Brampton",
+    "description": "<div style=\"font-size:12pt; text-align:Left;\"><p><span>Mapping depicts Brampton Plan Schedule “2” general land use designations to guide development activities.</span></p><p><strong>Layers:</strong></p><ul><li><a target=\"_blank\" href=\"https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/0?token=REDACTED_PUBLIC_METADATA_QUERY_TOKEN\" rel=\"nofollow ugc noopener noreferrer\">TransCanada Pipeline</a> (0)</li><li><a target=\"_blank\" href=\"https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/1?token=REDACTED_PUBLIC_METADATA_QUERY_TOKEN\" rel=\"nofollow ugc noopener noreferrer\">LBPIA</a> (1)</li><li><a target=\"_blank\" href=\"https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/2?token=REDACTED_PUBLIC_METADATA_QUERY_TOKEN\" rel=\"nofollow ugc noopener noreferrer\">Northwest Brampton Development Area</a> (2)</li><li><a target=\"_blank\" href=\"https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/3?token=REDACTED_PUBLIC_METADATA_QUERY_TOKEN\" rel=\"nofollow ugc noopener noreferrer\">Land Use Designations Schedule 2</a> (3)</li></ul></div>",
+    "layers": [
+      {
+        "id": 0,
+        "name": "TransCanada Pipeline",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 1,
+        "name": "LBPIA",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 2,
+        "name": "Northwest Brampton Development Area",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      },
+      {
+        "id": 3,
+        "name": "Land Use Designations Schedule 2",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ],
+    "tables": []
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_2_Designations/FeatureServer/3": {
+    "id": 3,
+    "type": "Feature Layer",
+    "name": "Land Use Designations Schedule 2",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "a75bad2305f64ea38ec3a873b09025dc",
+    "copyrightText": "City of Brampton",
+    "description": "Mapping depicts Brampton Plan-Schedule 2-Land Use Designations to guide development.",
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "D_SCH2",
+        "type": "esriFieldTypeString",
+        "alias": "Schedule2",
+        "sqlType": "sqlTypeOther",
+        "length": 254,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "SE_ANNO_CAD_DATA",
+        "type": "esriFieldTypeBlob",
+        "alias": "SE_ANNO_CAD_DATA",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "OBJECTID",
+    "editingInfo": {
+      "lastEditDate": 1790689527281,
+      "schemaLastEditDate": 1790689527281,
+      "dataLastEditDate": 1790689527281
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/f9980ed835f748c4975b58847e9cdfe0": {
+    "id": "f9980ed835f748c4975b58847e9cdfe0",
+    "title": "Brampton Plan Schedule 1B Major Transit Station Areas",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "<div style='font-size:12pt; text-align:Left;'><p><span>Mapping depicts Brampton Plan Schedule 1B MTSA areas and provincial transitway alignments.</span></p><p><strong>Layers:</strong></p><ul><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/0?token=[redacted] rel='nofollow ugc noopener noreferrer'>Major Transit Station Area Points</a> (0)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/1?token=[redacted] rel='nofollow ugc noopener noreferrer'>Provincial Transitway</a> (1)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/2?token=[redacted] rel='nofollow ugc noopener noreferrer'>Primary Major Transit Station Areas</a> (2)<br />&nbsp;</li></ul><p>This data is intended to be used in conjuction with other related mapping layers for this schedule, and may be impacted by other schedules, with consideration to the text of Brampton Plan.</p></div>",
+    "licenseInfo": "<div style='text-align:Left;font-size:12pt'><p><span>CC BY</span></p></div>",
+    "accessInformation": "City of Brampton"
+  },
+  "curation:f9980ed835f748c4975b58847e9cdfe0": {
+    "total": 1,
+    "results": [
+      {
+        "id": "f9980ed835f748c4975b58847e9cdfe0",
+        "owner": "BramptonMaps",
+        "created": 1781189180000,
+        "modified": 1785259729000,
+        "guid": null,
+        "name": "Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas",
+        "title": "Brampton Plan Schedule 1B Major Transit Station Areas",
+        "type": "Feature Service",
+        "typeKeywords": [
+          "ArcGIS Server",
+          "Data",
+          "Feature Access",
+          "Feature Service",
+          "Metadata",
+          "Multilayer",
+          "Service",
+          "Hosted Service"
+        ],
+        "description": "<div style='font-size:12pt; text-align:Left;'><p><span>Mapping depicts Brampton Plan Schedule 1B MTSA areas and provincial transitway alignments.</span></p><p><strong>Layers:</strong></p><ul><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/0?token=[redacted] rel='nofollow ugc noopener noreferrer'>Major Transit Station Area Points</a> (0)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/1?token=[redacted] rel='nofollow ugc noopener noreferrer'>Provincial Transitway</a> (1)</li><li><a target='_blank' href='https://services3.arcgis.com/rl7ACuZkiFsmDA2g/ArcGIS/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/2?token=[redacted] rel='nofollow ugc noopener noreferrer'>Primary Major Transit Station Areas</a> (2)<br />&nbsp;</li></ul><p>This data is intended to be used in conjuction with other related mapping layers for this schedule, and may be impacted by other schedules, with consideration to the text of Brampton Plan.</p></div>",
+        "tags": [
+          "Brampton Plan",
+          "Major",
+          "Transit",
+          "Station",
+          "1B",
+          "MTSA"
+        ],
+        "snippet": "Schedule “1B” identifies areas that have existing or planned Major Transit Station Areas",
+        "thumbnail": "thumbnail/thumbnail1782748347778.png",
+        "documentation": null,
+        "extent": [
+          [
+            -79.88720420824392,
+            43.51353190350938
+          ],
+          [
+            -79.62592314102797,
+            43.84185318983449
+          ]
+        ],
+        "categories": [],
+        "spatialReference": "102100",
+        "accessInformation": "City of Brampton",
+        "classification": null,
+        "licenseInfo": "<div style='text-align:Left;font-size:12pt'><p><span>CC BY</span></p></div>",
+        "culture": "en-ca",
+        "properties": null,
+        "advancedSettings": null,
+        "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer",
+        "proxyFilter": null,
+        "access": "public",
+        "size": -1,
+        "subInfo": 0,
+        "appCategories": [],
+        "industries": [],
+        "languages": [],
+        "largeThumbnail": null,
+        "banner": null,
+        "screenshots": [],
+        "listed": false,
+        "numComments": 0,
+        "numRatings": 0,
+        "avgRating": 0,
+        "numViews": 570,
+        "scoreCompleteness": 98,
+        "groupDesignations": null,
+        "apiToken1ExpirationDate": -1,
+        "apiToken2ExpirationDate": -1,
+        "lastViewed": 1791032400000,
+        "source": "City of Brampton",
+        "licenseConstraintId": "CC-BY-4.0"
+      }
+    ]
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer": {
+    "serviceItemId": "f9980ed835f748c4975b58847e9cdfe0",
+    "copyrightText": "City of Brampton",
+    "description": "<DIV STYLE=\"text-align:Left;font-size:12pt\"><P><SPAN>Mapping depicts Brampton Plan Schedule 1B MTSA areas and provincial transitway alignments.</span></p></div>",
+    "layers": [
+      {
+        "id": 0,
+        "name": "Major Transit Station Area Points",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint"
+      },
+      {
+        "id": 1,
+        "name": "Provincial Transitway",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline"
+      },
+      {
+        "id": 2,
+        "name": "Primary Major Transit Station Areas",
+        "parentLayerId": -1,
+        "defaultVisibility": true,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon"
+      }
+    ],
+    "tables": []
+  },
+  "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Brampton_Plan_Schedule_1B_Major_Transit_Station_Areas/FeatureServer/2": {
+    "id": 2,
+    "type": "Feature Layer",
+    "name": "Primary Major Transit Station Areas",
+    "geometryType": "esriGeometryPolygon",
+    "serviceItemId": "f9980ed835f748c4975b58847e9cdfe0",
+    "copyrightText": "City of Brampton",
+    "description": "Mapping depicts the Brampton Plan Primary Major Transit Station Areas.",
+    "fields": [
+      {
+        "name": "OBJECTID_12",
+        "type": "esriFieldTypeOID",
+        "alias": "ObjectID",
+        "sqlType": "sqlTypeOther",
+        "nullable": false,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "MUN",
+        "type": "esriFieldTypeString",
+        "alias": "Municipality",
+        "sqlType": "sqlTypeOther",
+        "length": 15,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "PRIORITY",
+        "type": "esriFieldTypeString",
+        "alias": "Priority?",
+        "sqlType": "sqlTypeOther",
+        "length": 5,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "MTSA_NAME",
+        "type": "esriFieldTypeString",
+        "alias": "Major Transit Station Areas Name",
+        "sqlType": "sqlTypeOther",
+        "length": 254,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "CORRIDOR",
+        "type": "esriFieldTypeString",
+        "alias": "Corridor Name",
+        "sqlType": "sqlTypeOther",
+        "length": 80,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "SECONDARY_",
+        "type": "esriFieldTypeString",
+        "alias": "Secondary Station Name",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "AREA_HA",
+        "type": "esriFieldTypeDouble",
+        "alias": "Area in Hectares",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "TYPOLOGY",
+        "type": "esriFieldTypeString",
+        "alias": "Typology",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "TARGETDENS",
+        "type": "esriFieldTypeDouble",
+        "alias": "Target Density Persons and Jobs Per Hectare",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "LABEL",
+        "type": "esriFieldTypeString",
+        "alias": "Label",
+        "sqlType": "sqlTypeOther",
+        "length": 50,
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "SHAPE_LENG",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape Length",
+        "sqlType": "sqlTypeOther",
+        "nullable": true,
+        "editable": true,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Area",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Area",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      },
+      {
+        "name": "Shape__Length",
+        "type": "esriFieldTypeDouble",
+        "alias": "Shape__Length",
+        "sqlType": "sqlTypeDouble",
+        "nullable": true,
+        "editable": false,
+        "domain": null,
+        "defaultValue": null
+      }
+    ],
+    "objectIdField": "OBJECTID_12",
+    "editingInfo": {
+      "lastEditDate": 1781189193224,
+      "schemaLastEditDate": 1781189193224,
+      "dataLastEditDate": 1781189193224
+    }
+  },
+  "https://www.arcgis.com/sharing/rest/content/items/6b38d99be0484aada17668992f51e3c7": {
+    "id": "6b38d99be0484aada17668992f51e3c7",
+    "title": "Planning_Land_Use_Development",
+    "type": "Feature Service",
+    "url": "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Land_Use_Development/FeatureServer",
+    "owner": "BramptonMaps",
+    "orgId": "rl7ACuZkiFsmDA2g",
+    "access": "public",
+    "description": "Open data for Planning containing land use development layers, including: site plan approval applications, registered plan of condominium, committee of adjustment applications for consent to sever and minor variances,  registered plan of subdivision, OPA/ZBA and subdivision applications, pre-consultations, Sustainable Neighbourhood Action Plan (SNAP) areas, GTAA zoning regulation areas and the GTAA Airport Operating Area.<div>Updated Daily.</div>",
+    "licenseInfo": "<a href='https://creativecommons.org/licenses/by/4.0/' target='_blank' rel='nofollow ugc noopener noreferrer'>CC BY<br /></a>",
+    "accessInformation": "City of Brampton"
+  }
+}

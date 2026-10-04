@@ -1,0 +1,2456 @@
+{
+  "siteItem": {
+    "id": "87ad3736953549daa98ead9f2f98ab55",
+    "owner": "GuelphGIS_cityofguelph",
+    "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+    "orgId": "k3dd78JyG9GFoZHG",
+    "created": 1535393445000,
+    "modified": 1784931271000,
+    "guid": null,
+    "name": null,
+    "title": "Guelph Open Data",
+    "type": "Hub Site Application",
+    "typeKeywords": [
+      "Hub",
+      "hubSite",
+      "hubsubdomain|beta-guelph",
+      "JavaScript",
+      "Map",
+      "Mapping Site",
+      "Online Map",
+      "OpenData",
+      "Ready To Use",
+      "selfConfigured",
+      "Web Map",
+      "Registered App"
+    ],
+    "description": "DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the ArcGIS Hub application. To make changes to this site, please visit https://hub.arcgis.com/admin/sites/new",
+    "tags": [
+      "Hub Site",
+      "Guelph",
+      "Maps",
+      "Open Data"
+    ],
+    "snippet": "Explore Guelph - your one-stop resource for understanding and engaging with the city's rich data and vibrant community. ",
+    "thumbnail": "thumbnail/thumbnail1718998094930.png",
+    "documentation": null,
+    "extent": [
+      [
+        -80.32227499999863,
+        43.46949799999933
+      ],
+      [
+        -80.17427499999862,
+        43.6174979999993
+      ]
+    ],
+    "categories": [],
+    "spatialReference": "null",
+    "accessInformation": "The City of Guelph",
+    "classification": null,
+    "licenseInfo": "null",
+    "culture": "en-us",
+    "properties": {
+      "collaborationGroupId": "2ba822af27f344b2917ce26b8a239ad3",
+      "schemaVersion": 1.9,
+      "contentGroupId": "e67928efeb46431cb7e209787f586d1d",
+      "hasSeenGlobalNav": true
+    },
+    "advancedSettings": null,
+    "url": "https://explore.guelph.ca",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 31176357,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 816707,
+    "scoreCompleteness": 93,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1791014400000
+  },
+  "siteData": {
+    "source": "SITEEDITOR",
+    "folderId": null,
+    "values": {
+      "subdomain": "geodatahub",
+      "externalUrl": null,
+      "public": false,
+      "faviconUrl": "https://gismaps.guelph.ca/Images/favicon.ico",
+      "uiVersion": "2.4",
+      "extent": {},
+      "map": {
+        "basemaps": {
+          "primary": {
+            "title": "Light Gray Canvas",
+            "id": "de45b9cad20141ebb82fae0da8b3e2c6",
+            "wkid": false
+          },
+          "type": "custom"
+        }
+      },
+      "defaultExtent": {
+        "type": "extent",
+        "xmin": -8946190.877597654,
+        "ymin": 5384246.647102878,
+        "xmax": -8921366.631150765,
+        "ymax": 5404055.936062656,
+        "spatialReference": {
+          "wkid": 102100
+        }
+      },
+      "pages": [
+        {
+          "id": "1e91ee0f09644d89a8ef64f2594faddb",
+          "title": "Glossary",
+          "slug": "glossary"
+        },
+        {
+          "id": "ddc8ba4ab45f43d8a658174f987a5382",
+          "title": "Terms of use",
+          "slug": "terms-of-use"
+        },
+        {
+          "id": "2ac6e5025d5c464f9b9994d112062fc2",
+          "title": "Frequently asked questions",
+          "slug": "frequently-asked-questions"
+        },
+        {
+          "id": "5833e47891264876bd78b280dac8b82d",
+          "title": "Disclaimer",
+          "slug": "disclaimer"
+        },
+        {
+          "id": "4430c79729cf47968ffde39ed58771d4",
+          "title": "Open Data License",
+          "slug": "open-data-license"
+        },
+        {
+          "id": "bb5423c9b14c41259f5e70942bb85add",
+          "title": "About",
+          "slug": "about"
+        },
+        {
+          "id": "d7d0ace8ef8140c0a0feaf8b3d308b85",
+          "title": "Transit GTFS Data",
+          "slug": "transit-gtfs-data"
+        }
+      ],
+      "layout": {
+        "sections": [
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": true,
+                "isUrl": false,
+                "state": "valid",
+                "display": {
+                  "crop": {
+                    "transformAxis": "x",
+                    "position": {
+                      "x": 0,
+                      "y": 0
+                    },
+                    "scale": {
+                      "current": 0,
+                      "original": 0
+                    },
+                    "container": {
+                      "left": 20,
+                      "top": 32,
+                      "width": 858.4000244140625,
+                      "height": 171.08320301184096
+                    },
+                    "natural": {
+                      "width": 2589,
+                      "height": 516
+                    },
+                    "output": {
+                      "width": 818.4000244140625,
+                      "height": 139.08320301184096
+                    },
+                    "version": 2,
+                    "rendered": {
+                      "width": 858.4000244140626,
+                      "height": 171.08320301184096
+                    }
+                  }
+                },
+                "transparency": 30,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#000000",
+                "image": "https://cityofguelph.maps.arcgis.com/sharing/rest/content/items/7d383e920de444a8896b2a95380c42bf/data",
+                "parallax": true,
+                "fileSrc": "Guelph_Background_4.jpg",
+                "cropSrc": "hub-image-card-crop-isdwd1o2f.png",
+                "cropId": "isdwd1o2f"
+              },
+              "color": "#ffffff",
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<div style=\"text-align: center; text-shadow: 2px 2px 2px #636363; letter-spacing: 1px;\" class=\"banner-heading\"><strong>Explore Guelph</strong></div><div style=\"text-align: center; text-shadow: 2px 2px 2px #636363; letter-spacing: 1px;\" class=\"banner-heading\"><strong><br></strong></div>",
+                        "schemaVersion": 2.1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "search-card",
+                      "settings": {
+                        "browseButtonText": "Browse",
+                        "browseButtonStyle": "solid",
+                        "showBrowseButton": false,
+                        "showLocation": false,
+                        "size": "medium",
+                        "searchPlaceholder": "Search"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#001e29"
+              },
+              "color": "#fcfcfc",
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "cardId": "ca42ta44a",
+                        "schemaVersion": 2.1,
+                        "markdown": "<h5 style=\"text-align: justify; line-height:1.5\">Explore Guelph is your one-stop resource for\nunderstanding and engaging with the city's rich data and vibrant community.\nWhether you're a resident, researcher, or visitor, our platform offers the\ninformation and tools you need to connect with Guelph in meaningful ways.</h5>"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent"
+              },
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "cardId": "cfv7r7ngc",
+                        "schemaVersion": 2.1,
+                        "markdown": "<h1 style=\"text-align: center;\">Data Categories</h1>"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "https://gismaps.guelph.ca/OpenData/OpenDataIcons/Transportation.png",
+                        "fileSrc": "CityGovText.png",
+                        "cropSrc": "CityGovText.png",
+                        "alt": "City Government",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=city%2520government",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c6ykrnlu5"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "https://gismaps.guelph.ca/OpenData/OpenDataIcons/Transportation.png",
+                        "fileSrc": "Transportation.png",
+                        "cropSrc": "Transportation.png",
+                        "alt": "Transportation",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=transportation",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "csr8tt32y"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "https://gismaps.guelph.ca/OpenData/OpenDataIcons/Transportation.png",
+                        "fileSrc": "FinanceText.png",
+                        "cropSrc": "FinanceText.png",
+                        "alt": "Finance",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=finance",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cgrbtk3nk"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "https://gismaps.guelph.ca/OpenData/OpenDataIcons/MapsAppsText.png",
+                        "fileSrc": "MapsText.png",
+                        "cropSrc": "MapsText.png",
+                        "alt": "Maps and Apps",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://cityofguelph.maps.arcgis.com/apps/MinimalGallery/index.html?appid=1f99d9429ce84aebbaa0a32359297e46",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": true,
+                        "isFile": false,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cyriynu4n"
+                      }
+                    },
+                    "width": 3
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "EnviroText.png",
+                        "cropSrc": "EnviroText.png",
+                        "alt": "Environment and Nature",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=environment%2520and%2520nature",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c559bvl2u"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "EcDEvText.png",
+                        "cropSrc": "EcDEvText.png",
+                        "alt": "Economic Development",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=economic%2520development",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c7b9t5dsf"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "CSText.png",
+                        "cropSrc": "CSText.png",
+                        "alt": "Community Services",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=community%2520services",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c68wokm5s"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "InfrastructureText.png",
+                        "cropSrc": "InfrastructureText.png",
+                        "alt": "Infrastructure",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=infrastructure",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c89qw6eb7"
+                      }
+                    },
+                    "width": 3
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "LUDText.png",
+                        "cropSrc": "LUDText.png",
+                        "alt": "Land Use and Development",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=land%2520use%2520and%2520development",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cfl47mzom"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "RecText.png",
+                        "cropSrc": "RecText.png",
+                        "alt": "Recreation",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=recreation",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cig76g1k6"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "HealthText.png",
+                        "cropSrc": "HealthText.png",
+                        "alt": "Health and Safety",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=health%2520and%2520safety",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "ctqosccpx"
+                      }
+                    },
+                    "width": 3
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "MiscText.png",
+                        "cropSrc": "MiscText.png",
+                        "alt": "Miscellaneous",
+                        "caption": "",
+                        "captionAlign": "center",
+                        "hyperlink": "https://explore.guelph.ca/search?tags=miscellaneous",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cvud0fxm8"
+                      }
+                    },
+                    "width": 3
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "cardId": "ccfqz7jz2",
+                        "schemaVersion": 2.1,
+                        "markdown": "<p class=\"text-right\"><a href=\"#top\">Top</a></p>"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#c6c6c6"
+              },
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "arcgis-stat-card",
+                      "isWebComponent": true,
+                      "settings": {
+                        "value": "",
+                        "type": "dynamic",
+                        "cardTitle": "2023 Population",
+                        "trailingText": "",
+                        "shareable": true,
+                        "shareableOnHover": true,
+                        "cardId": "cf7lxjxok",
+                        "schemaVersion": 1,
+                        "allowUnitFormatting": false,
+                        "allowLink": false,
+                        "serverTimeout": 10,
+                        "allowDynamicLink": false,
+                        "layout": "simple",
+                        "textAlign": "start",
+                        "visualInterest": "none",
+                        "dynamicMetric": {
+                          "itemId": [
+                            "249b2332cc0344f5ac00be090788ac31"
+                          ],
+                          "layerId": "0",
+                          "field": "POP_2023",
+                          "serviceUrl": "https://gismaps.guelph.ca/hosting/rest/services/External/DA_2021/FeatureServer",
+                          "sourceLink": "/maps/249b2332cc0344f5ac00be090788ac31_0?showData=true",
+                          "sourceTitle": "DA_2021",
+                          "fieldType": "esriFieldTypeInteger",
+                          "statistic": "sum"
+                        },
+                        "subtitle": "Statistics Canada/ESRI"
+                      }
+                    },
+                    "width": 6
+                  },
+                  {
+                    "component": {
+                      "name": "arcgis-stat-card",
+                      "isWebComponent": true,
+                      "settings": {
+                        "value": "--",
+                        "type": "dynamic",
+                        "cardTitle": "2033 Population - Projected",
+                        "trailingText": "",
+                        "shareable": true,
+                        "shareableOnHover": true,
+                        "cardId": "ctxdicp0n",
+                        "schemaVersion": 1,
+                        "allowUnitFormatting": false,
+                        "allowLink": false,
+                        "serverTimeout": 10,
+                        "allowDynamicLink": false,
+                        "layout": "simple",
+                        "textAlign": "start",
+                        "visualInterest": "none",
+                        "dynamicMetric": {
+                          "itemId": [
+                            "249b2332cc0344f5ac00be090788ac31"
+                          ],
+                          "layerId": "0",
+                          "field": "POP_2033",
+                          "serviceUrl": "https://gismaps.guelph.ca/hosting/rest/services/External/DA_2021/FeatureServer",
+                          "sourceLink": "/maps/249b2332cc0344f5ac00be090788ac31_0?showData=true",
+                          "sourceTitle": "DA_2021 (Census Canada)",
+                          "fieldType": "esriFieldTypeInteger",
+                          "statistic": "sum"
+                        },
+                        "subtitle": "Statistics Canada/ESRI"
+                      }
+                    },
+                    "width": 6
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": true,
+                "isUrl": false,
+                "state": "valid",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#fcfcfc",
+                "fileSrc": "GreyMap.jpg",
+                "cropSrc": "GreyMap.jpg"
+              },
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "cardId": "cfk1s1e1i",
+                        "schemaVersion": 2.1,
+                        "markdown": "<p></p><p><br></p><div><calcite-card thumbnail-position=\"inline-start\" class=\"col-xs-12 calcite-wide-card\" style=\"--calcite-ui-foreground-1:white\" calcite-hydrated=\"\">\n    <div class=\"card-wide-image-wrap\" slot=\"thumbnail\">\n      <img alt=\"Guelph Economic Monitor\" src=\"https://gismaps.guelph.ca/OpenData/OpenDataImages/EconMonitor.jpg\">\n      <div class=\"card-image-caption\">\n        Guelph Economic Monitor\n      </div>\n    </div>\n    <h4 slot=\"title\"><a href=\"https://guelph.ca/business/economic-development-office/economic-monitor/\" target=\"_blank\">Guelph Economic Monitor</a></h4><div><p><span style=\"color: rgb(51, 51, 51); font-family: &quot;Open Sans&quot;, Helvetica, Arial, sans-serif; font-size: 1rem; background-color: initial;\">The Guelph Economic Monitor highlights the performance of Guelph\u2019s economy through the tracking and visualization of key economic indicators. The charts presented pull together information from various public and non-public data sources, and is intended for information purposes only.</span><br></p>\n    </div>\n\n  </calcite-card></div>\n  <br><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p><p><br></p>"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#9e9e9e"
+              },
+              "color": "#fcfcfc",
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "cardId": "cm4bfahjo",
+                        "schemaVersion": 2.1,
+                        "markdown": "<h2 style=\"text-align: center;\"><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Other data providers</span></h2>"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#ffffff"
+              },
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "Police_New.png",
+                        "cropSrc": "Police_New.png",
+                        "alt": "",
+                        "caption": "Guelph Police Service Open Data",
+                        "captionAlign": "center",
+                        "hyperlink": "https://www.guelphpolice.ca/en/about-gps/open-data.aspx#",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c5akn226a"
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "UofG_New.png",
+                        "cropSrc": "UofG_New.png",
+                        "alt": "",
+                        "caption": "University of Guelph",
+                        "captionAlign": "center",
+                        "hyperlink": "https://guides.lib.uoguelph.ca/opendata",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c5bzb00qw",
+                        "cropId": "i5dzr95j9"
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "GRCA_New.png",
+                        "cropSrc": "GRCA_New.png",
+                        "alt": "Grand River Conservation Authority",
+                        "caption": "Grand River Information Network",
+                        "captionAlign": "center",
+                        "hyperlink": "https://data.grandriver.ca/",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "chi5c2n6y",
+                        "cropId": "iunmjyne4"
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "StatsCan_New.png",
+                        "cropSrc": "StatsCan_New.png",
+                        "alt": "Statistics Canada",
+                        "caption": "Statistics Canada",
+                        "captionAlign": "center",
+                        "hyperlink": "https://www150.statcan.gc.ca/n1/en/geo?geocode=A00053523008&geotext=Guelph%2C%20City%20%5BCensus%20subdivision%5D%2C%20Ontario",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c4a2d5il8"
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "Ontario_New.png",
+                        "cropSrc": "Ontario_New.png",
+                        "alt": "Ontario Data",
+                        "caption": "Land Information Ontario",
+                        "captionAlign": "center",
+                        "hyperlink": "https://geohub.lio.gov.on.ca/",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "cfy0p4pfo"
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "image-card",
+                      "settings": {
+                        "src": "",
+                        "fileSrc": "Wellington_New.png",
+                        "cropSrc": "Wellington_New.png",
+                        "alt": "Wellington County",
+                        "caption": "Wellington County",
+                        "captionAlign": "center",
+                        "hyperlink": "https://www.wellington.ca/en/index.aspx",
+                        "hyperlinkTabOption": "new",
+                        "isUrl": false,
+                        "isFile": true,
+                        "state": "valid",
+                        "display": {
+                          "position": {
+                            "x": "center",
+                            "y": "center"
+                          },
+                          "reflow": false
+                        },
+                        "cardId": "c4w1kpen4",
+                        "cropId": "if7cg5pt9"
+                      }
+                    },
+                    "width": 2
+                  }
+                ]
+              }
+            ],
+            "visibility": {
+              "access": "default",
+              "groups": []
+            }
+          }
+        ],
+        "header": {
+          "component": {
+            "name": "site-header",
+            "settings": {
+              "fullWidth": true,
+              "iframeHeight": "150px",
+              "iframeUrl": "",
+              "links": [],
+              "logoUrl": "",
+              "title": "Guelph Open Data",
+              "markdown": "<style>\r\n.subtext{\r\n    font-size: 13px; \r\n    margin-top: 18px;\r\n}\r\n.logo{\r\n    line-height: 2px;\r\n    margin-top: 13px;\r\n        color:#fff;\r\n}\r\n.logo a:hover{\r\n    color:#fff;\r\n}\r\n.topnav{\r\n    font-size:20px;\r\n}\r\n</style>\r\n<nav class=\"navbar navbar-inverse navbar-static-top first-tier\" role=\"navigation\">\r\n    <div id=\"banner\" class=\"container-fluid\">\r\n        <div class=\"topnav\" id=\"my\"> \r\n            <div class=\"col-md-1 text-left hidden-xs\" style=\"margin-right:20px\">\r\n                <ul class=\"nav nav-pills\">\r\n                    <li>\r\n                        <img src=\"https://cityofguelph.maps.arcgis.com/sharing/rest/content/items/b44fa5ac12504977a91b77ff682c61d7/data\" style=\"margin-top:15px;\" height=\"38px\">  \r\n                    </li>\r\n                </ul>\r\n            </div>\r\n            <div class=\"col-md-5 col-sm-5 text-left hidden-xs\">\r\n                <ul class=\"nav nav-pills\">\r\n                <li class=\"active\">\r\n                    <a href=\"/\" role=\"button\" class=\"logo\">\r\n                        <strong>GeoData</strong><span style=\"font-weight:lighter\">Hub</span>\r\n                        <p class=\"subtext\">Maps, Geographic Information and Open Data</p>\r\n                    </a><br>                \r\n\t\t\t\t</li>\r\n            </ul>\r\n            </div>\r\n            <div class=\"col-md-3  col-sm-3 col-md-offset-2 hidden-xs\">\r\n                <ul class=\"nav nav-pills\">\r\n                    <li style=\"float: right;display: inline-block;\" class=\"active\">\r\n                        <a href=\"/datasets\" role=\"button\" style=\"padding-top: 10px\">\r\n                            <span style=\"font-weight:lighter\">Datasets</span>\r\n                        </a>\r\n                    </li>\r\n                    <li style=\"float:right; display:inline-block;\" class=\"active\">\r\n                        <a href=\"https://cityofguelph.maps.arcgis.com/apps/MinimalGallery/index.html?appid=1f99d9429ce84aebbaa0a32359297e46\" role=\"button\" style=\"padding-top: 10px\">\r\n\t\t\t\t\t\t\t<span style=\"font-weight:lighter\">Maps</span>\r\n\t\t\t\t\t\t</a>\r\n                    </li>\r\n                </ul>\r\n            </div>\r\n        </div>\r\n        <div class=\"row hidden-md hidden-sm hidden-lg\">\r\n            <div class=\"col-xs-5\">\r\n                <a href=\"/\" role=\"button\" class=\"logo\"><strong>GeoData</strong><span style=\"font-weight:lighter\">Hub</span></a>\r\n            </div>\r\n            <div class=\"col-xs-5  col-xs-offset-2\">\r\n                <button class=\"navbar-toggle collapsed\" data-toggle=\"collapse\" data-target=\"#bs-example-navbar-collapse-1\">\r\n                    <span class=\"sr-only\">Toggle navigation</span>\r\n                    <span class=\"icon-bar\"></span>\r\n                    <span class=\"icon-bar\"></span>\r\n                    <span class=\"icon-bar\"></span>\r\n                    </button>\r\n            </div>\r\n            <div class=\"collapse navbar-collapse\" id=\"bs-example-navbar-collapse-1\">\r\n                <ul class=\"nav navbar-nav\">\r\n                    <li><a href=\"https://cityofguelph.maps.arcgis.com/apps/MinimalGallery/index.html?appid=1f99d9429ce84aebbaa0a32359297e46\">Maps</a></li><a href=\"https://cityofguelph.maps.arcgis.com/apps/MinimalGallery/index.html?appid=1f99d9429ce84aebbaa0a32359297e46\">\r\n                    </a><li><a href=\"https://cityofguelph.maps.arcgis.com/apps/MinimalGallery/index.html?appid=1f99d9429ce84aebbaa0a32359297e46\"></a><a href=\"/datasets\">Datasets</a></li>\r\n                </ul>\r\n            </div>\r\n        </div>\r\n\r\n    \r\n</div></nav> ",
+              "headerType": "default",
+              "schemaVersion": 3,
+              "showLogo": true,
+              "showTitle": true,
+              "logo": {
+                "display": {},
+                "state": "valid",
+                "isFile": false,
+                "isUrl": true
+              },
+              "shortTitle": "",
+              "menuLinks": [
+                {
+                  "external": true,
+                  "name": "Report a Problem",
+                  "url": "https://experience.arcgis.com/experience/aa79df9526ab4c99914adc950eca9141",
+                  "title": "Report a Problem",
+                  "newTab": true
+                },
+                {
+                  "external": true,
+                  "name": "Maps and Apps",
+                  "url": "https://explore.guelph.ca/pages/featured-gallery~925da00f446c44238c54bd10ad22d82f",
+                  "newTab": true,
+                  "title": "Maps and Apps",
+                  "isDraggingObject": false
+                },
+                {
+                  "external": true,
+                  "url": "https://explore.guelph.ca/search",
+                  "name": "Open Data Catalogue",
+                  "title": "Open Data Catalogue",
+                  "newTab": true,
+                  "isDraggingObject": false
+                },
+                {
+                  "external": true,
+                  "name": "Map/Open Data Request",
+                  "url": "https://survey123.arcgis.com/share/6d37e7790e7c460c82a2775236aae654?portalUrl=https://gismaps.guelph.ca/portal&width=1000",
+                  "newTab": true,
+                  "title": "Map/Open Data Request"
+                }
+              ],
+              "socialLinks": {
+                "facebook": {
+                  "visible": true,
+                  "url": "https://facebook.com/cityofguelph"
+                },
+                "instagram": {
+                  "visible": true,
+                  "url": "https://www.instagram.com/cityofguelph/"
+                },
+                "twitter": {
+                  "visible": true,
+                  "url": "https://twitter.com/cityofguelph"
+                },
+                "youtube": {
+                  "visible": true,
+                  "url": "https://youtube.com/user/cityofguelph"
+                }
+              },
+              "alt": "City of Guelph"
+            }
+          },
+          "showEditor": false,
+          "name": "site-header"
+        },
+        "footer": {
+          "component": {
+            "name": "site-footer",
+            "settings": {
+              "footerType": "custom",
+              "markdown": "<style>\r\n  @media (min-width: 768px){\r\n  .seven-cols .col-md-1,\r\n  .seven-cols .col-sm-1,\r\n  .seven-cols .col-lg-1  {\r\n    width: 100%;\r\n    *width: 100%;\r\n  }\r\n}\r\n\r\n@media (min-width: 992px) {\r\n  .seven-cols .col-md-1,\r\n  .seven-cols .col-sm-1,\r\n  .seven-cols .col-lg-1 {\r\n    width: 14.285714285714285714285714285714%;\r\n    *width: 14.285714285714285714285714285714%;\r\n    max-width: 14.285714285714285714285714285714% !important;\r\nflex:none !important;\r\n  }\r\n}\r\n \r\n@media (min-width: 1200px) {\r\n  .seven-cols .col-md-1,\r\n  .seven-cols .col-sm-1,\r\n  .seven-cols .col-lg-1 {\r\n    width: 14.285714285714285714285714285714%;\r\n    *width: 14.285714285714285714285714285714%;\r\n    max-width: 14.285714285714285714285714285714% !important;\r\nflex:none !important;\r\n  }\r\n}\r\n</style>\r\n\r\n<div class=\"footer-background\">\r\n<div class=\"row-links\">\r\n  <div class=\"row seven-cols\">\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/about\"> About</a>\r\n    </div>\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/glossary\">Glossary</a>\r\n    </div>\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/disclaimer\">Disclaimer</a>\r\n    </div>\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/frequently-asked-questions\">FAQ</a>\r\n    </div>\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/terms-of-use\">Terms of use</a>\r\n    </div>\r\n    <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"/pages/open-data-license\">Open Data License</a>\r\n    </div>\r\n        <div class=\"col-md-1\">\r\n      <a style=\"color:#fff; align-content: center;\" href=\"https://survey123.arcgis.com/share/6d37e7790e7c460c82a2775236aae654?portalUrl=https://gismaps.guelph.ca/portal&width=1000\">Request a Map/Open Data</a>\r\n    </div>\r\n  </div>\r\n   </div>\r\n\r\n<hr>\r\n\r\n<div class=\"row-contact\">\r\n<p style=\"color:grey; font-size:20px;\">Contact Us</p>\r\n<p style=\"color:grey; font-size:14px;\">\r\n1 Carden Street | Guelph, Ontario, Canada | N1H 3A1<br>\r\n<span class=\"glyphicon glyphicon-earphone\" style=\"margin-right:10px;color:grey; font-size:14px;\"></span><a style=\"color:grey; font-size:14px;\" href=\"tel:519-822-1260\">519-822-1260</a><br>\r\n<span class=\"glyphicon glyphicon-envelope\" style=\"margin-right:10px;color:grey; font-size:14px;\"></span><a style=\"color:grey; font-size:14px;\" href=\"mailto:gisadmin@guelph.ca\">Guelph GIS</a><br>\r\n<span class=\"glyphicon glyphicon-globe\" style=\"margin-right:10px;color:grey; font-size:14px;\"></span><a style=\"color:grey; font-size:14px;\" href=\"https://www.guelph.ca\">Website</a></p>\r\n</div>\r\n  <div class=\"container\">\r\n       <div class=\"col-xs-12\">\r\n      <div class=\"text-center\">\u00a9 2024 City of Guelph</div>\r\n    </div>\r\n  </div>\r\n</div>",
+              "schemaVersion": 2.1
+            }
+          },
+          "showEditor": true
+        }
+      },
+      "theme": {
+        "header": {
+          "background": "#001e29",
+          "text": "#fcfcfc"
+        },
+        "body": {
+          "background": "#fcfcfc",
+          "text": "#262626",
+          "link": "#444444"
+        },
+        "logo": {
+          "small": "https://gismaps.guelph.ca/Images/COG_Logo_White-72dpi-MinusTagline.png"
+        },
+        "fonts": {
+          "base": {
+            "url": "https://fonts.googleapis.com/css?family=Libre+Franklin:300,400,700",
+            "family": "Libre Franklin"
+          },
+          "heading": {
+            "url": "https://fonts.googleapis.com/css?family=Libre+Franklin:300,400,700",
+            "family": "Libre Franklin"
+          }
+        },
+        "flags": {
+          "umbrella": false,
+          "iframeheader": false,
+          "customheader": true
+        },
+        "globalNav": {
+          "background": "#001e29",
+          "text": "#fcfcfc"
+        }
+      },
+      "headerSass": ".custom-header {\n  h2, h3 {\nfont-size:80%;\n}\n\n\n.first-tier {\n    height: 55px;\n    width: 100%;\n    line-height: 45px;\n    text-align: center;\n    margin-bottom: 0px;\n\n  }\n\n  .first-tier .nav>li>a:focus,\n  .first-tier .nav>li>a:hover {\n    border-bottom:2px solid #fff;\n    background-color: #001E29;\n  }\n .first-tier .nav>li>a{\nbackground-color: #001E29;\n}\n\n  .first-tier h1 {\n    display: inline;\n    font-size: 25px;\n    text-shadow: 1px 1px;\n  }\n\n  #banner {\n         background-color: #001E29;\n    background-repeat: no-repeat;\n    background-position: right center;\n     position:fixed;\n     top: 0px;\n     left: 0px;\n     right: 0px;\n     width: 100%;\n     height: 67px;\n     }\n\n  }",
+      "footerSass": ".custom-footer {\n  .footer-background {\n    padding-top: 20px;\n    padding-bottom: 20px;\n    background-color: #001e29;\n  }\n\n  .logo, .nav {\n    margin-bottom: 10px;\n  }\n\n  .nav-pills {\n      display: flex;\n      justify-content: center;\n  }\n  .container {\n      font-size: 12px;\n      color: grey;\n  }\n  .row-links {\n\n      padding-left: 10px;\n      padding-right: 10px;\n  }\n    .row-contact {\n\n      padding: 10px;\n\n  }\n\n  }",
+      "collaborationGroupId": "e23fcb634654451f9e315c862593a0fc",
+      "capabilities": [
+        "geohash",
+        "api_explorer",
+        "pages",
+        "my_data",
+        "social_logins",
+        "json_chart_card",
+        "items_view",
+        "app_page",
+        "globalNav",
+        "disableHubBranding",
+        "socialSharing",
+        "siteTranslation"
+      ],
+      "defaultHostname": "geodatahub-cityofguelph.opendata.arcgis.com",
+      "updatedAt": "2026-07-24T22:14:29.953Z",
+      "updatedBy": "GuelphGIS_cityofguelph",
+      "clientId": "MBKrL49lSbGXDh8L",
+      "internalUrl": "geodatahub-cityofguelph.opendata.arcgis.com",
+      "title": "City of Guelph - Beta - 2 - Copied",
+      "siteId": "23295",
+      "searchCategories": [
+        {
+          "key": "components.search.category_tabs.sites",
+          "queryParams": {
+            "collection": "Site"
+          },
+          "hidden": true,
+          "title": "Sites",
+          "overrideText": "Sites"
+        },
+        {
+          "key": "components.search.category_tabs.data",
+          "queryParams": {
+            "collection": "Dataset"
+          },
+          "title": "Data",
+          "overrideText": "Data"
+        },
+        {
+          "key": "components.search.category_tabs.documents",
+          "queryParams": {
+            "collection": "Document"
+          },
+          "title": "Documents",
+          "overrideText": "Documents"
+        },
+        {
+          "key": "components.search.category_tabs.apps_and_maps",
+          "queryParams": {
+            "collection": "App,Map"
+          },
+          "title": "Apps & Maps",
+          "overrideText": "Apps & Maps"
+        }
+      ],
+      "telemetry": {
+        "consentNotice": {
+          "isTheme": true,
+          "consentText": "",
+          "policyURL": ""
+        },
+        "customAnalytics": {
+          "ga": {
+            "customerTracker": {
+              "enabled": true,
+              "id": "UA-125762922-1"
+            }
+          }
+        }
+      },
+      "contentViews": {
+        "sidePanelOpen": {
+          "app": false,
+          "map": false,
+          "dataset": true,
+          "document": false,
+          "feedback": false
+        }
+      },
+      "customHostname": "explore.guelph.ca",
+      "headContent": "<meta name=\"google-site-verification\" content=\"fnze359lnRxTZv9hRmuWmVTOOz2d2IrFT2J_rsMyYOk\">",
+      "redirectDomains": "geohub.guelph.ca"
+    },
+    "catalog": {
+      "groups": [
+        "fa63a5d3eb9b4054a5066f5acaf5b066",
+        "7e0aba725f6e42eebf6ad966b7b7f71e",
+        "e67928efeb46431cb7e209787f586d1d"
+      ]
+    },
+    "feeds": {},
+    "settings": {
+      "features": {
+        "hub:site:feature:follow": true,
+        "hub:site:feature:discussions": true
+      }
+    },
+    "telemetry": {
+      "consentNotice": {
+        "allowPrivacyConfig": true,
+        "disclaimer": [
+          {
+            "text": "The City of Guelph uses this site's usage statistics to monitor site and content traffic.",
+            "default": true
+          }
+        ],
+        "policyURL": ""
+      },
+      "plugins": {
+        "google": {
+          "disabled": false,
+          "measurementId": "G-Y48735MTZ0"
+        },
+        "adobe": {
+          "disabled": true
+        },
+        "siteImprove": {
+          "disabled": true
+        }
+      }
+    },
+    "catalogV2": {
+      "schemaVersion": 1,
+      "title": "Default Site Catalog",
+      "scopes": {
+        "item": {
+          "targetEntity": "item",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "fa63a5d3eb9b4054a5066f5acaf5b066",
+                    "7e0aba725f6e42eebf6ad966b7b7f71e",
+                    "e67928efeb46431cb7e209787f586d1d"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "event": {
+          "targetEntity": "event",
+          "filters": [
+            {
+              "predicates": [
+                {
+                  "group": [
+                    "fa63a5d3eb9b4054a5066f5acaf5b066",
+                    "7e0aba725f6e42eebf6ad966b7b7f71e",
+                    "e67928efeb46431cb7e209787f586d1d"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "collections": [
+        {
+          "label": "Sites",
+          "key": "site",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$site"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": true
+          }
+        },
+        {
+          "label": "Data",
+          "key": "dataset",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$dataset"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": "Documents",
+          "key": "document",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$document"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        },
+        {
+          "label": "Apps & Maps",
+          "key": "appAndMap",
+          "include": [],
+          "targetEntity": "item",
+          "scope": {
+            "targetEntity": "item",
+            "filters": [
+              {
+                "predicates": [
+                  {
+                    "type": {
+                      "any": [
+                        "$app",
+                        "$map"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "displayConfig": {
+            "hidden": false
+          }
+        }
+      ]
+    }
+  },
+  "licenceItem": {
+    "id": "4430c79729cf47968ffde39ed58771d4",
+    "owner": "GuelphGIS_cityofguelph",
+    "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+    "orgId": "k3dd78JyG9GFoZHG",
+    "created": 1704997753000,
+    "modified": 1727454495000,
+    "guid": null,
+    "name": null,
+    "title": "Open Data License",
+    "type": "Hub Page",
+    "typeKeywords": [
+      "Hub",
+      "hubPage",
+      "JavaScript",
+      "Map",
+      "Mapping Site",
+      "Online Map",
+      "OpenData",
+      "selfConfigured",
+      "Web Map"
+    ],
+    "description": "DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the ArcGIS Hub application. To make changes to this page, please visit https://cityofguelph.hub.arcgis.com:/overview/edit.",
+    "tags": [
+      ""
+    ],
+    "snippet": null,
+    "thumbnail": "thumbnail/ago_downloaded.png",
+    "documentation": null,
+    "extent": [],
+    "categories": [],
+    "spatialReference": null,
+    "accessInformation": null,
+    "classification": null,
+    "licenseInfo": null,
+    "culture": "en-us",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 9182,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 2069,
+    "scoreCompleteness": 43,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1790989200000
+  },
+  "licenceData": {
+    "source": "PAGEEDITOR",
+    "folderId": null,
+    "values": {
+      "sites": [
+        {
+          "id": "87ad3736953549daa98ead9f2f98ab55",
+          "title": "Guelph GeoDataHub"
+        }
+      ],
+      "layout": {
+        "sections": [
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent"
+              },
+              "color": "#4c4c4c"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<br><div style=\"text-align: left;\"><img src=\"https://gismaps.guelph.ca/Images/COG_Logo_Clr.png\" alt=\"CityLogo\" width=\"15%\" style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\"></div><div style=\"text-align: left;\"><br></div>\n<h2><b>Open Data Licence Version 2.0</b></h2><h2>\n</h2><h4>Introduction\n</h4><p>T<span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">his licence is based on version 2.0 of the Open Government Licence \u2013 Canada, which was\ndeveloped through public consultation. The only substantive changes in this licence are to replace\ndirect references to the Government of Canada with the City of Guelph, replace a reference to the\nFederal Privacy Act with a reference to the Ontario Municipal Freedom of Information and\nProtection of Privacy Act, and remove a reference to the Federal Court of Canada.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Using Information under this licence\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Use of any Information indicates your acceptance of the terms below.\nThe Information Provider grants you a worldwide, royalty-free, perpetual, non-exclusive licence to\nuse the Information including for commercial purposes subject to the terms below.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">You are free to:\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Copy, modify, publish, translate, adapt, distribute, or otherwise use the Information in any medium,\nmode or format for any lawful purpose.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">You must, where you do any of the above:\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Acknowledge the source of the Information by including any attribution statement specified by the\nInformation Provider(s) and, where possible, provide a link to this licence.\nIf the Information Provider does not provide a specific attribution statement, or if you are using\nInformation from several information providers and multiple attributions are not practical for your\nproduct or application, you must use the following attribution statement:\n<i>Contains information licensed under the Open Government Licence \u2013 City of Guelph</i>.\n</span></p><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">The terms of this licence are important, and if you fail to comply with any of them, the rights granted\nyou under this licence, or any similar licence granted by the Information Provider, will end\nautomatically.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Exemptions\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">This licence does not grant you any right to use:\n</span></p><ul><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Personal Information.\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Third party rights the Information Provider is not authorized to license.\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">The names, crests, logos, or other official symbols of the Information Provider; and\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Information subject to other intellectual property rights, including patents, trademarks, and\nofficial marks.\n</span></li></ul><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Non-Endorsement\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">This licence does not grant you any right to use the Information in a way that suggests any official\nstatus or that the Information Provider endorses you or your use of Information.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">No Warranty\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">The Information is licensed \u201cas is\u201d, and the Information Provider excludes all representations,\nwarranties, obligations, and liabilities, whether express or implied, to the maximum extent permitted\nby law.\nThe Information Provider is not liable for any errors or omissions in the Information and will not\nunder any circumstances be liable for any direct, indirect, special, incidental, consequential, or other\nloss, injury or damage caused by its use or otherwise arising in connection with this licence or the\nInformation, even if specifically advised of the possibility of such loss, injury, or damage.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Governing Law\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">This licence is governed by the laws of the Province of Ontario and the applicable laws of Canada.\nLegal proceedings related to this licence may only be brought in the courts of Ontario.\n</span></p><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Definitions\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">In this licence, the terms below have the following meanings:\n</span></p><ul><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">\u201cInformation\u201d means information resources protected by copyright or other information that\nis offered for use under the terms of this licence.\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">\u201cInformation Provider\u201d means City of Guelph.\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">\u201cPersonal Information\u201d means \u201cpersonal information\u201d as defined in section 2(1) of the\nOntario Municipal Freedom of Information and Protection of Privacy Act.\n</span></li><li><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">\u201cYou\u201d means the natural or legal person, or body of persons corporate or incorporate,\nacquiring rights under this licence.\n</span></li></ul><h4><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">Versioning\n</span></h4><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">The City of Guelph wishes to use this License as a tool to enable the use and re-use of Information\nunder a common open license.\n</span></p><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">This is version 2.0 of the Open Government License for the City of Guelph. The City of Guelph may,\nfrom time to time, issue new versions of the License. However, you may continue to use Information\nlicensed under this version should you wish to do so. Notices of new versions of the License will be\nposted on the City of Guelph open data website. Your use of the Information will be governed by the\nterms of the License in force as of the date you accessed the Information.\n</span></p><p><span style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\">For more information please contact (mailto:<a href=\"\">opengov@guelph.ca</a>)[Open Government]</span></p>",
+                        "schemaVersion": 2.1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "updatedAt": "2024-01-11T19:12:06.788Z",
+      "updatedBy": "GuelphGIS_cityofguelph"
+    }
+  },
+  "termsItem": {
+    "id": "ddc8ba4ab45f43d8a658174f987a5382",
+    "owner": "GuelphGIS_cityofguelph",
+    "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+    "orgId": "k3dd78JyG9GFoZHG",
+    "created": 1536694808000,
+    "modified": 1718975786000,
+    "guid": null,
+    "name": null,
+    "title": "Terms of use",
+    "type": "Hub Page",
+    "typeKeywords": [
+      "Hub",
+      "hubPage",
+      "JavaScript",
+      "Map",
+      "Mapping Site",
+      "Online Map",
+      "OpenData",
+      "selfConfigured",
+      "state:hasUnpublishedChanges",
+      "Web Map"
+    ],
+    "description": "DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the ArcGIS Hub application. To make changes to this page, please visit https://hub.arcgis.com/admin/sites/87ad3736953549daa98ead9f2f98ab55/pages",
+    "tags": [
+      ""
+    ],
+    "snippet": null,
+    "thumbnail": "thumbnail/ago_downloaded.png",
+    "documentation": null,
+    "extent": [],
+    "categories": [],
+    "spatialReference": null,
+    "accessInformation": null,
+    "classification": null,
+    "licenseInfo": null,
+    "culture": "en-us",
+    "properties": {
+      "collaborationGroupId": "2ba822af27f344b2917ce26b8a239ad3"
+    },
+    "advancedSettings": null,
+    "url": "",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 2685,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 1126,
+    "scoreCompleteness": 43,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1790888400000
+  },
+  "termsData": {
+    "source": "PAGEEDITOR",
+    "folderId": null,
+    "values": {
+      "layout": {
+        "sections": [
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent",
+                "image": ""
+              },
+              "color": "#4c4c4c"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "\n<br><div style=\"text-align: left;\"><img src=\"https://gismaps.guelph.ca/Images/COG_Logo_Clr.png\" alt=\"CityLogo\" width=\"15%\" style=\"background-color: initial; color: currentcolor; font-family: var(--fontsBaseFamily),Avenir Next;\"></div><div style=\"text-align: left;\"><br></div>\n<h3><b>Terms of Use</b></h3>\n\nThe data and information available through data.open.guelph.ca are available under terms described in the \u201clicence\u201d or \"constraints\" field of individual dataset records (meta-data). Except where otherwise noted this is the Open Government Licence.\n\nAll dataset records (meta-data) published on <span>&nbsp;</span><a href=\"https://geohub.guelph.ca/\">Guelph GeoHub</a> are licensed under the<span>&nbsp;</span><a href=\"https://gismaps.guelph.ca/Images/OpenDataLicenceVersion2.pdf\">Open Government Licence</a>.\n<h4><b>Information you submit</b></h4>\nWe want the information on this site to be open and as easy to re-use as possible. When you submit information to this site we will work on the basis, unless you clearly state otherwise alongside your work, that you are granting the City of Guelph a non-exclusive, irrevocable right to use and pass on all public information that you submit (for example descriptions of your ideas and screenshots of your apps) as well as the right to allow the re-use of that information. This is so that we can place the contents of this site under the same permissive licence terms as above. Your ideas and applications remain your own.\n\nThe accuracy of information from any third party sites published on the GeoHub is the responsibility of those sites.\n<h4><b>Traffic limits</b></h4>\nTo maintain a good service for all, API users must ensure that a request is not sent until a response is received for the previous one (i.e. no concurrency), up to a maximum of 5 requests per second. We reserve the right to block users that go outside of these limits.",
+                        "schemaVersion": 2.1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "sites": [
+        {
+          "id": "87ad3736953549daa98ead9f2f98ab55",
+          "title": "City of Guelph - Beta design"
+        },
+        {
+          "id": "748ba098e3e94d87a09c21fd76983f83",
+          "title": "GeoDataHub - Beta - Copied"
+        },
+        {
+          "id": "879e7af551a8456298860478ef110eb6",
+          "title": "GeoDataHub - Beta - Copied"
+        }
+      ],
+      "updatedAt": "2024-01-11T20:47:26.748Z",
+      "updatedBy": "GuelphGIS_cityofguelph"
+    }
+  },
+  "groupItem": {
+    "id": "fa63a5d3eb9b4054a5066f5acaf5b066",
+    "title": "City of Guelph Open Data",
+    "isInvitationOnly": true,
+    "owner": "mbarthol_cityofguelph",
+    "description": "",
+    "snippet": "Open Data group for City of Guelph.",
+    "tags": [
+      "Open Data"
+    ],
+    "typeKeywords": [],
+    "phone": "",
+    "sortField": "title",
+    "sortOrder": "asc",
+    "isViewOnly": false,
+    "isOpenData": true,
+    "featuredItemsId": null,
+    "thumbnail": null,
+    "created": 1441908882000,
+    "modified": 1571937476000,
+    "access": "public",
+    "capabilities": [],
+    "isFav": false,
+    "isReadOnly": false,
+    "protected": true,
+    "autoJoin": false,
+    "notificationsEnabled": false,
+    "provider": null,
+    "providerGroupName": null,
+    "leavingDisallowed": false,
+    "hiddenMembers": false,
+    "displaySettings": {
+      "itemTypes": ""
+    },
+    "orgId": "k3dd78JyG9GFoZHG",
+    "properties": null,
+    "collaborationInfo": {}
+  },
+  "items": {
+    "3a511df6735a4982810a43d75b303983": {
+      "id": "3a511df6735a4982810a43d75b303983",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727178841000,
+      "modified": 1727178869000,
+      "guid": null,
+      "name": null,
+      "title": "Addresses",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": "<div>Locations of all valid civic addresses in Guelph.<br /></div><div><b>~~ Updated daily ~~</b></div>",
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "City Government"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>\n",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/0",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 82,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 29101,
+      "scoreCompleteness": 58,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791000000000
+    },
+    "4e2e9a88707f4dbbb3bb51a6bd8083a1": {
+      "id": "4e2e9a88707f4dbbb3bb51a6bd8083a1",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727096952000,
+      "modified": 1727281005000,
+      "guid": null,
+      "name": null,
+      "title": "City Boundary",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "City Government",
+        "Open Data",
+        "Open Data Catalogue",
+        "city limits",
+        "Guelph"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/3",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 82,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 10910,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791000000000
+    },
+    "ac57780312324aedbb63291bfbca4ed2": {
+      "id": "ac57780312324aedbb63291bfbca4ed2",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097593000,
+      "modified": 1782214679000,
+      "guid": null,
+      "name": null,
+      "title": "Property Lines",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "City Government",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/16",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 0,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": -1
+    },
+    "07d5189001a3410ca457247863ba4e67": {
+      "id": "07d5189001a3410ca457247863ba4e67",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097351000,
+      "modified": 1727177466000,
+      "guid": null,
+      "name": null,
+      "title": "Buildings",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/10",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 5028,
+      "scoreCompleteness": 50,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791003600000
+    },
+    "36592a73a6174fdebee9f3156694c843": {
+      "id": "36592a73a6174fdebee9f3156694c843",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727981005000,
+      "modified": 1727981047000,
+      "guid": null,
+      "name": null,
+      "title": "Zoning Bylaw (2023)-20790",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData2/FeatureServer/16",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 4638,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1790996400000
+    },
+    "b2bbac19c35c405b80f4cd63ee931ac8": {
+      "id": "b2bbac19c35c405b80f4cd63ee931ac8",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097299000,
+      "modified": 1727177485000,
+      "guid": null,
+      "name": null,
+      "title": "Zoning",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": "Outlines for all zones established by The City of Guelph Zoning Bylaw (1995) \u2013 14864 which was adopted by Guelph City Council on June 19, 1995 and certified by the City Clerk on August 29, 1997. This dataset also includes zoning bylaw amendments adopted since August 29, 1997.",
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/9",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 82,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 1339,
+      "scoreCompleteness": 63,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1790096400000
+    },
+    "38b8fcced8b040868cc9b03c945e3051": {
+      "id": "38b8fcced8b040868cc9b03c945e3051",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097425000,
+      "modified": 1727177451000,
+      "guid": null,
+      "name": null,
+      "title": "Termite_Data",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development",
+        "environment and nature"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/12",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 1892,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1790985600000
+    },
+    "a4a5f8a075ae4528a1fc7525d7c9fa4f": {
+      "id": "a4a5f8a075ae4528a1fc7525d7c9fa4f",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727098160000,
+      "modified": 1727100891000,
+      "guid": null,
+      "name": null,
+      "title": "Active Development Planning",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": null,
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/27",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 2083,
+      "scoreCompleteness": 50,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1784746800000
+    },
+    "44d8a50da8324f03a8f09acd6b2c3c9b": {
+      "id": "44d8a50da8324f03a8f09acd6b2c3c9b",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727098825000,
+      "modified": 1727177040000,
+      "guid": null,
+      "name": null,
+      "title": "Registered Plans 61M",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "Land Use and Development"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData2/FeatureServer/5",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 82,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 2074,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1790931600000
+    },
+    "329dd1acf6074d358da2c6d7714200db": {
+      "id": "329dd1acf6074d358da2c6d7714200db",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097543000,
+      "modified": 1727177418000,
+      "guid": null,
+      "name": null,
+      "title": "Watercourse Polygons",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "environment and nature"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/15",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 83,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 0,
+      "scoreCompleteness": 66,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": -1
+    },
+    "31c79f60e5e44745b343dc7767418944": {
+      "id": "31c79f60e5e44745b343dc7767418944",
+      "owner": "GuelphGIS_cityofguelph",
+      "ownerId": "933b835f7e3d586eabe707ddcbf54943",
+      "orgId": "k3dd78JyG9GFoZHG",
+      "created": 1727097121000,
+      "modified": 1727177534000,
+      "guid": null,
+      "name": null,
+      "title": "Parks",
+      "type": "Feature Service",
+      "typeKeywords": [
+        "ArcGIS Server",
+        "Data",
+        "Feature Access",
+        "Feature Service",
+        "Service",
+        "Singlelayer"
+      ],
+      "description": null,
+      "tags": [
+        "Open Data",
+        "Open Data Catalogue",
+        "environment and nature",
+        "Community Services",
+        "Parks"
+      ],
+      "snippet": null,
+      "thumbnail": "thumbnail/ago_downloaded.png",
+      "documentation": null,
+      "extent": [],
+      "categories": [],
+      "spatialReference": null,
+      "accessInformation": null,
+      "classification": null,
+      "licenseInfo": "<a href='https://explore.guelph.ca/pages/open-data-license' target='_blank' rel='nofollow ugc noopener noreferrer'>Open Data License</a>",
+      "culture": "en-us",
+      "properties": null,
+      "advancedSettings": null,
+      "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/5",
+      "proxyFilter": null,
+      "access": "public",
+      "size": 82,
+      "subInfo": 0,
+      "appCategories": [],
+      "industries": [],
+      "languages": [],
+      "largeThumbnail": null,
+      "banner": null,
+      "screenshots": [],
+      "listed": false,
+      "commentsEnabled": true,
+      "numComments": 0,
+      "numRatings": 0,
+      "avgRating": 0,
+      "numViews": 3637,
+      "scoreCompleteness": 50,
+      "groupDesignations": null,
+      "apiToken1ExpirationDate": -1,
+      "apiToken2ExpirationDate": -1,
+      "lastViewed": 1791010800000
+    }
+  },
+  "membershipItem": {
+    "id": "a4a5f8a075ae4528a1fc7525d7c9fa4f",
+    "owner": "GuelphGIS_cityofguelph",
+    "created": 1727098160000,
+    "modified": 1727100891000,
+    "guid": null,
+    "name": null,
+    "title": "Active Development Planning",
+    "type": "Feature Service",
+    "typeKeywords": [
+      "ArcGIS Server",
+      "Data",
+      "Feature Access",
+      "Feature Service",
+      "Service",
+      "Singlelayer"
+    ],
+    "description": null,
+    "tags": [
+      "Open Data",
+      "Open Data Catalogue",
+      "Land Use and Development"
+    ],
+    "snippet": null,
+    "thumbnail": "thumbnail/ago_downloaded.png",
+    "documentation": null,
+    "extent": [],
+    "categories": [],
+    "spatialReference": null,
+    "accessInformation": null,
+    "classification": null,
+    "licenseInfo": null,
+    "culture": "en-us",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData1/FeatureServer/27",
+    "proxyFilter": null,
+    "access": "public",
+    "size": -1,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 2083,
+    "scoreCompleteness": 50,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1784746800000,
+    "source": "City of Guelph"
+  }
+}

@@ -4,12 +4,16 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import type { Row } from "./model";
+import { validOttawaPermitRecords } from "./ingest/ottawa-permits";
+import { OTTAWA_PERMIT_FILES } from "./ottawa-permit-sources";
 
-export const DATASETS = ["toronto-rental-buildings", "toronto-building-evaluations", "brampton-additional-units", "brampton-heritage", "toronto-heritage", "toronto-development"] as const;
+export const DATASETS = ["toronto-rental-buildings", "toronto-building-evaluations", "brampton-additional-units", "brampton-heritage", "toronto-heritage", "toronto-development", "hamilton-heritage", "hamilton-development", "ottawa-permits"] as const;
 export type Dataset = typeof DATASETS[number];
 export interface Snapshot {
   dataset: string; retrievedAt: string; sourceUpdatedAt: string | null; rowCount: number; records: Row[];
   sourceRelease?: string; sourceQuery?: string; selectedFields?: string[];
+  reportingPeriods?: string[];
+  sourceFiles?: { itemId: string; sourceUrl: string; catalogueModifiedAt: string; sha256: string; rowCount: number; reportingPeriods: string[] }[];
 }
 export interface LoadedSnapshot extends Snapshot { delivery: "automatic_database_snapshot" | "compiled_fallback"; }
 export function validateSnapshot(value: unknown, key: Dataset): Snapshot {
@@ -17,6 +21,7 @@ export function validateSnapshot(value: unknown, key: Dataset): Snapshot {
   const id = ["toronto-rental-buildings"].includes(key) ? "RSN" : ["toronto-building-evaluations", "toronto-development"].includes(key) ? "_id" : "OBJECTID";
   if (!s || s.dataset !== key || !Number.isFinite(Date.parse(s.retrievedAt)) || s.sourceUpdatedAt !== null && !Number.isFinite(Date.parse(s.sourceUpdatedAt)) || !Array.isArray(s.records) || s.records.length !== s.rowCount || s.rowCount < 1 || s.rowCount > 50_000) throw new Error("Invalid complete snapshot");
   if (s.records.some(r => !r || typeof r !== "object" || Array.isArray(r) || r[id] === null || r[id] === undefined) || new Set(s.records.map(r => String(r[id]))).size !== s.rowCount) throw new Error("Invalid snapshot identities");
+  if (key === "ottawa-permits" && (!Array.isArray(s.reportingPeriods) || !validOttawaPermitRecords(s.records, s.reportingPeriods) || !Array.isArray(s.sourceFiles) || s.sourceFiles.length !== OTTAWA_PERMIT_FILES.length || !OTTAWA_PERMIT_FILES.every(f => s.sourceFiles!.filter(x => x.itemId === f.item).length === 1) || s.sourceFiles.some(f => f.sourceUrl !== `https://www.arcgis.com/sharing/rest/content/items/${f.itemId}/data` || !Number.isFinite(Date.parse(f.catalogueModifiedAt)) || !/^[a-f0-9]{64}$/.test(f.sha256) || f.rowCount !== s.records.filter(r => r.sourceItemId === f.itemId).length || !Array.isArray(f.reportingPeriods) || f.reportingPeriods.some(p => !s.reportingPeriods!.includes(p))))) throw new Error("Invalid Ottawa permit snapshot");
   return s;
 }
 const cache = new Map<Dataset, { expires: number; value: Promise<LoadedSnapshot | null> }>();

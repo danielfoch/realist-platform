@@ -1,0 +1,317 @@
+{
+  "dataset": "orillia-selected-decision-headers",
+  "parserVersion": "orillia-decision-header-v1",
+  "retrievedAt": "2026-10-03T23:12:41.484902+00:00",
+  "sourceUpdatedAt": null,
+  "records": [
+    {
+      "documentFileNumber": "A01-26",
+      "documentPublishedAddress": "466 West Street North",
+      "publishedDecisionDate": "February 18, 2026",
+      "publishedDecisionCalendarDate": "2026-02-18",
+      "publishedOutcome": "Approved",
+      "sourcePage": 1,
+      "sourcePDFPages": 6,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/hkcmhhcs/decision-a01-26-466-west-street-north-minor-variance.pdf",
+      "sourceFileSha256": "46a6c66ec309ce525abddbbead20f60cf7fbb2ea2ca4da50c3cf70c694529347",
+      "sourceFileBytes": 607791,
+      "pageReferences": [
+        {
+          "fileNumber": "A01-26",
+          "caseLabel": "A01-26 - 466 West Street North",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A02-26",
+      "documentPublishedAddress": "51 James Street East",
+      "publishedDecisionDate": "March 18, 2026",
+      "publishedDecisionCalendarDate": "2026-03-18",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/whnaj3gt/decision-b01-26-and-a02-26-51-james-street-minor-variance.pdf",
+      "sourceFileSha256": "1182fa302d8bf092d0a1e1872b6a7dfa9ada7a8d3b1147ba5c4ddd21ce08cc42",
+      "sourceFileBytes": 438095,
+      "pageReferences": [
+        {
+          "fileNumber": "B01-26",
+          "caseLabel": "B01-26 - 51 James Street",
+          "context": "Decisions - Consent"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A03-26",
+      "documentPublishedAddress": "353 Old Muskoka Road",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Denied",
+      "sourcePage": 1,
+      "sourcePDFPages": 3,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/0y5niyex/decision-b02-26-and-a03-26-353-old-muskoka-road-minor-variance.pdf",
+      "sourceFileSha256": "e973440fb17aa977a6e8b6502843caafcaad021dacdde850386ff5b9245ec5bd",
+      "sourceFileBytes": 334198,
+      "pageReferences": [
+        {
+          "fileNumber": "A03-26",
+          "caseLabel": "A03-26 - 353 Old Muskoka Road",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A04-26",
+      "documentPublishedAddress": "86 Cedar Street",
+      "publishedDecisionDate": "April 15, 2026",
+      "publishedDecisionCalendarDate": "2026-04-15",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/oauixnat/decision-a04-26-86-cedar-street-minor-variance.pdf",
+      "sourceFileSha256": "901dc0ca0b09bc3674b90c644479ae1d19e6455a4864e479521832399be11478",
+      "sourceFileBytes": 429808,
+      "pageReferences": [
+        {
+          "fileNumber": "A04-26",
+          "caseLabel": "A04-26 - 86 Cedar Street",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A05-26",
+      "documentPublishedAddress": "191 and 201 Mississaga Street West",
+      "publishedDecisionDate": "April 15, 2026",
+      "publishedDecisionCalendarDate": "2026-04-15",
+      "publishedOutcome": "Approved",
+      "sourcePage": 1,
+      "sourcePDFPages": 4,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/f0nn4r04/decision-a05-26-191-and-201-mississaga-street-west-minor-variance.pdf",
+      "sourceFileSha256": "ff19cbc3a34f12099ade8563ea0773f2436017e3bb9da19025b390f6b3d045a4",
+      "sourceFileBytes": 514265,
+      "pageReferences": [
+        {
+          "fileNumber": "A05-26",
+          "caseLabel": "A05-26 - 191 and 201 Mississaga Street West",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A06-26",
+      "documentPublishedAddress": "75 Mississaga Street East",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/jesfddze/decision-a06-26-75-mississaga-street-east-minor-variance.pdf",
+      "sourceFileSha256": "20d8c6cf7d9dcbfe2f8197b50e429b47f79a88ef8bd2c19925bfe95c33b06731",
+      "sourceFileBytes": 460370,
+      "pageReferences": [
+        {
+          "fileNumber": "A06-26",
+          "caseLabel": "A06-26 - 75 Mississaga Street East",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A07-26",
+      "documentPublishedAddress": "135 Shannon Street",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/luxnmgev/decision-a07-26-135-shannon-street-minor-variance.pdf",
+      "sourceFileSha256": "5b2528d13172ad8168ee4998dc7f6fa244e7ad2dda2c484c69a993167a7a9824",
+      "sourceFileBytes": 464787,
+      "pageReferences": [
+        {
+          "fileNumber": "A07-26",
+          "caseLabel": "A07-26 - 135 Shannon Street",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A08-26",
+      "documentPublishedAddress": "365 Macisaac Drive",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/kiipmyki/decision-a08-26-365-macissac-drive-minor-variance.pdf",
+      "sourceFileSha256": "0c7bf910cec1a605f391875a7fff5ab5a8faeacfc9d4be951b805c77fb0ac8ab",
+      "sourceFileBytes": 643834,
+      "pageReferences": [
+        {
+          "fileNumber": "A08-26",
+          "caseLabel": "A08-26 - 365 Macisaac Drive",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A09-26",
+      "documentPublishedAddress": "245 Bay Street",
+      "publishedDecisionDate": "August 19, 2026",
+      "publishedDecisionCalendarDate": "2026-08-19",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 6,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/ckwe0mzg/a09-26-245-bay-street-decision-minor-variance.pdf",
+      "sourceFileSha256": "31296a05dee5dd50d7df2609f085e91bf18ae460a3479284e5e17d50e17fbd05",
+      "sourceFileBytes": 502434,
+      "pageReferences": [
+        {
+          "fileNumber": "A09-26",
+          "caseLabel": "A09-26 - 245 Bay Street",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A10-26",
+      "documentPublishedAddress": "6 Victoria Crescent",
+      "publishedDecisionDate": "September 16, 2026",
+      "publishedDecisionCalendarDate": "2026-09-16",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/giioirej/a10-26-6-victoria-crescent-decision-minor-variance.pdf",
+      "sourceFileSha256": "6c1b68aea632ae59efffb37d6d4007165fdcb9197f8af02474cf0398bac2214b",
+      "sourceFileBytes": 491811,
+      "pageReferences": [
+        {
+          "fileNumber": "A10-26",
+          "caseLabel": "A10-26 - 6 Victoria Crescent (Variance)",
+          "context": "Applications - September 16th Virtual Hearing"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "A11-26",
+      "documentPublishedAddress": "87 Heyden Avenue",
+      "publishedDecisionDate": "September 16, 2026",
+      "publishedDecisionCalendarDate": "2026-09-16",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 5,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/oanlmhl0/a11-26-87-heyden-avenue-decision-minor-variance.pdf",
+      "sourceFileSha256": "f051b37390e9c31d39d6e6db69dce3f1028e3daa763aaf53b81d51c1494a108a",
+      "sourceFileBytes": 635296,
+      "pageReferences": [
+        {
+          "fileNumber": "A11-26",
+          "caseLabel": "A11-26 - 87 Heyden Avenue (Variance)",
+          "context": "Applications - September 16th Virtual Hearing"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "B01-26",
+      "documentPublishedAddress": "51 James Street East",
+      "publishedDecisionDate": "March 18, 2026",
+      "publishedDecisionCalendarDate": "2026-03-18",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 6,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/lg1do2kn/decision-b01-26-and-a02-26-51-james-street-consent.pdf",
+      "sourceFileSha256": "f58c7190fd9bf24cd9215338d717c6cc5760970ac24c75b6d17e81aed888563b",
+      "sourceFileBytes": 490963,
+      "pageReferences": [
+        {
+          "fileNumber": "A02-26",
+          "caseLabel": "A02-26 - 51 James Street",
+          "context": "Decisions - Minor Variance"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "B02-26",
+      "documentPublishedAddress": "353 Old Muskoka Road",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 7,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/rjobx23n/decision-b02-26-and-a03-26-353-old-muskoka-road-consent.pdf",
+      "sourceFileSha256": "8f9c79e9c5bc5f9df9f58711ec08fb0cafb823fc0c249364ff07ee06cd20609a",
+      "sourceFileBytes": 739395,
+      "pageReferences": [
+        {
+          "fileNumber": "B02-26",
+          "caseLabel": "B02-26 - 353 Old Muskoka Road",
+          "context": "Decisions - Consent"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "B03-26",
+      "documentPublishedAddress": "21 Diana Drive",
+      "publishedDecisionDate": "May 20, 2026",
+      "publishedDecisionCalendarDate": "2026-05-20",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 4,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/yyinkinv/decision-b03-26-21-diana-drive-consent-21-year-lease.pdf",
+      "sourceFileSha256": "14eff1cae273c43d64f0f9bba994f6524eeec2ace5b91e8bd31aa5cc815c5f2b",
+      "sourceFileBytes": 599965,
+      "pageReferences": [
+        {
+          "fileNumber": "B03-26",
+          "caseLabel": "B03-26 - 21 Diana Drive - Consent (Lease)",
+          "context": "Decisions - Consent"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "B04-26",
+      "documentPublishedAddress": "16 First Street",
+      "publishedDecisionDate": "August 27, 2026",
+      "publishedDecisionCalendarDate": "2026-08-27",
+      "publishedOutcome": "Denied",
+      "sourcePage": 1,
+      "sourcePDFPages": 3,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/4w1pfqet/decision-b04-26-16-first-street-consent.pdf",
+      "sourceFileSha256": "12919702ac713ffe0cd7bed095692e5e32eaaf31b1bd188307c38dce05054206",
+      "sourceFileBytes": 345830,
+      "pageReferences": [
+        {
+          "fileNumber": "B04-26",
+          "caseLabel": "B04-26 - 16 First Street (Consent - deferred from June 22, 2026 Hearing)",
+          "context": "Applications - August 27th In-Person Hearing"
+        },
+        {
+          "fileNumber": "B04-26",
+          "caseLabel": "B04-26 - 16 First Street",
+          "context": "Decisions - Consent"
+        }
+      ]
+    },
+    {
+      "documentFileNumber": "B05-26",
+      "documentPublishedAddress": "39 Peter Street North and 31 Coldwater Street East",
+      "publishedDecisionDate": "June 17, 2026",
+      "publishedDecisionCalendarDate": "2026-06-17",
+      "publishedOutcome": "Approved with conditions",
+      "sourcePage": 1,
+      "sourcePDFPages": 6,
+      "sourceUrl": "https://media-001-ca.cdn.govstack.com/orilliarecreation-004-ca/media/p3tln1mm/decision-b05-26-39-peter-st-n-and-31-coldwater-st-e-consent-easement.pdf",
+      "sourceFileSha256": "68abee370f1c6bc7a79898ccea8ad86c7a8626d473dd3ae59c7b0e510871ba24",
+      "sourceFileBytes": 552111,
+      "pageReferences": [
+        {
+          "fileNumber": "B05-26",
+          "caseLabel": "B05-26 - 39 Peter Street North and 31 Coldwater Street East",
+          "context": "Decisions - Consent"
+        }
+      ]
+    }
+  ]
+}

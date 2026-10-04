@@ -1,0 +1,891 @@
+{
+  "licenceItem": {
+    "id": "8844e3b457d2436cb1029e7470b2be8c",
+    "owner": "cdejacob",
+    "ownerId": "cb1fee2c99114df6f95a1d3501ba336d",
+    "orgId": "ZpeBVw5o1kjit7LT",
+    "created": 1543004211000,
+    "modified": 1557514514000,
+    "guid": null,
+    "name": null,
+    "title": "Open Data Licence",
+    "type": "Hub Page",
+    "typeKeywords": [
+      "Hub",
+      "hubPage",
+      "JavaScript",
+      "Map",
+      "Mapping Site",
+      "Online Map",
+      "OpenData",
+      "selfConfigured",
+      "Web Map"
+    ],
+    "description": "DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the ArcGIS Hub application. To make changes to this page, please visit https://hub.arcgis.com/admin/",
+    "tags": [],
+    "snippet": "Open Data Licence for the City of Waterloo, Ontario, Canada",
+    "thumbnail": "thumbnail/ago_downloaded.png",
+    "documentation": null,
+    "extent": [],
+    "categories": [],
+    "spatialReference": null,
+    "accessInformation": null,
+    "classification": null,
+    "licenseInfo": null,
+    "culture": "en-gb",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "https://opendata.arcgis.com/admin/",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 5232,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 5995,
+    "scoreCompleteness": 60,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1790974800000
+  },
+  "licenceData": {
+    "source": "PAGEEDITOR",
+    "folderId": null,
+    "values": {
+      "layout": {
+        "sections": [
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent"
+              },
+              "color": "#4c4c4c"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<h2>Waterloo Open Data User Licence</h2>\n\n<hr>\n\n<h3>Background on the licence</h3>\n\n<p>Open data licences are still evolving through local to international discussions on best practices.  The licence adapted, with permission, by the City originates from the U.K. Government's licence.  This licence was adapted by the British Columbia government as well as several municipalities including the City of Toronto and the Region of Waterloo.  For sake of consistency and benefit to the user community, the City of Waterloo has used the same licence.</p>\n\n<p>There are ongoing discussions on an enhanced licence for all levels of government within Canada and the City will participate in these discussions and will provide updates on any new versions that are proposed for community feedback.</p>\n\n<p>If you have any questions or concerns related to the current licence, please contact us.</p>\n\n<hr>\n\n<h3>Waterloo Open Data User Licence Text</h3>\n\n<h4>Using Information under this Licence</h4>\n\n<ol>\n<li>Your use of Information indicates your acceptance of the terms and conditions below.</li>\n<li>The Information Provider grants you a worldwide, royalty-free, perpetual, non-exclusive licence to use the Information subject to the conditions below.</li>\n<li>This licence does not affect any copyright exceptions or limitations available under the Copyright Act (Canada).</li>\n</ol>\n\n<h4>You are free to:</h4>\n<ul>\n<li>copy, publish, distribute and transmit the Information;</li>\n<li>adapt the Information; and</li>\n<li>use the Information commercially, for example, by combining it with other information, or by including it in your own product or application.</li>\n</ul>\n\n<h4>You must, where you do any of the above:</h4>\n<ul>\n<li>ensure that you do not use the Information in a way that suggests any official status or that the Information Provider endorses you or your use of the Information;</li>\n<li>ensure that you do not misrepresent the Information or its source;</li>\n<li>ensure that your use of the Information does not breach or infringe upon any applicable laws;</li>\n<li>you are not required to provide credit to the Information Provider when using Information under this licence, however if you choose to do so please use this text in a suitable location, \"Contains information provided by the City of Waterloo under licence\".</li>\n</ul>\n\n<p>These are important conditions of this license and if you fail to comply with them the rights granted to you under this license will end automatically.</p>\n\n<h4>Exemptions</h4>\n\n<p>This licence does not cover the use of:</p>\n\n<ul>\n<li>personal information;</li>\n<li>information or records that are not accessible pursuant to the Municipal Freedom of Information and Protection of Privacy Act of Ontario;</li>\n<li>third-party rights the Information Provider is not authorized to license, if any; and</li>\n<li>departmental or public sector organization logos, trademarks, slogans or crests where they may be included in the Information.</li>\n</ul>\n\n<h4>No warranty</h4>\n\n<ol>\n<li>The Information is licensed 'as is' and the Information Provider excludes all representations, warranties, obligations and liabilities, whether express or implied, in relation to the Information.</li>\n<li>The Information Provider is not liable for any errors or omissions in the Information and will not, under any circumstances, be liable for any direct, indirect, special, incidental, consequential, or other loss, injury or damage caused by its use, even if specifically advised of the possibility of such loss, injury or damage.</li>\n</ol>\n\n<h4>Governing Law</h4>\n\nThis licence is governed by the laws of the Province of Ontario.\n\n<h4>Definitions</h4>\n\n<p>In this licence, the terms below have the following meanings:</p>\n\n<ul>\n<li>'Information' means information or data protected by copyright that is expressly made available under the terms of this license on or through the City of Waterloo website.</li>\n<li>'Information Provider' means the City of Waterloo;</li>\n<li>'Personal Information' has the meaning set out in section 2 of the Municipal Freedom of Information and Protection of Privacy Act of Ontario;</li>\n<li>'use' as a verb, means doing any act that is restricted by copyright, whether in the original medium or in any other medium, and includes without limitation distributing, copying, adapting, modifying as may be technically necessary to use it in a different mode or format.</li>\n<li>'you' or 'your' means the natural or legal person, or body of persons corporate or incorporate, as applicable, acquiring rights under this licence.\"</li>\n</ul>\n"
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "sites": [
+        {
+          "id": "c4904b1bf1a8429ab6240226038def3d",
+          "title": "City of Waterloo Open Data"
+        }
+      ],
+      "updatedAt": "2018-12-05T22:03:06.947Z",
+      "updatedBy": "cdejacob"
+    }
+  },
+  "siteItem": {
+    "id": "c4904b1bf1a8429ab6240226038def3d",
+    "owner": "OpenData_Waterloo",
+    "ownerId": "a6c2dc997f6c742a6d6abd832a83ae66",
+    "orgId": "ZpeBVw5o1kjit7LT",
+    "created": 1488575424000,
+    "modified": 1658376874000,
+    "guid": null,
+    "name": null,
+    "title": "City of Waterloo Open Data",
+    "type": "Web Mapping Application",
+    "typeKeywords": [
+      "hubSite",
+      "JavaScript",
+      "Map",
+      "Mapping Site",
+      "Online Map",
+      "Ready To Use",
+      "selfConfigured",
+      "state:hasUnpublishedChanges",
+      "Web Map",
+      "Registered App"
+    ],
+    "description": "DO NOT DELETE OR MODIFY THIS ITEM. This item is managed by the Open Data application. To make changes to this site, please visit https://opendata.arcgis.com/admin/",
+    "tags": [
+      "Hub Site"
+    ],
+    "snippet": "City of Waterloo Open Data Site",
+    "thumbnail": "thumbnail/ago_downloaded.png",
+    "documentation": null,
+    "extent": [],
+    "categories": [],
+    "spatialReference": "null",
+    "accessInformation": "null",
+    "classification": null,
+    "licenseInfo": "null",
+    "culture": "en-us",
+    "properties": {
+      "uiVersion": "2.1",
+      "collaborationGroupId": "6c48159485a4464bb195920b121e7ed5",
+      "schemaVersion": 1.5,
+      "globalNavViewCount": 3,
+      "hasSeenGlobalNav": true,
+      "contentGroupId": "06d689a4d14a46568887cd87b6da578a"
+    },
+    "advancedSettings": null,
+    "url": "https://opendata-City-of-Waterloo.opendata.arcgis.com",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 309379,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": true,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 4649017,
+    "scoreCompleteness": 70,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1791010800000
+  },
+  "siteData": {
+    "source": "SITEEDITOR",
+    "folderId": null,
+    "values": {
+      "subdomain": "opendata",
+      "externalUrl": null,
+      "public": false,
+      "faviconUrl": "https://maps.waterloo.ca/web_images/favicon.ico",
+      "uiVersion": "2.3",
+      "extent": {},
+      "map": {
+        "basemaps": {
+          "type": "default",
+          "primary": {
+            "extent": {
+              "xmin": -20037507.067161843,
+              "ymin": -19971868.88040859,
+              "xmax": 20037507.067161843,
+              "ymax": 19971868.880408563,
+              "spatialReference": {
+                "wkid": 102100
+              }
+            },
+            "isWebMercator": true,
+            "title": "Light Gray Canvas",
+            "baseMapLayers": [
+              {
+                "type": "ArcGISTiledMapServiceLayer",
+                "url": "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer"
+              },
+              {
+                "type": "ArcGISTiledMapServiceLayer",
+                "url": "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer",
+                "isReference": true
+              }
+            ]
+          },
+          "secondary": {
+            "extent": {
+              "xmin": -20037507.067161843,
+              "ymin": -19971868.88040859,
+              "xmax": 20037507.067161843,
+              "ymax": 19971868.880408563,
+              "spatialReference": {
+                "wkid": 102100
+              }
+            },
+            "isWebMercator": true,
+            "title": "World Imagery",
+            "baseMapLayers": [
+              {
+                "type": "ArcGISTiledMapServiceLayer",
+                "url": "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+              }
+            ]
+          }
+        }
+      },
+      "defaultExtent": {
+        "type": "extent",
+        "xmin": -8972462.277427888,
+        "ymin": 5378726.0240717335,
+        "xmax": -8958769.98006032,
+        "ymax": 5391305.564477854,
+        "spatialReference": {
+          "wkid": 102100
+        }
+      },
+      "pages": [
+        {
+          "id": "8844e3b457d2436cb1029e7470b2be8c",
+          "title": "Open Data Licence",
+          "slug": "open-data-licence"
+        },
+        {
+          "id": "e8ce151c835f4219a164258456722212",
+          "title": "Open Data FAQ",
+          "slug": "open-data-faq"
+        }
+      ],
+      "layout": {
+        "sections": [
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "valid",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#ffffff",
+                "image": "https://maps.waterloo.ca/images/waterloo_panoramic_2013.jpg",
+                "darken": false
+              },
+              "color": "#ffffff",
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "jumbotron-card",
+                      "settings": {
+                        "header": "City of Waterloo Open Data",
+                        "subheader": "",
+                        "minHeight": "300",
+                        "showLocation": false,
+                        "imageUrl": "",
+                        "fileSrc": "",
+                        "cropSrc": "",
+                        "isUrl": true,
+                        "isFile": false,
+                        "state": "",
+                        "position": {
+                          "x": "center",
+                          "y": "center"
+                        },
+                        "display": {},
+                        "showSearch": true,
+                        "searchPlaceholder": "Search for Open Data"
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#1c66a6",
+                "image": ""
+              },
+              "color": "#ffffff",
+              "rowLayout": "box"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<h2 id=\"what-is-open-data-\">What is Open Data?</h2>\n<p class=\"lead text-justify\">This Open Data Catalogue is a free and open data sharing portal where anyone can access and use data relating to the City of Waterloo, Ontario, Canada. You can browse, search, preview, and download a variety of municipal geospatial and tabular data. Descriptions of each dataset will help with understanding of the content. You may use and republish the data as you wish, according to the open licence agreement.</p>",
+                        "schemaVersion": 1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#ffffff"
+              },
+              "color": "#4C4C4C"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<p><h1 class=\"text-center\">Explore Data Categories</h1></p>\n<p class=\"text-center\"><a href=\"https://opendata-city-of-waterloo.opendata.arcgis.com/datasets?sort=name\">...or view the entire catalogue</a></p>",
+                        "schemaVersion": 1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "#ffffff"
+              },
+              "color": "#808080"
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Base Data",
+                        "type": "keyword",
+                        "keyword": "base data",
+                        "searchCategories": [],
+                        "iconName": "society",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Boundaries",
+                        "type": "keyword",
+                        "keyword": "boundaries",
+                        "searchCategories": [],
+                        "iconName": "boundaries",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Closures",
+                        "type": "keyword",
+                        "keyword": "closures",
+                        "searchCategories": [],
+                        "iconName": "transportation",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Community",
+                        "type": "keyword",
+                        "keyword": "community",
+                        "searchCategories": [],
+                        "iconName": "demographics",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Elections",
+                        "type": "keyword",
+                        "keyword": "elections",
+                        "searchCategories": [],
+                        "iconName": "check",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Environment",
+                        "type": "keyword",
+                        "keyword": "environment",
+                        "searchCategories": [],
+                        "iconName": "biota",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Events",
+                        "type": "keyword",
+                        "keyword": "events",
+                        "searchCategories": [],
+                        "iconName": "military",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Heritage",
+                        "type": "keyword",
+                        "keyword": "heritage",
+                        "searchCategories": [],
+                        "iconName": "historic",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Infrastructure",
+                        "type": "keyword",
+                        "keyword": "infrastructure",
+                        "searchCategories": [],
+                        "iconName": "utility1",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Parks & Recreation",
+                        "type": "keyword",
+                        "keyword": "parks",
+                        "searchCategories": [],
+                        "iconName": "recreation",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Points of Interest",
+                        "type": "keyword",
+                        "keyword": "points of interest",
+                        "searchCategories": [],
+                        "iconName": "location",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  },
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Records",
+                        "type": "keyword",
+                        "keyword": "records",
+                        "searchCategories": [],
+                        "iconName": "Generic_Book",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 2
+                  }
+                ]
+              },
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "category-card",
+                      "settings": {
+                        "category": "Transportation",
+                        "type": "keyword",
+                        "keyword": "transportation",
+                        "searchCategories": [],
+                        "iconName": "transportation",
+                        "iconType": "library",
+                        "iconColor": "#1c66a6",
+                        "customAltText": ""
+                      }
+                    },
+                    "width": 12
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent"
+              }
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<div class=\"p-body\">\n<h3 class=\"text-left\">Using The Site</h3>\n<p class=\"text-left\">Use the search bar at the top of the page to find data relating to topics of interest. As you browse through the different datasets, the extent of each will be displayed on the map. Once you find what you are looking for, select the dataset from the list to be able to view the data and get options for download.\nYou can also view our <a href=\"https://opendata.city-of-waterloo.opendata.arcgis.com/datasets?sort_by=name\">complete list of datasets</a>.</p>\n</div></div>",
+                        "schemaVersion": 1
+                      }
+                    },
+                    "width": 4,
+                    "showEditor": false
+                  },
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<div class=\"p-body\">\n<h3 class=\"text-left\">Accessing Data</h3>\n<p class=\"text-left\">There are several ways to access the data within. The data can be downloaded as shapefiles, file geodatabases, or KML for GIS applications, and as CSV for tables and spreadsheets. Advanced users may also integrate our data into other applications. <a href=\"https://doc.arcgis.com/en/open-data/\">Learn more</a> about this Open Data platform and even get involved in the <a href=\"https://opendata.arcgis.com\">Global ArcGIS Open Data Community</a>.</p>\n</div></div>",
+                        "schemaVersion": 1
+                      }
+                    },
+                    "width": 4,
+                    "showEditor": false
+                  },
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<h3 id=\"developers-h3-\">Developers</h3></h3>\n<p><p class=\"text-left\">Develop new apps using templates and APIs. Data from this site can be easily embedded in other applications using the GeoService or GeoJSON links. Explore the ESRI <a href=\"https://developers.arcgis.com/javascript/\">JavaScript API documentation</a> to get started. <br><a href=\"https://www.esri.com/software/open\">Our Open Vision</a> | <a href=\"https://developers.arcgis.com\">Developer API</a></p></p>\n</div></p>\n",
+                        "schemaVersion": 1
+                      }
+                    },
+                    "width": 4,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "containment": "fixed",
+            "isFooter": false,
+            "style": {
+              "background": {
+                "isFile": false,
+                "isUrl": true,
+                "state": "",
+                "display": {},
+                "transparency": 0,
+                "position": {
+                  "x": "center",
+                  "y": "center"
+                },
+                "color": "transparent"
+              }
+            },
+            "rows": [
+              {
+                "cards": [
+                  {
+                    "component": {
+                      "name": "markdown-card",
+                      "settings": {
+                        "markdown": "<p></p><h1 class=\"text-center\">Partners</h1><a id=\"partners\"></a><p></p>\n<p class=\"text-center\">\nAdditional Data Provided by Our Partners<a id=\"partners\"></a><br>\n</p><center>\n<ul class=\"cards-list\">\n<li class=\"col-xs-12 col-sm-6 col-md-3\">\n<div class=\"card center-block\"><img src=\"https://maps.waterloo.ca/Images/open/City_of_Cambridge.jpg\" alt=\"Card Thumbnail\">\n<div class=\"card-options\">\n<br>\n<br>\n<a href=\"https://www.cambridge.ca/en/your-city/Open-Data.aspx\" class=\"btn btn-default btn-open\">City of Cambridge</a>\n</div><hr>\n<br>\n<p>City of Cambridge Open Data Catalogue.</p>\n</div>\n</li>\n<li class=\"col-xs-12 col-sm-6 col-md-3\">\n<div class=\"card center-block\"><img src=\"https://maps.waterloo.ca/Images/open/Region_of_Waterloo.jpg\" alt=\"Card Thumbnail\">\n<div class=\"card-options\">\n<br>\n<br>\n<a href=\"https://rowopendata-rmw.opendata.arcgis.com\" class=\"btn btn-default btn-open\">Region of Waterloo</a>\n</div><hr>\n<br>\n<p>Region of Waterloo Open Data Catalogue</p>\n</div>\n</li>\n<li class=\"col-xs-12 col-sm-6 col-md-3\">\n<div class=\"card center-block\"><center><img src=\"https://maps.waterloo.ca/Images/open/City_of_Kitchener.jpg\" alt=\"Card Thumbnail\">\n<div class=\"card-options\">\n<br>\n<br>\n<a href=\"https://open-kitchenergis.opendata.arcgis.com\" class=\"btn btn-default btn-open\">City of Kitchener</a>\n</div><hr>\n<br>\n<p>City of Kitchener Open Data Catalogue</p>\n</center></div>\n</li>\n</ul>\n</center>\n<p></p>",
+                        "schemaVersion": 2.1
+                      }
+                    },
+                    "width": 12,
+                    "showEditor": false
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "header": {
+          "component": {
+            "name": "site-header",
+            "settings": {
+              "fullWidth": false,
+              "iframeHeight": "150px",
+              "iframeUrl": "",
+              "links": [],
+              "logoUrl": "",
+              "title": "",
+              "markdown": "<nav class=\"navbar navbar-default navbar-static-top first-tier\">\n  <div class=\"container\">\n    <div class=\"navbar-header\">\n      <div class=\"navbar-brand\">\n        <div class=\"site-logo\">\n          <a href=\"https://data.waterloo.ca\">\n          <img src=\"https://maps.waterloo.ca/Images/W_logoCMYK.png\" width=\"50\" height=\"50\" alt=\"logo\">\n          <h1>City of Waterloo Open Data</h1>\n          </a> \n       </div>\n     </div>\n    </div>\n    <ul class=\"nav nav-pills pull-right\" role=\"navigation\">\n        <li><a href=\"https://data.waterloo.ca/pages/open-data-licence\">Data Licence</a></li>\n        <li><a href=\"https://data.waterloo.ca/#developers\">Developers</a></li>\n        <li><a href=\"https://www.waterloo.ca/en/eservices/MapsandGIS.asp\">Contact</a></li>\n        <li><a href=\"https://www.peakdemocracy.ca/portals/151/Forum_447/Issue_1602\">Feedback</a></li>\n        <li><a href=\"https://twitter.com/citywaterloo\">Twitter</a></li>\n        <li><a href=\"https://www.waterloo.ca\">City Website</a></li>\n    </ul>\n  </div>\n</nav>",
+              "headerType": "custom",
+              "showLogo": true,
+              "showTitle": true,
+              "logo": {
+                "display": {}
+              },
+              "shortTitle": "",
+              "menuLinks": [],
+              "socialLinks": {
+                "facebook": {},
+                "twitter": {},
+                "instagram": {}
+              },
+              "schemaVersion": 2.1
+            }
+          },
+          "showEditor": false
+        },
+        "footer": {
+          "component": {
+            "name": "site-footer",
+            "settings": {
+              "footerType": "custom",
+              "markdown": "<div class=\"footer-background\">\n  <div class=\"container\">\n    <div class=\"col-xs-12\">\n          <img src=\"https://maps.waterloo.ca/Images/COW_small_logoCMYK.png\" class=\"center-block logo\">\n    </div>\n    <div class=\"col-xs-12 center-block\">\n          <ul class=\"nav nav-pills\">\n              <li role=\"presentation\"><a href=\"https://data.waterloo.ca/\">Home</a></li>\n              <li role=\"presentation\"><a href=\"https://data.waterloo.ca/datasets?sort=name\">Catalogue</a></li>\n              <li role=\"presentation\"><a href=\"https://data.waterloo.ca/pages/open-data-licence\">Open Data Licence</a></li>\n              <li role=\"presentation\"><a href=\"https://www.peakdemocracy.ca/portals/151/Forum_447/Issue_1602\">Open Data Feedback</a></li>\n              <li role=\"presentation\"><a href=\"https://www.waterloo.ca/en/eservices/MapsandGIS.asp\">Contact Us</a></li>\n            </ul>\n    </div>\n    <div class=\"col-xs-12 center-block\">\n          <ul class=\"nav nav-pills\">\n              <li role=\"presentation\"><a href=\"https://www.facebook.com/citywaterloo\"><img src=\"https://maps.waterloo.ca/Images/open/facebook.png\" alt=\"Facebook\" style=\"width:40px;height:40px;border:0;\"></a></li>\n              <li role=\"presentation\"><a href=\"https://www.twitter.com/citywaterloo\"><img src=\"https://maps.waterloo.ca/Images/open/twitter.png\" alt=\"Twitter\" style=\"width:40px;height:40px;border:0;\"></a></li>\n              <li role=\"presentation\"><a href=\"https://vimeo.com/citywaterloo\"><img src=\"https://maps.waterloo.ca/Images/open/vimeo.png\" alt=\"Vimeo\" style=\"width:40px;height:40px;border:0;\"></a></li>\n            </ul>\n    </div>\n    <div class=\"col-xs-12\">\n      <div class=\"text-center\">© 2012-2020 City of Waterloo<br>City of Waterloo<br>\n100 Regina St S<br>\nPO Box 337, Station Waterloo<br>\nWaterloo, Ontario<br>\nN2J 4A8</div>\n    </div>\n  </div>\n</div>",
+              "schemaVersion": 2.1
+            }
+          },
+          "showEditor": false
+        }
+      },
+      "theme": {
+        "header": {
+          "background": "#1c66a6",
+          "text": "#ffffff"
+        },
+        "body": {
+          "background": "#f8f8f8",
+          "text": "#4c4c4c",
+          "link": "#136fbf"
+        },
+        "button": {
+          "background": "#136fbf",
+          "text": "#ffffff"
+        },
+        "logo": {
+          "small": ""
+        },
+        "flags": {
+          "umbrella": false
+        },
+        "fonts": {
+          "base": {
+            "url": "",
+            "family": "Avenir Next"
+          },
+          "heading": {
+            "url": "",
+            "family": "Avenir Next"
+          }
+        },
+        "globalNav": {
+          "background": "#1c66a6",
+          "text": "#ffffff"
+        }
+      },
+      "headerSass": ".custom-header {\n\n  .first-tier {\n    height: 80px;\n    margin-bottom: 0px;\n  }\n\n  .first-tier .nav>li>a {\n    margin-top: 5px;\n    padding: 3px 6px;\n  }\n\n  .first-tier .nav>li>a:focus,\n  .first-tier .nav>li>a:hover {\n    background-color: #136fbf;\n    color: #fff;\n  }\n\n  .first-tier .site-logo img {\n    vertical-align: middle;\n  }\n\n  .first-tier h1 {\n    display: inline;\n    font-size: 25px;\n  }\n\n  .second-tier {\n    margin-bottom: 0px;\n  }\n}",
+      "footerSass": ".custom-footer {\n.footer-background {\n    padding-top: 20px;\n    padding-bottom: 20px;\n    background-color: #e7e7e7;\n  }\n\n  .logo, .nav {\n    margin-bottom: 10px;\n  }\n\n  .nav-pills {\n      display: flex;\n      justify-content: center;\n  }\n\n}",
+      "collaborationGroupId": "6c48159485a4464bb195920b121e7ed5",
+      "capabilities": [
+        "geohash",
+        "api_explorer",
+        "pages",
+        "my_data",
+        "social_logins",
+        "globalNav"
+      ],
+      "defaultHostname": "opendata-city-of-waterloo.opendata.arcgis.com",
+      "updatedAt": "2022-07-21T04:15:15.910Z",
+      "updatedBy": "cdejacob",
+      "clientId": "VswpPTjrUrA6a2An",
+      "stylesheets": {
+        "opendata": {
+          "current": "https://City-of-Waterloo.maps.arcgis.com/sharing/rest/content/items/c4904b1bf1a8429ab6240226038def3d/resources/opendata.css.txt"
+        }
+      },
+      "siteId": "14003",
+      "customHostname": "data.waterloo.ca",
+      "telemetry": {
+        "consentNotice": {
+          "isTheme": true,
+          "consentText": "",
+          "policyURL": ""
+        },
+        "customAnalytics": {
+          "ga": {
+            "customerTracker": {
+              "enabled": true,
+              "id": "UA-41182677-1"
+            }
+          }
+        }
+      }
+    },
+    "catalog": {
+      "groups": [
+        "b04b0eafc4ff4d05a66de852c57d153b",
+        "29614814565e4342bbc6938cd461d5b4",
+        "a04aa81fab774bdab4990f74e979d22b",
+        "96f1c9e1e9ee4f11be35a26c073b4b34",
+        "bae5114adabf43829886f38e54253541"
+      ]
+    },
+    "feeds": {}
+  },
+  "groupItem": {
+    "id": "b04b0eafc4ff4d05a66de852c57d153b",
+    "title": "City of Waterloo Open Data",
+    "isInvitationOnly": true,
+    "owner": "OpenData_Waterloo",
+    "description": "",
+    "snippet": "City of Waterloo Open Data",
+    "tags": [
+      "open data",
+      "city of waterloo"
+    ],
+    "typeKeywords": [],
+    "phone": "",
+    "sortField": "title",
+    "sortOrder": "asc",
+    "isViewOnly": false,
+    "isOpenData": true,
+    "featuredItemsId": null,
+    "thumbnail": "W_logoCMYK_65x65.png",
+    "created": 1412003478000,
+    "modified": 1474288184000,
+    "access": "public",
+    "capabilities": [],
+    "isFav": false,
+    "isReadOnly": false,
+    "protected": false,
+    "autoJoin": false,
+    "notificationsEnabled": false,
+    "provider": null,
+    "providerGroupName": null,
+    "leavingDisallowed": false,
+    "hiddenMembers": false,
+    "membershipAccess": "org",
+    "displaySettings": {
+      "itemTypes": ""
+    },
+    "orgId": "ZpeBVw5o1kjit7LT",
+    "properties": null,
+    "collaborationInfo": {}
+  }
+}

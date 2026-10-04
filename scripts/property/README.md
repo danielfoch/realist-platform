@@ -31,6 +31,23 @@ refresh. CSV reruns upsert the cached source unless `--refresh` is supplied.
 Existing records are preserved: these commands do not prune withdrawn records.
 This release is a snapshot, and refreshes are manual.
 
+The separate public-snapshot system refreshes eight smaller Toronto/Brampton/Hamilton
+datasets daily at 08:15 UTC through the guarded `/api/cron/property-refresh` route.
+It preserves the last good payload on source/validation failure. This does not
+change the bulk-import cadences above. Hamilton heritage and development can be
+downloaded into validated, atomically replaced deployment fallback files without
+database credentials:
+
+```sh
+npx tsx scripts/property/refresh-snapshots.ts hamilton-heritage
+npx tsx scripts/property/refresh-snapshots.ts hamilton-development
+```
+
+Hamilton address, zoning, ward, environmental-sensitivity and two historical permit
+feeds use bounded live queries with source/licence/schema checks and a one-hour
+cache. Permit source dates are in 2024 despite the `2017 to Present` dataset title.
+See `docs/property-forensics.md` and public coverage for scope and current dates.
+
 Downloads use approved government hosts. CSV/XML sources have URL, size,
 download date, ETag/Last-Modified where available, and SHA-256 manifests in
 `--cache` (default `/private/tmp/realist-open-data`). Government descriptions

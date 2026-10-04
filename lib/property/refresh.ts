@@ -2,13 +2,26 @@ import { zipEntries, dbfRows } from "./ingest/archive";
 import { rows } from "./http";
 import type { Row } from "./model";
 import type { Dataset, Snapshot } from "./snapshots";
+import { HAMILTON, validHamiltonItem, type HamiltonFeed } from "./hamilton-sources";
+import { createHash } from "node:crypto";
+import { OTTAWA_PERMIT_FILES, validOttawaPermitItem } from "./ottawa-permit-sources";
+import { parseOttawaPermits, OTTAWA_PERMIT_FIELDS } from "./ingest/ottawa-permits";
 
 const CKAN = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/";
-const HOSTS = new Set(["ckan0.cf.opendata.inter.prod-toronto.ca", "open.toronto.ca", "maps1.brampton.ca", "services3.arcgis.com", "www.arcgis.com"]);
-async function bytes(url: URL, max = 2_000_000): Promise<Buffer> {
+const HOSTS = new Set(["ckan0.cf.opendata.inter.prod-toronto.ca", "open.toronto.ca", "maps1.brampton.ca", "services3.arcgis.com", "services.arcgis.com", "www.arcgis.com"]);
+async function bytes(url: URL, max = 2_000_000, permitDownload?: { item: string; name: string }): Promise<Buffer> {
   if (url.protocol !== "https:" || !HOSTS.has(url.hostname)) throw new Error("Unsupported refresh provider");
-  const r = await fetch(url, { redirect: "error", cache: "no-store", signal: AbortSignal.timeout(45_000), headers: { "User-Agent": "Realist Homies public-property refresh (hello@realist.ca)" } });
-  if (!r.ok || !r.body) throw new Error("Source unavailable");
+  const options = () => ({ redirect: "error" as const, cache: "no-store" as const, signal: AbortSignal.timeout(45_000), headers: { "User-Agent": "Realist Homies public-property refresh (hello@realist.ca)" } });
+  let r = await fetch(url, { ...options(), redirect: permitDownload ? "manual" : "error" });
+  if (permitDownload && r.status === 302) {
+    const next = new URL(r.headers.get("location") ?? "", url);
+    await r.body?.cancel();
+    // ArcGIS returns a signed public-file path on its own origin. Do not log/store
+    // its temporary query or follow redirects to an arbitrary host or item.
+    if (next.origin !== "https://www.arcgis.com" || next.pathname.split("/").slice(-2).join("/") !== `${permitDownload.item}/${permitDownload.name}` || !/^\/itemdata\/[a-f0-9]{32}\//.test(next.pathname)) throw new Error("Unsupported permit download redirect");
+    r = await fetch(next, options());
+  }
+  if (!r.ok || !r.body) throw new Error(`Source unavailable (${r.status}; ${url.pathname})`);
   const reader = r.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
   try { for (;;) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > max) throw new Error("Refresh response bound exceeded"); chunks.push(value); } } finally { await reader.cancel(); }
   return Buffer.concat(chunks);
@@ -99,13 +112,61 @@ async function arcgisSnapshot(key: Dataset, service: string, itemId: string, sel
   const edited = (metadata.editingInfo as Row | undefined)?.dataLastEditDate;
   return snapshot(key, records, typeof edited === "number" ? new Date(edited).toISOString() : null, service, fields);
 }
+async function hamiltonSnapshot(key: Dataset, feed: HamiltonFeed): Promise<Snapshot> {
+  const itemUrl = `https://www.arcgis.com/sharing/rest/content/items/${feed.item}`;
+  const item = await get(itemUrl, { f: "json" });
+  if (!validHamiltonItem(item, feed)) throw new Error("Hamilton rights changed");
+  const metadata = await get(feed.url, { f: "json" });
+  if (metadata.geometryType !== "esriGeometryPoint" || !feed.fields.every(k => rows(metadata.fields).some(f => f.name === k))) throw new Error("Hamilton schema changed");
+  const ids = async () => {
+    const r = await get(feed.url + "/query", { f: "json", where: "1=1", returnIdsOnly: "true" });
+    if (!Array.isArray(r.objectIds) || r.objectIds.some(id => !Number.isInteger(id))) throw new Error("Hamilton IDs invalid");
+    return (r.objectIds as number[]).sort((a, b) => a - b);
+  };
+  const requested = await ids();
+  if (!requested.length || requested.length > 50_000 || new Set(requested).size !== requested.length) throw new Error("Hamilton count changed");
+  // Keep ArcGIS GET URLs below its gateway's query-length limit.
+  const batches = Array.from({ length: Math.ceil(requested.length / 100) }, (_, i) => requested.slice(i * 100, (i + 1) * 100));
+  const records = (await parallelMap(batches, 3, async batch => {
+    const r = await get(feed.url + "/query", { f: "json", objectIds: batch.join(","), outFields: feed.fields.join(","), returnGeometry: "true", outSR: "4326" });
+    const page: Row[] = rows(r.features).map(f => ({ ...select(f.attributes as Row, feed.fields), longitude: (f.geometry as Row | null)?.x ?? null, latitude: (f.geometry as Row | null)?.y ?? null }));
+    if (r.exceededTransferLimit || JSON.stringify(page.map(r => Number(r.OBJECTID)).sort((a, b) => a - b)) !== JSON.stringify(batch)) throw new Error("Hamilton page incomplete");
+    return page;
+  })).flat();
+  const after = await get(feed.url, { f: "json" }); const endItem = await get(itemUrl, { f: "json" });
+  if (!validHamiltonItem(endItem, feed) || item.modified !== endItem.modified || JSON.stringify(await ids()) !== JSON.stringify(requested) || JSON.stringify(metadata.editingInfo) !== JSON.stringify(after.editingInfo)) throw new Error("Hamilton source changed during refresh");
+  const edited = (metadata.editingInfo as Row | undefined)?.dataLastEditDate;
+  return snapshot(key, records, typeof edited === "number" ? new Date(edited).toISOString() : null, feed.url, [...feed.fields, "longitude", "latitude"]);
+}
 export function fetchSnapshot(key: Dataset): Promise<Snapshot> {
   switch (key) {
     case "toronto-rental-buildings": return ckanSnapshot(key, "apartment-building-registration", "3ad76a8c-0518-4df2-b94e-8c747d62f8c1", REG);
     case "toronto-building-evaluations": return ckanSnapshot(key, "apartment-building-evaluation", "244f7a02-da5c-425b-b55f-fbdd133dd732", EVAL);
     case "toronto-development": return ckanSnapshot(key, "development-applications", "8907d8ed-c515-4ce9-b674-9f8c6eefcf0d", DEV);
     case "toronto-heritage": return heritageSnapshot();
+    case "hamilton-heritage": return hamiltonSnapshot(key, HAMILTON.heritage);
+    case "hamilton-development": return hamiltonSnapshot(key, HAMILTON.development);
+    case "ottawa-permits": return ottawaPermitSnapshot();
     case "brampton-additional-units": return arcgisSnapshot(key, "https://maps1.brampton.ca/arcgis/rest/services/Two_Unit_Dwellings/Planning_Registered_Additional_Residential_Units/MapServer/0", "7d9df6528d474b43b6771cb7feefc35e", "OBJECTID,FULL_ADDRESS,SECOND_REG,THIRD_REG,FOURTH_REG,WARD");
     case "brampton-heritage": return arcgisSnapshot(key, "https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Planning_Local_Government/FeatureServer/13", "2511924166364ccab6228b804f0e134d", "OBJECTID,ADDRESS,PROPERTY_NAME,HERITAGE_STATUS");
   }
+}
+
+export async function ottawaPermitSnapshot(): Promise<Snapshot> {
+  const releases = await parallelMap([...OTTAWA_PERMIT_FILES], 2, async file => {
+    const itemUrl = `https://www.arcgis.com/sharing/rest/content/items/${file.item}`;
+    const before = await get(itemUrl, { f: "json" });
+    if (!validOttawaPermitItem(before, file) || !Number.isInteger(before.modified) || !Number.isInteger(before.size) || Number(before.size) < 1 || Number(before.size) > 6_000_000) throw new Error("Ottawa permit rights/release changed");
+    const url = itemUrl + "/data", raw = await bytes(new URL(url), 6_000_000, file);
+    if (raw.length !== before.size) throw new Error("Incomplete Ottawa permit file");
+    const parsed = parseOttawaPermits(raw, file);
+    const after = await get(itemUrl, { f: "json" });
+    if (!validOttawaPermitItem(after, file) || before.modified !== after.modified || before.size !== after.size) throw new Error("Ottawa release changed during refresh");
+    return { ...parsed, metadata: { itemId: file.item, sourceUrl: url, catalogueModifiedAt: new Date(Number(before.modified)).toISOString(), sha256: createHash("sha256").update(raw).digest("hex"), rowCount: parsed.records.length, reportingPeriods: parsed.reportingPeriods } };
+  });
+  const periods = releases.flatMap(r => r.reportingPeriods).sort();
+  const baseline = Array.from({ length: 32 }, (_, i) => `${2024 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`);
+  if (new Set(periods).size !== periods.length || !baseline.every(p => periods.includes(p)) || periods.some((p, i) => p !== `${2024 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`)) throw new Error("Ottawa reporting months incomplete");
+  // Catalogue edit time is metadata, not a claimed dataset observation date.
+  return { dataset: "ottawa-permits", retrievedAt: new Date().toISOString(), sourceUpdatedAt: null, rowCount: releases.reduce((n, r) => n + r.records.length, 0), records: releases.flatMap(r => r.records), selectedFields: OTTAWA_PERMIT_FIELDS, sourceRelease: "Ottawa monthly permit reports 2024–2026", reportingPeriods: periods, sourceFiles: releases.map(r => r.metadata) };
 }

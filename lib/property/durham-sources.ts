@@ -1,0 +1,47 @@
+import type { MunicipalFeed } from "./ontario-municipal-sources";
+export const DURHAM_MUNICIPALITIES = ["Ajax","Brock","Clarington","Oshawa","Pickering","Scugog","Uxbridge","Whitby"] as const;
+export type DurhamMunicipality = typeof DURHAM_MUNICIPALITIES[number];
+// Bound to published TOWN/MUNICIPALITY observations in the official civic register.
+export const DURHAM_COMMUNITIES:Record<string,{municipality:DurhamMunicipality;publishedTown:string}>={
+  bowmanville:{municipality:"Clarington",publishedTown:"Bowmanville"},courtice:{municipality:"Clarington",publishedTown:"Courtice"},orono:{municipality:"Clarington",publishedTown:"Orono"},newcastle:{municipality:"Clarington",publishedTown:"Newcastle Village"},"newcastle village":{municipality:"Clarington",publishedTown:"Newcastle Village"},
+  brooklin:{municipality:"Whitby",publishedTown:"Brooklin"},"port perry":{municipality:"Scugog",publishedTown:"Port Perry"},blackstock:{municipality:"Scugog",publishedTown:"Blackstock"},cannington:{municipality:"Brock",publishedTown:"Cannington"},beaverton:{municipality:"Brock",publishedTown:"Beaverton"},sunderland:{municipality:"Brock",publishedTown:"Sunderland"},claremont:{municipality:"Pickering",publishedTown:"Claremont"},
+};
+export const DURHAM_TERMS = "https://www.durham.ca/regional-government/access-to-information/open-data/";
+export const DURHAM_PLAN_GUIDANCE = "https://www.durham.ca/doing-business/planning-and-development/envision-durham/";
+const legacyTerms = "https://www.durham.ca/en/regional-government/resources/Documents/OpenDataLicenceAgreement.pdf";
+const root = "https://maps.durham.ca/arcgis/rest/services/Open_Data/";
+const planItems = {1:"4c4a20b337304e1ba8913e87ec5c0194",2:"a6642766ad574c6a8c6a213012c2b874"} as const;
+export const DURHAM_PLAN_NOTE = "Published Regional Official Plan consolidation mapping from 2024. Descriptions identify the September 3, 2024 consolidation, which may predate the December 13, 2024 approval of remaining northeast Pickering matters. As of January 1, 2025, the plan became part of the eight municipal plans; municipalities may amend or repeal it. Current municipal amendments, approvals, appeals and legal-map applicability are not verified. This does not establish current permission, parcel-wide constraints, actual servicing, water safety or contamination.";
+function feed(key:string,item:string,url:string,name:string,fields:Record<string,string>,note:string,options:Partial<MunicipalFeed>={}):MunicipalFeed {
+ return {market:"Durham Region",key,item,url,owner:"GIS_DurhamRegion",org:"tFqRz8TAqe7XY7GD",licenceAnchors:[legacyTerms,DURHAM_TERMS],oid:"OBJECTID",geometry:"esriGeometryPolygon",expectedLayerName:name,fields:{OBJECTID:"recordId",...fields},note,
+ source:{id:`durham:${key}`,name:`Durham ${name}`,url:`https://www.arcgis.com/home/item.html?id=${item}`,licence:"Region of Durham Open Data Licence v1.0",licenceUrl:DURHAM_TERMS,attribution:"Contains public sector information made available under The Regional Municipality of Durham's Open Data Licence."},...options};
+}
+const classification={DesignationType:"publishedDesignationType",RegionalSystem:"regionalSystem",Municipality:"municipality",UA_Name:"publishedAreaName",ROP_Designation:"publishedPlanDesignation",RegionalStructure:"regionalStructure"};
+function plan(map:1|2,id:number,key:string,name:string,fields:Record<string,string>,note:string,options:Partial<MunicipalFeed>={}):MunicipalFeed {
+ return feed(key,planItems[map],root+`OfficialPlanConsolidation2024_Map${map}/MapServer/${id}`,name,fields,DURHAM_PLAN_NOTE+" "+note,options);
+}
+export const DURHAM_ADDRESS = feed("addresses","8dcfee4f8c904ef29248b2c82ef33175",root+"Durham_OpenData/MapServer/0","ADDR_Durham",{REGION_ID:"regionalAddressId",CIVIC_NUM:"civicNumber",CIVIC_SFX:"civicSuffix",UNIT:"publishedUnitFlag",UNIT_NUM:"unit",UNIT_RANGE:"unitRange",ROAD_NAME:"streetName",ROAD_TYPE:"streetType",ROAD_DIR:"direction",TOWN:"publishedCommunity",MUNICIPALITY:"municipality",POSTAL_CODE:"postalCode",EDIT_DATE:"recordModifiedDate"},"Regional civic-address points. The metadata permits surrounding municipal values; only the eight Durham municipal values are accepted by this adapter. Point grouping does not verify an individual unit, building centroid or legal dwelling count.",{geometry:"esriGeometryPoint",dates:["EDIT_DATE"]});
+export const DURHAM_BOUNDARY = feed("municipality","5ae91140e23e4122909048e6c4ee6ffc",root+"Durham_OpenData/MapServer/1","BDRY_Municipal_Boundaries",{NAME:"municipality",LABEL_NAME:"publishedMunicipalLabel"},"Published lower-tier municipal boundary point screen. A unique intersection must agree with the requested municipality before regional plan evidence is queried.");
+const caRights="The source identifies conservation-authority/provincial input rights which the Region's licence excludes unless authorized. That authorization or the originating source's reusable licence has not been verified. No property records are queried or redistributed by this adapter.";
+export const DURHAM_PLANNING:MunicipalFeed[] = [
+ plan(1,7,"urbanExpansion2024","Map 1 - 2051 Urban Expansion Areas",{NAME:"publishedAreaName",SABE:"publishedSettlementExpansionFlag"},"Mapped expansion areas do not establish servicing, timing or permission to build."),
+ plan(1,14,"urbanGrowthCentre2024","Map 1 - Urban Growth Centres (UGC)",{},"A growth-centre designation does not establish a lot's permitted density or uses.",{oid:"OBJECTID_1",fields:{OBJECTID_1:"recordId",Munic:"municipality",Name:"publishedCentreName",Centre:"publishedCentreType",Code:"publishedCode"}}),
+ plan(1,18,"specificPolicyArea2024","Map 1 - Specific Policy Areas",{ID:"publishedPolicyAreaId",Municipal:"municipality"},"Retrieve the applicable written policy and current municipal amendments; a map identifier is not the policy text."),
+ plan(1,20,"protectedTransitStationArea2024","Map 1 - Protected Major Transit Station Area (PMTSA)",{NAME:"publishedStationAreaName",MUNICIPALITY:"municipality",STATUS:"publishedStationStatus"},"Preserve the published station status. Planned or future mapping is not an operating station, walking distance or verified current density permission."),
+ plan(1,27,"communityArea2024","Map 1 - Community Areas",classification,"Community Area is a regional plan designation, not a current zoning code."),
+ plan(1,28,"employmentArea2024","Map 1 - Employment Areas",classification,"Employment Area is a regional plan designation; conversion, uses and current municipal policy need separate confirmation."),
+ plan(1,35,"primeAgriculturalArea2024","Map 1 - Prime Agricultural Areas",classification,"Agricultural plan mapping does not establish soil quality, farming suitability, lot-creation rights or current zoning."),
+ plan(1,37,"majorOpenSpaceArea2024","Map 1 - Major Open Space Areas",classification,"A plan designation is separate from public ownership, access and conservation-authority regulation."),
+ plan(2,19,"groundwaterRecharge2024","Map 2d - Significant Groundwater Recharge Areas",{SGRA:"publishedRechargeCode"},"Recharge-area point mapping does not establish drinking-water quality, contamination or current source-protection rules."),
+ plan(2,20,"yorkDurhamWellheadQ12024","Map 2d - York-Durham Wellhead Protection Area (WHPA) Q1-Q2",{Layer:"publishedLayerLabel"},"Q1-Q2 mapping is separate from wellhead vulnerability zones and does not establish a property's water supply or prohibited activities."),
+ plan(2,21,"ecologicalRecharge2024","Map 2e - Ecologically Significant Groundwater Recharge Areas",{DN:"publishedCode"},"The feed's code has no verified legend interpretation in this adapter; no risk score is invented."),
+ plan(2,22,"surfaceWaterContribution2024","Map 2e - Significant Surface Water Contribution Areas",{DN:"publishedCode",SGRA:"publishedRechargeCode"},"Mapping is separate from flooding, contamination and current activity-specific source-protection policies."),
+ plan(2,25,"wellheadProtection2024","Map 2f - Well Head Protection Area",{WELLFIELD:"publishedWellfield",NAME:"publishedProtectionArea",WELL_NAME:"publishedWellName"},"Published wellhead-zone names are preserved; water connection, drinking-water safety and current prohibited activities are unverified."),
+ plan(2,26,"otherWellheadProtection2024","Map 2f - Well Head Protection Area - Other WHPA",{WELLHEAD_P:"publishedProtectionArea",NAME:"publishedAreaName",ZONE:"publishedZoneCode"},"Other wellhead mapping along the York/Durham boundary is retained separately from the Durham wellfield zones."),
+ plan(2,27,"intakeProtection2024","Map 2f - Intake Protection Zones",{IPZType:"publishedIntakeZoneType"},"A mapped intake-zone type is not a water-quality result or an activity-specific prohibition."),
+ plan(2,28,"sourceProtectionRegion2024","Map 2f - Source Protection Regions (SPR)",{Label:"publishedSourceProtectionRegion"},"Source-protection region membership is separate from conservation-authority regulatory jurisdiction and from drinking-water test results."),
+ plan(2,6,"naturalHeritageSystem2024","Map 2a - Regional Natural Heritage System",{},"",{disabledReason:caRights}),
+ plan(2,41,"detailedNaturalHeritage2024","Map 2a - Regional Natural Heritage System - Detailed",{},"",{disabledReason:caRights+" Its live count query also returned a source error during research."}),
+ plan(2,30,"highlyVulnerableAquifer2024","Map 2g - Highly Vulnerable Aquifers",{},"",{disabledReason:caRights}),
+];
+export const DURHAM_FEEDS = [DURHAM_ADDRESS,DURHAM_BOUNDARY,...DURHAM_PLANNING];

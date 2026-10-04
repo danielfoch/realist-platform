@@ -15,4 +15,13 @@ describe("forensics report and actual Homies artifact contract", () => {
     for (const tool of ['invoke_skill_tool', 'fs_write', 'share_artifact', 'update_artifact']) expect(PROPERTY_SKILL).toContain(tool);
     expect(PROPERTY_SKILL).toContain('Starter prompt: **Create a property forensics report for me.**'); expect(PROPERTY_SKILL).toContain('passing=true'); expect(PROPERTY_SKILL).toContain('Never invent an artifacts URL');
   });
+  it("shows municipal reuse terms and keeps historical plans out of current-policy findings", () => {
+    const source = { id:"mississauga:historicalOfficialPlan2010",name:"Historical plan",url:"https://example.com/source",licence:"Open Data Terms",licenceUrl:"https://example.com/terms",attribution:"source" };
+    const layers={ historicalOfficialPlan2010:layer("available",{historical:true,currentPlanScreenPerformed:false},source,"Plan repealed March 24, 2026"),generalizedLandUse:layer("available",{records:[{generalizedLandUse:"Residential"}]}) };
+    const brief=preShowingBrief(layers,[]);
+    expect(brief.findings[0].summary).toContain("does not establish current");expect(brief.findings[1].summary).toContain("permitted uses are not supplied");expect(brief.documentsToRequest.some(x=>x.document.includes("2051"))).toBe(true);
+    const html=renderReport({success:true,data:{address:"1416 Liveoak Dr",city:"Mississauga",province:"ON"},layers,brief,available:Object.keys(layers),missing:[],query:{},notes:[]} as unknown as PropertyResult);
+    expect(html).toContain('href="https://example.com/terms"');expect(html).toContain("Source reuse terms");
+    expect(PROPERTY_SKILL).toContain("layers are historical: that plan was repealed");
+  });
 });
