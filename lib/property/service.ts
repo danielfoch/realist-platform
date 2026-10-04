@@ -16,6 +16,8 @@ import { ontarioFabricLayers, ontarioFabricCoverage } from "./ontario-fabric";
 import { ontarioLidarLayer, ontarioLidarCoverage } from "./ontario-lidar";
 import { woodstockLayers, woodstockQuestions, woodstockCoverage } from "./woodstock-audit";
 import { stratfordLayers, stratfordQuestions, stratfordCoverage } from "./stratford-audit";
+import { greyLayers, greyCoverage } from "./grey";
+import { owenSoundLayers, owenSoundQuestions, owenSoundCoverage } from "./owen-sound-audit";
 import { ontarioSourceProtectionLayer, ontarioSourceProtectionCoverage } from "./ontario-source-protection";
 import { kawarthaMarket, kawarthaLayers, kawarthaQuestions, kawarthaCoverage } from "./kawartha-audit";
 import { provincialPlanningLayer, provincialPlanningCoverage } from "./provincial-planning";
@@ -94,6 +96,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const fabricResult = ontarioFabricLayers(location.data);
   const lidarResult = ontarioLidarLayer(location.data);
   const sourceProtectionResult = ontarioSourceProtectionLayer(location.data);
+  const greyResult = greyLayers(input, location.data);
   const conservationResult = conservationLayer(location.data);
   const trcaResult = trcaLayer(location.data);
   const heritageResult = torontoHeritage(address, city, province);
@@ -116,7 +119,7 @@ export async function enrichProperty(input: PropertyRequest) {
   const hamilton = await hamiltonResult;
   const halton = await haltonResult;
   const haltonHills = await haltonHillsResult;
-  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, ontarioWellRecords: await wellRecordsResult, ...await aggregateResult, ...await fabricResult, ontarioLidarCoverageReference: await lidarResult, ontarioSourceProtectionAreaReference: await sourceProtectionResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills, ...await yorkResult, ...await markhamResult, ...await kingstonResult, ...await waterlooResult, ...await guelphResult, ...await niagaraResult, ...await wellandResult, ...await windsorResult, ...await barrieResult, ...await bramptonResult, ...await brantfordResult, ...await quinteWestResult, ...await sudburyResult, ...await thunderBayResult, ...await sarniaResult, ...await cornwallResult, ...await simcoeResult, ...await orilliaResult, ...await orilliaCivicResult, ...bellevilleLayers(queryCity ?? city, province), ...peterboroughLayers(queryCity ?? city, province), ...northernAuditLayers(queryCity ?? city, province), ...kawarthaLayers(queryCity ?? city, province), ...woodstockLayers(queryCity ?? city, province), ...stratfordLayers(queryCity ?? city, province), ...chathamKentLayers(queryCity ?? city, province) };
+  const layers: Record<string, Layer> = { location, ...imported, ...rich, conservation, trca, provincialPlanning: await planningResult, ontarioWellRecords: await wellRecordsResult, ...await aggregateResult, ...await fabricResult, ontarioLidarCoverageReference: await lidarResult, ontarioSourceProtectionAreaReference: await sourceProtectionResult, assessment: choose(assessment, imported.assessment), permits: choose(permits, imported.permits), variance: choose(variance, imported.variance), ...hamilton, ...await ontarioResult, ...await durhamResult, ...halton, ...haltonHills, ...await yorkResult, ...await markhamResult, ...await kingstonResult, ...await waterlooResult, ...await guelphResult, ...await niagaraResult, ...await wellandResult, ...await windsorResult, ...await barrieResult, ...await bramptonResult, ...await brantfordResult, ...await quinteWestResult, ...await sudburyResult, ...await thunderBayResult, ...await sarniaResult, ...await cornwallResult, ...await simcoeResult, ...await orilliaResult, ...await orilliaCivicResult, ...bellevilleLayers(queryCity ?? city, province), ...peterboroughLayers(queryCity ?? city, province), ...northernAuditLayers(queryCity ?? city, province), ...kawarthaLayers(queryCity ?? city, province), ...woodstockLayers(queryCity ?? city, province), ...stratfordLayers(queryCity ?? city, province), ...await greyResult, ...owenSoundLayers(queryCity ?? city, province), ...chathamKentLayers(queryCity ?? city, province) };
   const available = Object.entries(layers).filter(([, v]) => v.status === "available").map(([name]) => name);
   const missing = Object.entries(layers).filter(([, v]) => v.status !== "available").map(([name, v]) => ({ layer: name, status: v.status }));
   const followUpQuestions = [
@@ -127,6 +130,7 @@ export async function enrichProperty(input: PropertyRequest) {
       ...kawarthaQuestions(queryCity ?? city, province),
       ...woodstockQuestions(queryCity ?? city, province),
       ...stratfordQuestions(queryCity ?? city, province),
+      ...owenSoundQuestions(queryCity ?? city, province),
       ...(["available", "ambiguous"].includes(layers.ontarioSourceProtectionAreaReference.status) ? [{ topic: "original_source_protection_reference", question: "Can the original source-protection authority confirm current legal boundaries, vulnerable areas, operative plan/policies and activity-specific requirements for the whole parcel? Generalized reference IDs and historical names do not establish those facts or water quality.", evidenceLayers: ["ontarioSourceProtectionAreaReference"] }] : []),
       ...(Object.keys(layers).some(k => ["ontarioLotFabricReference", "ontarioGeographicTownshipReference"].includes(k) && ["available", "ambiguous"].includes(layers[k].status)) ? [{ topic: "original_fabric_survey_records", question: "Can a current survey/title review confirm the modern parcel, and can original Crown survey plans clarify the reported lot, concession and geographic township? Resolve any multiple candidates and raw road-allowance or annulment labels; source fabric accuracy does not establish legal description, shoreline ownership or legal access.", evidenceLayers: ["ontarioLotFabricReference", "ontarioGeographicTownshipReference", "parcel"] }] : []),
       ...(Object.keys(layers).some(k => k.startsWith("ontarioAggregate") && layers[k].status === "available") ? [{ topic: "nearby_aggregate_authorizations", question: "Can the Ministry and City confirm the nearby sites' current authorizations, application/operating status, approved site plans and applicable land-use requirements? Obtain relevant seller studies and records separately; nearby polygons and reported tonnage limits do not assess property impacts, production or truck traffic.", evidenceLayers: ["ontarioAggregateActiveSites", "ontarioAggregateInactiveSites", "ontarioAggregatePartialSurrender"] }] : []),
@@ -246,6 +250,8 @@ export async function coverage() {
       kawarthaCoverage(),
       woodstockCoverage(),
       stratfordCoverage(),
+      await greyCoverage(),
+      owenSoundCoverage(),
       chathamKentCoverage(),
     ],
     ontarioMarkets: ontarioMarketRoadmap(),

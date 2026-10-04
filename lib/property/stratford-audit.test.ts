@@ -29,6 +29,6 @@ describe("Stratford/Perth source-guidance audit", () => {
     const layers = { neighbourhood: layer("available", { censusYear: 2021 }), ...stratfordLayers("Stratford", "ON") }, brief = preShowingBrief(layers, stratfordQuestions("Stratford", "ON"));
     const html = renderReport({ success: true, data: { city: "Stratford", province: "ON" }, layers, brief, available: ["neighbourhood"], missing: [], query: {}, notes: [] } as unknown as PropertyResult);
     expect(brief.findings).toHaveLength(1); for (const s of ["stratford_current_planning_and_units", "three-total-unit", "Zoning and Building Information Report", "stratfordConservationRegulation", "City Centre Core"]) expect(html).toContain(s);
-    const r = ontarioMarketRoadmap(); expect(r.municipalities.find(m => m.city === "Stratford")).toMatchObject({ stage: "audited_reuse_gap", complete: false, configuredLayers: [] }); expect(r.municipalities.find(m => m.city === "Owen Sound")?.stage).toBe("queued"); expect(r.majorMarketsComplete).toBe(false); expect(r.sharedBaseline.some(s => s.includes("source-protection"))).toBe(true);
+    const r = ontarioMarketRoadmap(); expect(r.municipalities.find(m => m.city === "Stratford")).toMatchObject({ stage: "audited_reuse_gap", complete: false, configuredLayers: [] }); expect(r.municipalities.find(m => m.city === "Owen Sound")?.stage).toBe("partial_municipal_coverage"); expect(r.majorMarketsComplete).toBe(false); expect(r.sharedBaseline.some(s => s.includes("source-protection"))).toBe(true);
   });
 });

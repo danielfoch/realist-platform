@@ -5,6 +5,25 @@ evidence layers. `/api/property/coverage` includes the current source health,
 published dataset row counts and `ontarioMarkets` implementation checklist.
 None of the Ontario markets has been declared complete by that checklist yet.
 
+## Owen Sound and Grey County — October 4, 2026
+
+Five independently licensed originating Grey County feeds add settlement and
+explicitly historical 2018-plan land-use, karst, significant woodland and
+significant valleyland references for suitable independent points in the nine
+named County municipalities. Their selected source counts are 56, 6,734, 380,
+3,222 and 37: **10,429 overlapping source rows**, counted once. The duplicate
+settlement offer and MNR-labelled County boundary layers are excluded. These
+are not unique properties, field data points or imported rows.
+
+See [Grey County rights, identity and vintage details](GREY-COUNTY.md) and
+[Owen Sound current planning/property-file audit](OWEN-SOUND.md). Owen Sound
+reports now retain OPA14/ZBA57 conditional effect and notice conflicts, separate
+paid PIR scopes, occupancy/final-inspection distinctions, undated ARU/service
+guidance, heritage/STR identity gaps and original GSCA evidence requests. City
+feature rights remain unestablished; no City data query or paid request occurred.
+Other Grey municipalities need their own current local audits. All completeness
+flags remain false.
+
 ## Market scope
 
 Start from [Statistics Canada's 16 Ontario CMA anchors (2021 classification)](https://www23.statcan.gc.ca/imdb/p3VD.pl?CLV=3&CPV=35A&CST=01012021&CVD=1348399&Function=getVDStruct&MLV=5&TVD=1348372&wbdisable=true).
