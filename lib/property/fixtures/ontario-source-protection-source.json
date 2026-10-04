@@ -1,0 +1,1219 @@
+{
+  "catalogue": {
+    "help": "https://data.ontario.ca/api/3/action/help_show?name=package_show",
+    "success": true,
+    "result": {
+      "access_instructions": {
+        "fr": "",
+        "en": ""
+      },
+      "access_level": "open",
+      "asset_type": "dataset",
+      "author": "",
+      "author_email": "",
+      "creator_user_id": "faba29e3-f7ad-4b37-ad77-3ce832d12630",
+      "current_as_of": "2015-04-30",
+      "exemption": "none",
+      "exemption_rationale": {
+        "fr": "",
+        "en": ""
+      },
+      "geographic_coverage_translated": {
+        "fr": "Ontario",
+        "en": "Ontario"
+      },
+      "geographic_granularity": "",
+      "id": "6dc5dd56-bf09-409d-91a4-619203313301",
+      "isopen": false,
+      "keywords": {
+        "fr": [
+          "\u00c9conomie et affaires",
+          "Environnement et richesses naturelles",
+          "Environnement et \u00e9nergie"
+        ],
+        "en": [
+          "Economy and Business",
+          "Environment and Natural Resources",
+          "Environment and energy"
+        ]
+      },
+      "license_id": "OGL-ON-1.0",
+      "license_title": "Open Government Licence \u2013 Ontario",
+      "license_url": "https://www.ontario.ca/page/open-government-licence-ontario",
+      "maintainer": null,
+      "maintainer_branch": {
+        "fr": "",
+        "en": ""
+      },
+      "maintainer_email": "",
+      "maintainer_translated": {
+        "fr": "",
+        "en": ""
+      },
+      "metadata_created": "2020-01-11T03:00:24.383249",
+      "metadata_modified": "2021-04-14T01:29:43.955002",
+      "name": "source-protection-area-generalized",
+      "notes": "A source protection area (SPA) is an area of land and water governed by a\r\nSource Protection Authority, an agency, person or body.\r\n\r\nThis dataset defines the geographic boundaries where each SPA's terms of\r\nreference, assessment reports and source protection plans must be developed.\r\n\r\n  *[SPA]: source protection area\r\n\r\n",
+      "notes_translated": {
+        "fr": "Une zone de protection des sources et de zone de terre et d'eau gouvernee par\r\nun office de protection des sources, une agence, une personne ou un organisme.\r\n\r\nCet ensemble de donnees definit les limites geographiques ou chaque mandat,\r\nrapport d'evaluation et plans de protection des sources de la ZPS doivent etre\r\nelabore.\r\n\r\n  *[ZPS]: Zone de protection des sources\r\n\r\n",
+        "en": "A source protection area (SPA) is an area of land and water governed by a\r\nSource Protection Authority, an agency, person or body.\r\n\r\nThis dataset defines the geographic boundaries where each SPA's terms of\r\nreference, assessment reports and source protection plans must be developed.\r\n\r\n  *[SPA]: source protection area\r\n\r\n"
+      },
+      "num_resources": 2,
+      "num_tags": 6,
+      "opened_date": "2015-04-30",
+      "organization": {
+        "id": "0f5368c3-b553-4f82-8909-80e8756f24f4",
+        "name": "environment-conservation-and-parks",
+        "title": "Environment, Conservation and Parks",
+        "type": "organization",
+        "description": "Leading to healthier communities and economic prosperity through protecting Ontario\u2019s air, land and water.",
+        "image_url": "2020-03-19-202918.141808environment.jpg",
+        "created": "2019-12-31T09:18:30.191952",
+        "is_organization": true,
+        "approval_status": "approved",
+        "state": "active"
+      },
+      "owner_org": "0f5368c3-b553-4f82-8909-80e8756f24f4",
+      "private": false,
+      "state": "active",
+      "title": "Source Protection Area Generalized",
+      "title_translated": {
+        "fr": "Zone de protection des sources g\u00e9n\u00e9ralis\u00e9e",
+        "en": "Source Protection Area Generalized"
+      },
+      "type": "dataset",
+      "update_frequency": "as_required",
+      "url": "",
+      "version": null,
+      "resources": [
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "contains_geographic_markers": true,
+          "created": "2019-12-31T10:29:18.897689",
+          "data_last_updated": "2015-04-30",
+          "data_range_end": "2009-12-31",
+          "data_range_start": "2009-12-31",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "fr": "",
+            "en": ""
+          },
+          "format": "",
+          "hash": "",
+          "id": "4a781374-7612-4acb-98c0-d57e78161210",
+          "language": "english",
+          "last_modified": null,
+          "metadata_modified": "2019-12-31T10:29:18.897689",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Access to Source Protection Area Generalized",
+          "name_translated": {
+            "fr": "Access to Source Protection Area Generalized",
+            "en": "Access to Source Protection Area Generalized"
+          },
+          "package_id": "6dc5dd56-bf09-409d-91a4-619203313301",
+          "position": 0,
+          "resource_type": null,
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub.lio.gov.on.ca/datasets/source-protection-area-generalized",
+          "url_type": null,
+          "version": ""
+        },
+        {
+          "cache_last_updated": null,
+          "cache_url": null,
+          "contains_geographic_markers": true,
+          "created": "2019-12-31T10:29:18.897694",
+          "data_last_updated": "2015-04-30",
+          "data_range_end": "2009-12-31",
+          "data_range_start": "2009-12-31",
+          "datastore_active": false,
+          "datastore_contains_all_records_of_source_file": false,
+          "description": "",
+          "description_translated": {
+            "fr": "",
+            "en": ""
+          },
+          "format": "",
+          "hash": "",
+          "id": "c9567d80-6965-4509-a473-4902db440535",
+          "language": "french",
+          "last_modified": null,
+          "metadata_modified": "2019-12-31T10:29:18.897694",
+          "mimetype": null,
+          "mimetype_inner": null,
+          "name": "Acc\u00e9der \u00e0 la page Zone de protection des sources g\u00e9n\u00e9ralis\u00e9e",
+          "name_translated": {
+            "fr": "Acc\u00e9der \u00e0 la page Zone de protection des sources g\u00e9n\u00e9ralis\u00e9e",
+            "en": "Acc\u00e9der \u00e0 la page Zone de protection des sources g\u00e9n\u00e9ralis\u00e9e"
+          },
+          "package_id": "6dc5dd56-bf09-409d-91a4-619203313301",
+          "position": 1,
+          "resource_type": null,
+          "size": null,
+          "state": "active",
+          "type": "data",
+          "url": "https://geohub-fr.lio.gov.on.ca/datasets/zone-de-protection-des-sources-g%C3%A9n%C3%A9ralis%C3%A9e",
+          "url_type": null,
+          "version": ""
+        }
+      ],
+      "tags": [
+        {
+          "display_name": "Economy and Business",
+          "id": "af3c51e1-ed85-4b1d-ad87-ae1eef6234e5",
+          "name": "Economy and Business",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environment and Natural Resources",
+          "id": "159d5716-5d3d-4045-a948-22e5bbde0485",
+          "name": "Environment and Natural Resources",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environment and energy",
+          "id": "bdbfe9a5-eaed-4d6e-bc1c-32bb81619817",
+          "name": "Environment and energy",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environnement et richesses naturelles",
+          "id": "7a6f2b04-9cd9-4e1b-a8a6-ded7082fca41",
+          "name": "Environnement et richesses naturelles",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "Environnement et \u00e9nergie",
+          "id": "9f727fdb-438e-444b-bedf-71e7d6621726",
+          "name": "Environnement et \u00e9nergie",
+          "state": "active",
+          "vocabulary_id": null
+        },
+        {
+          "display_name": "\u00c9conomie et affaires",
+          "id": "d6d2f1a2-956a-4938-9670-ebd690a5456e",
+          "name": "\u00c9conomie et affaires",
+          "state": "active",
+          "vocabulary_id": null
+        }
+      ],
+      "groups": [],
+      "relationships_as_subject": [],
+      "relationships_as_object": []
+    }
+  },
+  "item": {
+    "id": "e47ba8e4f5884a08be8e17b165ede457",
+    "owner": "LandInformationOntario",
+    "ownerId": "90b4c9ed3c3c0be8a654b748a0a60a6a",
+    "orgId": "a03W7iZ8T3s5vB7p",
+    "created": 1537204537000,
+    "modified": 1764276756000,
+    "guid": null,
+    "name": null,
+    "title": "Source Protection Area Generalized",
+    "type": "Feature Service",
+    "typeKeywords": [
+      "ArcGIS Server",
+      "Data",
+      "Feature Access",
+      "Feature Service",
+      "Metadata",
+      "Service"
+    ],
+    "description": "<span style='text-indent:0px; text-decoration-style:initial; text-decoration-color:initial; display:inline !important;'>\n<div>A source protection area (SPA) is an area of land and water governed by a Source Protection Authority, an agency, person or body.</div>\n<div> <br /> </div>\n<div>This dataset defines the geographic boundaries where each SPA\u2019s terms of reference, assessment reports and source protection plans must be developed.</div>\n<div> <br /> </div>\n<div> <strong>Additional Documentation</strong><br /></div>\n<div><ul>\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Source%20Protection%20Area%20Generalized%20-%20Data%20Description.pdf' target='_blank' rel='nofollow ugc noopener noreferrer'>Source Protection Area Generalized - Data Description (PDF)</a></li>\n<li><a href='https://www.publicdocs.mnr.gov.on.ca/mirb/Source Protection Area Generalized - Documentation.docx' target='_blank' rel='nofollow ugc noopener noreferrer'>Source Protection Area Generalized - Documentation (Word)</a></li>\n\n</ul></div> \n<div><br /> </div>\n<div> <strong>Status</strong> <br /></div><div>Completed: production of the data has been completed<br /> </div> <div> <br /> </div><div> <strong>Maintenance and Update Frequency<br /> </strong> </div><div>As needed: data is updated as deemed necessary<br /> </div> <div> <br /> </div><div> <strong>Contact<br /></strong> </div> <div>Derek Hatfield, Program Support Section,<a href='mailto:derek.hatfield@ontario.ca' target='_blank' rel='nofollow ugc noopener noreferrer'> derek.hatfield@ontario.ca</a> </div></span>",
+    "tags": [
+      "open data",
+      "water",
+      "boundaries",
+      "water resources",
+      "conservation",
+      "wrip",
+      "hydrology",
+      "planning/development",
+      "source water protection",
+      "watersheds",
+      "MECP",
+      "Ministry of the Environment Conservation and Parks",
+      "Conservation and Source Protection Branch",
+      "ODCSYNC",
+      "GeospatialOntario"
+    ],
+    "snippet": "This dataset supports the Clean Water Act (CWA) and is available to the public for general mapping and GIS applications.",
+    "thumbnail": "thumbnail/thumbnail1537448378360.png",
+    "documentation": null,
+    "extent": [
+      [
+        -93.753,
+        41.918
+      ],
+      [
+        -75.737,
+        59.934
+      ]
+    ],
+    "categories": [
+      "/Categories/Environment, Conservation and Parks"
+    ],
+    "spatialReference": null,
+    "accessInformation": "Ontario Ministry of the Environment, Conservation and Parks \u00a9 King's Printer for Ontario, 2022",
+    "classification": null,
+    "licenseInfo": "<a href=\"https://www.ontario.ca/page/open-government-licence-ontario\">Open Government Licence \u2013 Ontario</a>",
+    "culture": "english (united states)",
+    "properties": null,
+    "advancedSettings": null,
+    "url": "https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/2",
+    "proxyFilter": null,
+    "access": "public",
+    "size": 121,
+    "subInfo": 0,
+    "appCategories": [],
+    "industries": [],
+    "languages": [],
+    "largeThumbnail": null,
+    "banner": null,
+    "screenshots": [],
+    "listed": false,
+    "commentsEnabled": false,
+    "numComments": 0,
+    "numRatings": 0,
+    "avgRating": 0,
+    "numViews": 9599,
+    "contentStatus": "public_authoritative",
+    "scoreCompleteness": 100,
+    "groupDesignations": null,
+    "apiToken1ExpirationDate": -1,
+    "apiToken2ExpirationDate": -1,
+    "lastViewed": 1791082800000
+  },
+  "root": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "serviceDescription": "<div><p>Version: n/a</p><p>Build: 2026-01-20 09:49:28</p></div>",
+    "mapName": "service05",
+    "description": "<div><p id='serviceVersion'>Version: n/a</p><p id='serviceBuild'>Build: 2026-01-20 09:49:28</p></div>",
+    "copyrightText": "",
+    "supportsDynamicLayers": true,
+    "layers": [
+      {
+        "id": 20,
+        "name": "Emergency Management Historical Event",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryMultipoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 21,
+        "name": "Fire Aviation and Emergency Facility Point",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 10,
+        "name": "Utility Site",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 11,
+        "name": "Utility Line",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolyline",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 19,
+        "name": "Aggregate Designated Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 18,
+        "name": "Aggregate Inspector Jurisdiction",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 17,
+        "name": "Aggregate Site Authorized Active",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 16,
+        "name": "Aggregate Site Authorized Inactive",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 23,
+        "name": "Aggregate Site Authorized Partial Surrender",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 24,
+        "name": "Aggregate Extraction Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 25,
+        "name": "Aggregate Site Unrehabilitated",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPoint",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 0,
+        "name": "Airport Official",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 1,
+        "name": "Airport Other",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 3,
+        "name": "ANSI",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 15,
+        "name": "Cadastral Location",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 8,
+        "name": "Caribou Range Boundary",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 7,
+        "name": "Crown Game Preserve",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 14,
+        "name": "Designated Gas Storage Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 13,
+        "name": "Fire Management Agreement Area",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 9,
+        "name": "Soil Survey Complex",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 2,
+        "name": "Source Protection Area Generalized",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      },
+      {
+        "id": 5,
+        "name": "Wildlife Management Unit",
+        "parentLayerId": -1,
+        "defaultVisibility": false,
+        "subLayerIds": null,
+        "minScale": 0,
+        "maxScale": 0,
+        "type": "Feature Layer",
+        "geometryType": "esriGeometryPolygon",
+        "supportsDynamicLegends": true
+      }
+    ],
+    "tables": [
+      {
+        "id": 4,
+        "name": "AREA_AND_SPECIES",
+        "type": "Table"
+      },
+      {
+        "id": 6,
+        "name": "WMU_BOUNDARY_NOTE",
+        "type": "Table"
+      }
+    ],
+    "spatialReference": {
+      "wkid": 4269,
+      "latestWkid": 4269,
+      "xyTolerance": 2e-07,
+      "zTolerance": 2,
+      "mTolerance": 0.001,
+      "falseX": -400,
+      "falseY": -400,
+      "xyUnits": 11258999068426.24,
+      "falseZ": 0,
+      "zUnits": 1,
+      "falseM": -100000,
+      "mUnits": 10000
+    },
+    "singleFusedMapCache": false,
+    "initialExtent": {
+      "xmin": -116.23427354014599,
+      "ymin": 45.81743162299919,
+      "xmax": -89.44549740875912,
+      "ymax": 63.01951947189129,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "fullExtent": {
+      "xmin": -95.15366999999999,
+      "ymin": 41.6765556,
+      "xmax": -74.320109,
+      "ymax": 56.8593649,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "datesInUnknownTimezone": false,
+    "minScale": 0,
+    "maxScale": 0,
+    "units": "esriDecimalDegrees",
+    "supportedImageFormatTypes": "PNG32,PNG24,PNG,JPG,DIB,TIFF,EMF,PS,PDF,GIF,SVG,SVGZ,BMP",
+    "documentInfo": {
+      "Title": "Default.aprx",
+      "Author": "",
+      "Comments": "",
+      "Subject": "",
+      "Category": "",
+      "AntialiasingMode": "None",
+      "TextAntialiasingMode": "Force",
+      "Version": "2.9.0",
+      "Keywords": ""
+    },
+    "supportsQueryDomains": true,
+    "capabilities": "Map,Query,Data",
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "exportTilesAllowed": false,
+    "referenceScale": 0.0,
+    "supportsDatumTransformation": true,
+    "archivingInfo": {
+      "supportsHistoricMoment": false
+    },
+    "supportsClipping": true,
+    "supportsSpatialFilter": true,
+    "supportsTimeRelation": true,
+    "supportsQueryDataElements": true,
+    "maxRecordCount": 2000,
+    "maxImageHeight": 4096,
+    "maxImageWidth": 4096,
+    "supportedExtensions": "WMSServer",
+    "resampling": false
+  },
+  "child": {
+    "currentVersion": 10.91,
+    "cimVersion": "2.9.0",
+    "id": 2,
+    "name": "Source Protection Area Generalized",
+    "type": "Feature Layer",
+    "description": "This data is subject to terms of use.",
+    "geometryType": "esriGeometryPolygon",
+    "sourceSpatialReference": {
+      "wkid": 4269,
+      "latestWkid": 4269,
+      "xyTolerance": 2e-07,
+      "zTolerance": 2e-07,
+      "mTolerance": 2e-07,
+      "falseX": -399.9999999,
+      "falseY": -399.9999999,
+      "xyUnits": 10000000,
+      "falseZ": 0,
+      "zUnits": 1,
+      "falseM": 0,
+      "mUnits": 1
+    },
+    "copyrightText": "https://www.ontario.ca/page/open-government-licence-ontario",
+    "parentLayer": null,
+    "subLayers": [],
+    "minScale": 0,
+    "maxScale": 0,
+    "referenceScale": 0.0,
+    "drawingInfo": {
+      "renderer": {
+        "type": "simple",
+        "symbol": {
+          "type": "esriSFS",
+          "style": "esriSFSSolid",
+          "color": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "outline": {
+            "type": "esriSLS",
+            "style": "esriSLSSolid",
+            "color": [
+              38,
+              115,
+              0,
+              255
+            ],
+            "width": 0.4
+          }
+        }
+      },
+      "scaleSymbols": true,
+      "transparency": 0,
+      "labelingInfo": null
+    },
+    "defaultVisibility": false,
+    "extent": {
+      "xmin": -95.15366999999999,
+      "ymin": 41.676559999999995,
+      "xmax": -74.32011,
+      "ymax": 56.859359999999995,
+      "spatialReference": {
+        "wkid": 4269,
+        "latestWkid": 4269,
+        "xyTolerance": 2e-07,
+        "zTolerance": 2,
+        "mTolerance": 0.001,
+        "falseX": -400,
+        "falseY": -400,
+        "xyUnits": 11258999068426.24,
+        "falseZ": 0,
+        "zUnits": 1,
+        "falseM": -100000,
+        "mUnits": 10000
+      }
+    },
+    "hasAttachments": false,
+    "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+    "displayField": "LEAD_SPA",
+    "typeIdField": null,
+    "subtypeFieldName": null,
+    "subtypeField": null,
+    "defaultSubtypeCode": null,
+    "fields": [
+      {
+        "name": "OGF_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "OGF_ID",
+        "domain": null
+      },
+      {
+        "name": "SPP_ID",
+        "type": "esriFieldTypeInteger",
+        "alias": "SPP_ID",
+        "domain": null
+      },
+      {
+        "name": "SPR_ID",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "SPR_ID",
+        "domain": null
+      },
+      {
+        "name": "LEAD_SPA",
+        "type": "esriFieldTypeString",
+        "alias": "LEAD_SPA",
+        "length": 3,
+        "domain": null
+      },
+      {
+        "name": "FTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "FTYPE",
+        "length": 50,
+        "domain": null
+      },
+      {
+        "name": "UTM_ZONE",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "UTM_ZONE",
+        "domain": null
+      },
+      {
+        "name": "AREA_LAMBERT_KM",
+        "type": "esriFieldTypeInteger",
+        "alias": "AREA_LAMBERT_KM",
+        "domain": null
+      },
+      {
+        "name": "COMMENTS",
+        "type": "esriFieldTypeString",
+        "alias": "COMMENTS",
+        "length": 2000,
+        "domain": null
+      },
+      {
+        "name": "LOCATION_ACCURACY",
+        "type": "esriFieldTypeString",
+        "alias": "LOCATION_ACCURACY",
+        "length": 25,
+        "domain": null
+      },
+      {
+        "name": "GEOMETRY_UPDATE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "GEOMETRY_UPDATE_DATETIME",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "EFFECTIVE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "EFFECTIVE_DATETIME",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "SYSTEM_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "SYSTEM_DATETIME",
+        "length": 8,
+        "domain": null
+      },
+      {
+        "name": "SHAPE",
+        "type": "esriFieldTypeGeometry",
+        "alias": "SHAPE",
+        "domain": null
+      },
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID",
+        "domain": null
+      },
+      {
+        "name": "SHAPE.AREA",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE.AREA",
+        "domain": null
+      },
+      {
+        "name": "SHAPE.LEN",
+        "type": "esriFieldTypeDouble",
+        "alias": "SHAPE.LEN",
+        "domain": null
+      }
+    ],
+    "geometryField": {
+      "name": "SHAPE",
+      "type": "esriFieldTypeGeometry",
+      "alias": "SHAPE"
+    },
+    "indexes": [
+      {
+        "name": "R619_SDE_ROWID_UK",
+        "fields": "OBJECTID",
+        "isAscending": true,
+        "isUnique": true,
+        "description": ""
+      },
+      {
+        "name": "SOURCE_PROT_AREA_GEN_PK",
+        "fields": "OGF_ID",
+        "isAscending": true,
+        "isUnique": true,
+        "description": ""
+      },
+      {
+        "name": "A713_IX1",
+        "fields": "SHAPE",
+        "isAscending": true,
+        "isUnique": true,
+        "description": ""
+      }
+    ],
+    "subtypes": [],
+    "relationships": [],
+    "canModifyLayer": true,
+    "canScaleSymbols": false,
+    "hasLabels": false,
+    "capabilities": "Map,Query,Data",
+    "maxRecordCount": 2000,
+    "supportsStatistics": true,
+    "supportsExceedsLimitStatistics": true,
+    "supportsAdvancedQueries": true,
+    "supportedQueryFormats": "JSON, geoJSON, PBF",
+    "isDataVersioned": false,
+    "ownershipBasedAccessControlForFeatures": {
+      "allowOthersToQuery": true
+    },
+    "useStandardizedQueries": true,
+    "supportedSpatialRelationships": [
+      "esriSpatialRelIntersects",
+      "esriSpatialRelContains",
+      "esriSpatialRelCrosses",
+      "esriSpatialRelEnvelopeIntersects",
+      "esriSpatialRelIndexIntersects",
+      "esriSpatialRelOverlaps",
+      "esriSpatialRelTouches",
+      "esriSpatialRelWithin",
+      "esriSpatialRelRelation"
+    ],
+    "advancedQueryCapabilities": {
+      "useStandardizedQueries": true,
+      "supportsStatistics": true,
+      "supportsPercentileStatistics": true,
+      "supportsHavingClause": true,
+      "supportsOrderBy": true,
+      "supportsDistinct": true,
+      "supportsCountDistinct": true,
+      "supportsPagination": true,
+      "supportsLod": false,
+      "supportsQueryWithLodSR": false,
+      "supportsTrueCurve": true,
+      "supportsQueryWithDatumTransformation": true,
+      "supportsReturningQueryExtent": true,
+      "supportsQueryWithDistance": true,
+      "supportsSqlExpression": true,
+      "supportsTimeRelation": true,
+      "supportsSqlFormat": false,
+      "supportsQueryAnalytic": true
+    },
+    "supportsDatumTransformation": true,
+    "advancedQueryAnalyticCapabilities": {
+      "supportsLinearRegression": true,
+      "supportsAsync": false,
+      "supportsPercentileAnalytic": true
+    },
+    "dateFieldsTimeReference": null,
+    "preferredTimeReference": null,
+    "datesInUnknownTimezone": false,
+    "hasGeometryProperties": true,
+    "geometryProperties": {
+      "shapeAreaFieldName": "SHAPE.AREA",
+      "shapeLengthFieldName": "SHAPE.LEN",
+      "units": "esriDecimalDegrees"
+    },
+    "hasMetadata": true,
+    "isDataArchived": false,
+    "archivingInfo": {
+      "supportsQueryWithHistoricMoment": false,
+      "startArchivingMoment": -1
+    },
+    "supportsCoordinatesQuantization": true,
+    "supportsDynamicLegends": true
+  },
+  "stratford": {
+    "displayFieldName": "LEAD_SPA",
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "OGF_ID": "OGF_ID",
+      "SPP_ID": "SPP_ID",
+      "SPR_ID": "SPR_ID",
+      "LEAD_SPA": "LEAD_SPA",
+      "FTYPE": "FTYPE",
+      "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+      "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+      "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+      "SYSTEM_DATETIME": "SYSTEM_DATETIME"
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID"
+      },
+      {
+        "name": "OGF_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "OGF_ID"
+      },
+      {
+        "name": "SPP_ID",
+        "type": "esriFieldTypeInteger",
+        "alias": "SPP_ID"
+      },
+      {
+        "name": "SPR_ID",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "SPR_ID"
+      },
+      {
+        "name": "LEAD_SPA",
+        "type": "esriFieldTypeString",
+        "alias": "LEAD_SPA",
+        "length": 3
+      },
+      {
+        "name": "FTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "FTYPE",
+        "length": 50
+      },
+      {
+        "name": "LOCATION_ACCURACY",
+        "type": "esriFieldTypeString",
+        "alias": "LOCATION_ACCURACY",
+        "length": 25
+      },
+      {
+        "name": "GEOMETRY_UPDATE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "GEOMETRY_UPDATE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "EFFECTIVE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "EFFECTIVE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "SYSTEM_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "SYSTEM_DATETIME",
+        "length": 8
+      }
+    ],
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 2257,
+          "OGF_ID": 60000251,
+          "SPP_ID": 45,
+          "SPR_ID": 27,
+          "LEAD_SPA": "Yes",
+          "FTYPE": "Watershed",
+          "LOCATION_ACCURACY": "Within 200 metres",
+          "GEOMETRY_UPDATE_DATETIME": 1207872000000,
+          "EFFECTIVE_DATETIME": 1150156800000,
+          "SYSTEM_DATETIME": 1426177655000
+        }
+      }
+    ]
+  },
+  "hamilton": {
+    "displayFieldName": "LEAD_SPA",
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "OGF_ID": "OGF_ID",
+      "SPP_ID": "SPP_ID",
+      "SPR_ID": "SPR_ID",
+      "LEAD_SPA": "LEAD_SPA",
+      "FTYPE": "FTYPE",
+      "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+      "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+      "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+      "SYSTEM_DATETIME": "SYSTEM_DATETIME"
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID"
+      },
+      {
+        "name": "OGF_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "OGF_ID"
+      },
+      {
+        "name": "SPP_ID",
+        "type": "esriFieldTypeInteger",
+        "alias": "SPP_ID"
+      },
+      {
+        "name": "SPR_ID",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "SPR_ID"
+      },
+      {
+        "name": "LEAD_SPA",
+        "type": "esriFieldTypeString",
+        "alias": "LEAD_SPA",
+        "length": 3
+      },
+      {
+        "name": "FTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "FTYPE",
+        "length": 50
+      },
+      {
+        "name": "LOCATION_ACCURACY",
+        "type": "esriFieldTypeString",
+        "alias": "LOCATION_ACCURACY",
+        "length": 25
+      },
+      {
+        "name": "GEOMETRY_UPDATE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "GEOMETRY_UPDATE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "EFFECTIVE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "EFFECTIVE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "SYSTEM_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "SYSTEM_DATETIME",
+        "length": 8
+      }
+    ],
+    "features": [
+      {
+        "attributes": {
+          "OBJECTID": 865,
+          "OGF_ID": 60000283,
+          "SPP_ID": 21,
+          "SPR_ID": 14,
+          "LEAD_SPA": "No",
+          "FTYPE": "Watershed",
+          "LOCATION_ACCURACY": "Within 200 metres",
+          "GEOMETRY_UPDATE_DATETIME": 1207872000000,
+          "EFFECTIVE_DATETIME": 1150156800000,
+          "SYSTEM_DATETIME": 1426177655000
+        }
+      }
+    ]
+  },
+  "empty": {
+    "displayFieldName": "LEAD_SPA",
+    "fieldAliases": {
+      "OBJECTID": "OBJECTID",
+      "OGF_ID": "OGF_ID",
+      "SPP_ID": "SPP_ID",
+      "SPR_ID": "SPR_ID",
+      "LEAD_SPA": "LEAD_SPA",
+      "FTYPE": "FTYPE",
+      "LOCATION_ACCURACY": "LOCATION_ACCURACY",
+      "GEOMETRY_UPDATE_DATETIME": "GEOMETRY_UPDATE_DATETIME",
+      "EFFECTIVE_DATETIME": "EFFECTIVE_DATETIME",
+      "SYSTEM_DATETIME": "SYSTEM_DATETIME"
+    },
+    "fields": [
+      {
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID",
+        "alias": "OBJECTID"
+      },
+      {
+        "name": "OGF_ID",
+        "type": "esriFieldTypeDouble",
+        "alias": "OGF_ID"
+      },
+      {
+        "name": "SPP_ID",
+        "type": "esriFieldTypeInteger",
+        "alias": "SPP_ID"
+      },
+      {
+        "name": "SPR_ID",
+        "type": "esriFieldTypeSmallInteger",
+        "alias": "SPR_ID"
+      },
+      {
+        "name": "LEAD_SPA",
+        "type": "esriFieldTypeString",
+        "alias": "LEAD_SPA",
+        "length": 3
+      },
+      {
+        "name": "FTYPE",
+        "type": "esriFieldTypeString",
+        "alias": "FTYPE",
+        "length": 50
+      },
+      {
+        "name": "LOCATION_ACCURACY",
+        "type": "esriFieldTypeString",
+        "alias": "LOCATION_ACCURACY",
+        "length": 25
+      },
+      {
+        "name": "GEOMETRY_UPDATE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "GEOMETRY_UPDATE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "EFFECTIVE_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "EFFECTIVE_DATETIME",
+        "length": 8
+      },
+      {
+        "name": "SYSTEM_DATETIME",
+        "type": "esriFieldTypeDate",
+        "alias": "SYSTEM_DATETIME",
+        "length": 8
+      }
+    ],
+    "features": []
+  },
+  "count": {
+    "count": 118
+  }
+}

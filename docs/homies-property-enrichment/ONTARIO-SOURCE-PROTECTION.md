@@ -1,0 +1,21 @@
+# Original Ontario generalized source-protection reference
+
+Audited October 3, 2026 Toronto / October 4 UTC. One additional independent OGL source, 118 natively observed generalized boundary rows. Rows are neither distinct areas, properties, data points nor imports; one source-protection area can comprise multiple watershed/lake/river/island polygons. French duplicate offers are not counted.
+
+## Rights and lineage
+
+The [original MECP catalogue](https://data.ontario.ca/dataset/source-protection-area-generalized) explicitly offers Open Government Licence – Ontario and the active English GeoHub resource. The exact [GeoHub offer](https://geohub.lio.gov.on.ca/datasets/source-protection-area-generalized) binds to original item e47ba8e4f5884a08be8e17b165ede457, owner LandInformationOntario, org a03W7iZ8T3s5vB7p. Its explicit OGL grant points directly to [LIO_Open05 MapServer child 2](https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/2). Root service05, typed polygon child/fields, query ordering and the child's explicit OGL URL are verified. Full normalized current licence fingerprint is 87588763e2552bbb40ce62f9f3ae255c8dc7058ac8601c56d1edfd081adf6bb8. Runtime checks occur before every cached-live record/count request and fail closed on changed/unavailable rights or lineage. City/County and UTRCA map restrictions are separate scopes.
+
+## Returned scope
+
+`ontarioSourceProtectionAreaReference` accepts independently suitable Ontario building/civic points or caller coordinates. It sends a bounded point-intersection query with no returned geometry, selected attributes only, ordered by OBJECTID, with 51 fetched/50 displayed. Nonempty and empty responses require native typed fields; this original MapServer omits objectIdFieldName. Distinct multiple matches, truncation and historical crosswalk disagreement remain ambiguous. Empty complete queries remain no_match without establishing absence.
+
+Records retain provincial ID, source-protection area ID (SPP_ID/SPA ID), region ID, administrative lead label, landform type, reported location accuracy and raw geometry/record/system epochs. Whole-area dimensions and unstructured comments are excluded. A historical dictionary from the original [2012 data description](https://www.publicdocs.mnr.gov.on.ca/mirb/Source%20Protection%20Area%20Generalized%20-%20Data%20Description.pdf), visually reviewed pages 7–9, supplies explicitly historical area/region names. SHA256: 6d6ab68bd26762dbf067c2286ad666461dc40e2e1f80cb29a3dd7ac0b33914ad. Unknown IDs remain null; raw IDs and disagreement are always retained. Current names and legal crosswalk remain unverified. The separately read original July 27, 2015 documentation records the removal of name columns in 2011 and a 2015 Mattawa boundary change; it does not verify present legal currency.
+
+At caller point 43.37,-80.982, the original source returns SPA45/SPR27, historical Upper Thames River / Thames, Sydenham and Region. At 43.255,-79.871, SPA21/SPR14, historical Hamilton / Halton-Hamilton. Both report Within 200 metres accuracy and old record/geometry dates. At 55,-88.9, the native complete response is empty. These are test coordinates, not verified subject-property findings.
+
+## Limits and report use
+
+The source is generalized/smoothed approximate mapping. It is not a current legal SPA boundary, WHPA/IPZ/SGRA/HVA screen, current approved plan/policy, parcel-wide constraint, conservation-regulation/flood boundary, water-supply connection or water-quality finding. Administrative lead is a source label, not legal property jurisdiction. Record, geometry, system and catalogue/item edits are separate from current plan approval/policy dates; current data observation date/timezone remains unverified. No-match establishes no clearance, absence, water safety or insurance eligibility.
+
+The brief, full report and Homies skill retain these scopes, provenance and document requests for current original-authority maps, operative plans and activity-specific confirmation. Original evidence receipts/metadata/count/positive/empty queries are retained in the Homies output audit folder. This shared reference does not complete a municipal market.

@@ -1201,4 +1201,10 @@ coverage does not verify actual raster coverage; resolution is not accuracy and
 raw project-year labels are not verified acquisition dates. Counts are source
 index rows, not properties, pixels, data points or imports. See
 [ONTARIO-LIDAR.md](ONTARIO-LIDAR.md). All major-market completion remains unproven;
-Stratford/Perth and the other queued regional markets remain next audit candidates.
+Stratford/Perth now has the separately documented audit below; other queued regional markets remain next candidates.
+
+## Stratford/Perth and original generalized source-protection reference
+
+[Stratford](STRATFORD.md) advances to an audited reuse gap with scoped City/County rights findings, current manual property-file routes, explicit ARU/document-vintage conflicts, survey authorization/timing differences, heritage/district guidance and original-authority document requests. No City/County property records, counts or geometry are integrated. Stratford PEI and the County member municipalities remain separate scopes.
+
+[The original Ontario generalized source-protection feed](ONTARIO-SOURCE-PROTECTION.md) adds one independently licensed shared reference and 118 natively observed boundary rows. It returns raw IDs, accuracy and historical 2012 lookup labels with separate date provenance; it does not establish current legal boundaries, vulnerable areas, activity-specific policies, actual water supply or water safety. Generalized reference rows are neither distinct areas/properties nor imports. All market completion flags remain false. Owen Sound and other queued regional markets remain next audit candidates.
