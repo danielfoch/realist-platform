@@ -22,6 +22,10 @@ describe("Woodstock source-guidance audit", () => {
   it("keeps survey-release conflict, separate compliance access, ARU eligibility and planning vintages explicit", () => {
     const l = woodstockLayers("Woodstock", "Ontario"); expect(l.propertySurveyRecords.note).toContain("guidance conflicts"); expect(l.permits.note).toContain("separate Legal Compliance Letter"); expect(l.additionalUnits.note).toContain("subject to restrictions"); expect(l.zoning.note).toContain("September 30, 2025"); expect(l.zoning.note).toContain("Q2 2026"); expect(l.heritage.note).toContain("final appeal outcome"); expect(l.contourReference.note).toContain("whole mixed source");
     const b = preShowingBrief(l, woodstockQuestions("Woodstock", "ON")); expect(b.findings).toEqual([]); expect(b.sellerQuestions).toHaveLength(3); expect(b.documentsToRequest.some(d => d.reason.includes("conflicting survey-release"))).toBe(true);
+    const combined = preShowingBrief({ ...l, ontarioLotFabricReference: layer("available", { records: [] }) }, []);
+    expect(combined.documentsToRequest.some(d => d.reason.includes("Confirm municipal survey-release eligibility"))).toBe(true);
+    expect(combined.documentsToRequest.some(d => d.reason.includes("conflicting survey-release"))).toBe(true);
+    expect(combined.documentsToRequest.some(d => d.reason.includes("City building searches do not supply surveys"))).toBe(false);
   });
   it("preserves independent evidence and puts original source-guidance details in the full report", () => {
     const layers = { neighbourhood: layer("available", { censusYear: 2021 }), ...woodstockLayers("Woodstock", "ON") }, brief = preShowingBrief(layers, woodstockQuestions("Woodstock", "ON"));
